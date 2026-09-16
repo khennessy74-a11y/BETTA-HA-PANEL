@@ -156,6 +156,8 @@
                   <div class="dropdown-group">
                     <div class="dropdown-group-label">Control</div>
                     <button class="dropdown-item" type="button" role="menuitem" data-add-target="addButtonBtn">Button</button>
+                    <button class="dropdown-item" type="button" role="menuitem" data-add-target="addScriptBtn">Script</button>
+                    <button class="dropdown-item" type="button" role="menuitem" data-add-target="addSceneBtn">Scene</button>
                     <button class="dropdown-item" type="button" role="menuitem" data-add-target="addSliderBtn">Slider</button>
                     <button class="dropdown-item" type="button" role="menuitem" data-add-target="addLightTileBtn">Light Tile</button>
                     <button class="dropdown-item" type="button" role="menuitem" data-add-target="addHeatingTileBtn">Heating Tile</button>
@@ -185,6 +187,8 @@
             <div class="legacy-hidden">
               <button id="addSensorBtn" type="button">+ Sensor</button>
               <button id="addButtonBtn" type="button">+ Button</button>
+              <button id="addScriptBtn" type="button">+ Script</button>
+              <button id="addSceneBtn" type="button">+ Scene</button>
               <button id="addSliderBtn" type="button">+ Slider</button>
               <button id="addGraphBtn" type="button">+ Graph</button>
               <button id="addEmptyTileBtn" type="button">+ Empty Tile</button>
@@ -247,6 +251,7 @@
                     <label><span id="fButtonModeLabel">Button mode</span>
                       <select id="fButtonMode">
                         <option value="auto">auto (default switch)</option>
+                        <option value="run">run (script / scene)</option>
                         <option value="play_pause">play/pause (media_player)</option>
                         <option value="stop">stop (media_player)</option>
                         <option value="next">next (media_player)</option>
