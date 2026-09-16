@@ -16,6 +16,16 @@ typedef enum {
 } ui_bindings_media_action_t;
 
 esp_err_t ui_bindings_toggle_entity(const char *entity_id);
+/* True for entities that are "run once" actions rather than stateful switches
+ * (script.*, scene.*).  Those are activated with ui_bindings_run_entity()
+ * instead of being toggled. */
+bool ui_bindings_entity_is_runnable(const char *entity_id);
+/* Fire-and-forget activation: script.turn_on / scene.turn_on.  Returns
+ * ESP_ERR_NOT_SUPPORTED for entities outside those domains. */
+esp_err_t ui_bindings_run_entity(const char *entity_id);
+/* Stop a running script (script.turn_off).  Scenes cannot be cancelled and
+ * return ESP_ERR_NOT_SUPPORTED. */
+esp_err_t ui_bindings_cancel_entity(const char *entity_id);
 esp_err_t ui_bindings_set_entity_power(const char *entity_id, bool on);
 esp_err_t ui_bindings_set_slider_value(const char *entity_id, int value);
 esp_err_t ui_bindings_set_climate_target_c(const char *entity_id, float celsius);
