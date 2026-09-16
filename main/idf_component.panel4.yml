@@ -6,7 +6,7 @@
 # SDKCONFIG_DEFAULTS overlay. Do NOT edit main/idf_component.yml directly --
 # it is regenerated from this file on every configure.
 dependencies:
-  idf: ">=5.5"
+  idf: "5.5"
   espressif/esp_wifi_remote:
     version: "*"
     rules:
