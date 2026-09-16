@@ -12,6 +12,7 @@
 #   init in main/drivers/display_init_panels3.c (no upstream BSP package).
 # - GT911 touch via I2C (same as P4 panels) — same component.
 dependencies:
+  idf: ">=5.5"
   lvgl/lvgl:
     version: "^9"
   espressif/esp_lvgl_port:
@@ -29,7 +30,7 @@ dependencies:
   espressif/esp_websocket_client:
     version: "*"
   espressif/esp_lcd_st7701:
-    version: "2.0.1"
+    version: "^2.0.2"
     rules:
       - if: "target in [esp32s3]"
   espressif/esp_lcd_panel_io_additions:
