@@ -16,6 +16,7 @@
 
 typedef enum {
     W_BUTTON_MODE_AUTO = 0,
+    W_BUTTON_MODE_RUN,
     W_BUTTON_MODE_PLAY_PAUSE,
     W_BUTTON_MODE_STOP,
     W_BUTTON_MODE_NEXT,
@@ -129,10 +130,34 @@ static bool button_entity_is_media_player(const char *entity_id)
     return strncmp(entity_id, "media_player.", strlen("media_player.")) == 0;
 }
 
+static bool button_entity_is_script(const char *entity_id)
+{
+    if (entity_id == NULL) {
+        return false;
+    }
+    return strncmp(entity_id, "script.", strlen("script.")) == 0;
+}
+
+static bool button_entity_is_scene(const char *entity_id)
+{
+    if (entity_id == NULL) {
+        return false;
+    }
+    return strncmp(entity_id, "scene.", strlen("scene.")) == 0;
+}
+
+static bool button_entity_is_runnable(const char *entity_id)
+{
+    return button_entity_is_script(entity_id) || button_entity_is_scene(entity_id);
+}
+
 static w_button_mode_t button_mode_from_text(const char *mode_text)
 {
     if (mode_text == NULL || mode_text[0] == '\0' || strcmp(mode_text, "auto") == 0) {
         return W_BUTTON_MODE_AUTO;
+    }
+    if (strcmp(mode_text, "run") == 0) {
+        return W_BUTTON_MODE_RUN;
     }
     if (strcmp(mode_text, "play_pause") == 0) {
         return W_BUTTON_MODE_PLAY_PAUSE;
@@ -157,6 +182,8 @@ static bool button_mode_uses_switch(w_button_mode_t mode)
 static const char *button_icon_symbol(w_button_mode_t mode, bool is_on)
 {
     switch (mode) {
+    case W_BUTTON_MODE_RUN:
+        return is_on ? LV_SYMBOL_STOP : LV_SYMBOL_PLAY;
     case W_BUTTON_MODE_PLAY_PAUSE:
         return is_on ? LV_SYMBOL_PAUSE : LV_SYMBOL_PLAY;
     case W_BUTTON_MODE_STOP:
@@ -589,6 +616,25 @@ static void button_run_primary_action(w_button_ctx_t *ctx)
         return;
     }
 
+    if (ctx->mode == W_BUTTON_MODE_RUN) {
+        if (button_entity_is_scene(ctx->entity_id)) {
+            /* Scenes have no meaningful "running" state to cancel; every tap
+             * just re-activates it. */
+            (void)ui_bindings_run_entity(ctx->entity_id);
+            return;
+        }
+        if (ctx->is_on) {
+            if (ui_bindings_cancel_entity(ctx->entity_id) == ESP_OK) {
+                button_apply_visual(ctx->card, ctx, false, false, "OFF");
+            }
+        } else {
+            if (ui_bindings_run_entity(ctx->entity_id) == ESP_OK) {
+                button_apply_visual(ctx->card, ctx, true, false, "ON");
+            }
+        }
+        return;
+    }
+
     if (ctx->mode == W_BUTTON_MODE_PLAY_PAUSE) {
         bool next = !ctx->is_on;
         if (ui_bindings_media_player_action(ctx->entity_id, UI_BINDINGS_MEDIA_ACTION_PLAY_PAUSE) == ESP_OK) {
@@ -662,6 +708,7 @@ esp_err_t w_button_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widge
     lv_obj_set_style_pad_all(card, 16, LV_PART_MAIN);
 
     const bool is_media_player = button_entity_is_media_player(def->entity_id);
+    const bool is_runnable = button_entity_is_runnable(def->entity_id);
     const char *title_text = def->title;
     if (!is_media_player && (title_text == NULL || title_text[0] == '\0')) {
         title_text = def->id;
@@ -715,10 +762,19 @@ esp_err_t w_button_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widge
     ctx->accent_color = lv_color_hex(W_BUTTON_SWITCH_ACCENT_DEFAULT_HEX);
     ctx->mode = button_mode_from_text(def->button_mode);
     ctx->show_title = title_text[0] != '\0';
-    ctx->show_status = !is_media_player;
-    if (ctx->mode != W_BUTTON_MODE_AUTO && !is_media_player) {
+    if (ctx->mode == W_BUTTON_MODE_RUN && !is_runnable) {
+        /* run mode only makes sense for one-shot entities; fall back rather
+         * than silently toggling a switch/media_player as if it were one. */
         ctx->mode = W_BUTTON_MODE_AUTO;
+    } else if (ctx->mode != W_BUTTON_MODE_AUTO && ctx->mode != W_BUTTON_MODE_RUN && !is_media_player) {
+        ctx->mode = W_BUTTON_MODE_AUTO;
+    } else if (is_runnable && ctx->mode == W_BUTTON_MODE_AUTO) {
+        /* Layout validation requires run mode for script.*/scene.* entities;
+         * default to it defensively in case a stored layout predates that
+         * rule so a one-shot entity is never driven via switch-toggle. */
+        ctx->mode = W_BUTTON_MODE_RUN;
     }
+    ctx->show_status = !is_media_player && !(is_runnable && ctx->mode == W_BUTTON_MODE_RUN);
     ctx->suppress_event = false;
     ctx->is_on = false;
     ctx->unavailable = false;
@@ -739,7 +795,8 @@ esp_err_t w_button_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widge
     lv_obj_add_event_cb(card, w_button_card_event_cb, LV_EVENT_DELETE, ctx);
     lv_obj_add_event_cb(action_switch, w_button_switch_event_cb, LV_EVENT_VALUE_CHANGED, ctx);
 
-    button_apply_visual(card, ctx, false, false, (ctx->mode == W_BUTTON_MODE_AUTO) ? "OFF" : "paused");
+    button_apply_visual(card, ctx, false, false,
+        (ctx->mode == W_BUTTON_MODE_AUTO || ctx->mode == W_BUTTON_MODE_RUN) ? "OFF" : "paused");
     out_instance->obj = card;
     out_instance->ctx = ctx;
     return ESP_OK;
