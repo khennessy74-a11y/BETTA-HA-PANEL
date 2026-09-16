@@ -285,7 +285,8 @@ static bool widget_entity_domain_valid(const char *type, const char *entity_id)
         return entity_in_domain(entity_id, "sensor") || entity_in_domain(entity_id, "binary_sensor");
     }
     if (strcmp(type, "button") == 0) {
-        return entity_in_domain(entity_id, "switch") || entity_in_domain(entity_id, "media_player");
+        return entity_in_domain(entity_id, "switch") || entity_in_domain(entity_id, "media_player") ||
+               entity_in_domain(entity_id, "script") || entity_in_domain(entity_id, "scene");
     }
     if (strcmp(type, "media_player") == 0) {
         return entity_in_domain(entity_id, "media_player");
@@ -354,8 +355,8 @@ static bool is_valid_button_mode(const char *mode)
     if (mode == NULL || mode[0] == '\0') {
         return false;
     }
-    return strcmp(mode, "auto") == 0 || strcmp(mode, "play_pause") == 0 || strcmp(mode, "stop") == 0 ||
-           strcmp(mode, "next") == 0 || strcmp(mode, "previous") == 0;
+    return strcmp(mode, "auto") == 0 || strcmp(mode, "run") == 0 || strcmp(mode, "play_pause") == 0 ||
+           strcmp(mode, "stop") == 0 || strcmp(mode, "next") == 0 || strcmp(mode, "previous") == 0;
 }
 
 static bool button_mode_requires_media_player(const char *mode)
@@ -365,6 +366,11 @@ static bool button_mode_requires_media_player(const char *mode)
     }
     return strcmp(mode, "play_pause") == 0 || strcmp(mode, "stop") == 0 || strcmp(mode, "next") == 0 ||
            strcmp(mode, "previous") == 0;
+}
+
+static bool button_mode_requires_runnable(const char *mode)
+{
+    return mode != NULL && strcmp(mode, "run") == 0;
 }
 
 static bool is_valid_energy_source(const char *source)
@@ -522,7 +528,7 @@ static bool validate_widget(cJSON *widget, const char *known_widget_ids, size_t 
                     snprintf(msg, sizeof(msg), "widget %s: entity_id must be sensor.* or binary_sensor.*",
                         cJSON_IsString(id) ? id->valuestring : "?");
                 } else if (strcmp(type->valuestring, "button") == 0) {
-                    snprintf(msg, sizeof(msg), "widget %s: entity_id must be switch.* or media_player.*",
+                    snprintf(msg, sizeof(msg), "widget %s: entity_id must be switch|media_player|script|scene.*",
                         cJSON_IsString(id) ? id->valuestring : "?");
                 } else {
                     const char *required_domain = required_domain_for_widget_type(type->valuestring);
@@ -613,10 +619,13 @@ static bool validate_widget(cJSON *widget, const char *known_widget_ids, size_t 
             }
         }
 
+        bool entity_is_runnable_type = cJSON_IsString(entity_id) && entity_id->valuestring != NULL &&
+            (entity_in_domain(entity_id->valuestring, "script") || entity_in_domain(entity_id->valuestring, "scene"));
+
         if (button_mode != NULL) {
             if (!cJSON_IsString(button_mode) || button_mode->valuestring == NULL ||
                 !is_valid_button_mode(button_mode->valuestring)) {
-                snprintf(msg, sizeof(msg), "widget %s: button_mode must be auto|play_pause|stop|next|previous",
+                snprintf(msg, sizeof(msg), "widget %s: button_mode must be auto|run|play_pause|stop|next|previous",
                     cJSON_IsString(id) ? id->valuestring : "?");
                 layout_validation_add(result, msg);
             } else if (button_mode_requires_media_player(button_mode->valuestring) &&
@@ -626,7 +635,19 @@ static bool validate_widget(cJSON *widget, const char *known_widget_ids, size_t 
                     cJSON_IsString(id) ? id->valuestring : "?",
                     button_mode->valuestring);
                 layout_validation_add(result, msg);
+            } else if (button_mode_requires_runnable(button_mode->valuestring) && !entity_is_runnable_type) {
+                snprintf(msg, sizeof(msg), "widget %s: button_mode run requires script.* or scene.* entity_id",
+                    cJSON_IsString(id) ? id->valuestring : "?");
+                layout_validation_add(result, msg);
+            } else if (entity_is_runnable_type && !button_mode_requires_runnable(button_mode->valuestring)) {
+                snprintf(msg, sizeof(msg), "widget %s: script.*/scene.* entity_id requires button_mode run",
+                    cJSON_IsString(id) ? id->valuestring : "?");
+                layout_validation_add(result, msg);
             }
+        } else if (entity_is_runnable_type) {
+            snprintf(msg, sizeof(msg), "widget %s: script.*/scene.* entity_id requires button_mode run",
+                cJSON_IsString(id) ? id->valuestring : "?");
+            layout_validation_add(result, msg);
         }
     }
 
