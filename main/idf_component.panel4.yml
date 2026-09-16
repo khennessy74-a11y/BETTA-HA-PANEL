@@ -5,8 +5,8 @@
 # Selected automatically by the top-level CMakeLists.txt based on the active
 # SDKCONFIG_DEFAULTS overlay. Do NOT edit main/idf_component.yml directly --
 # it is regenerated from this file on every configure.
-dependencies:
-  idf: "5.5"
+idf:
+   version: ">=5.5"
   espressif/esp_wifi_remote:
     version: "*"
     rules:
