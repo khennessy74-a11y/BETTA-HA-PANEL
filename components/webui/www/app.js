@@ -93,6 +93,32 @@ const ENTITY_PICKER_CONFIGS = {
     widgetFallback: "Button tile",
     itemsFallback: "switches",
   },
+  button_script: {
+    widgetType: "button",
+    buttonMode: "run",
+    domain: "script",
+    titleKey: "entity_picker.title_script",
+    blankKey: "entity_picker.blank_script",
+    widgetKey: "entity_picker.widget_script",
+    itemsKey: "entity_picker.items_script",
+    titleFallback: "Choose Script",
+    blankFallback: "Blank Script Button",
+    widgetFallback: "Script button",
+    itemsFallback: "scripts",
+  },
+  button_scene: {
+    widgetType: "button",
+    buttonMode: "run",
+    domain: "scene",
+    titleKey: "entity_picker.title_scene",
+    blankKey: "entity_picker.blank_scene",
+    widgetKey: "entity_picker.widget_scene",
+    itemsKey: "entity_picker.items_scene",
+    titleFallback: "Choose Scene",
+    blankFallback: "Blank Scene Button",
+    widgetFallback: "Scene button",
+    itemsFallback: "scenes",
+  },
   heating_tile: {
     domain: "climate",
     titleKey: "entity_picker.title_climate",
@@ -199,6 +225,7 @@ const SLIDER_ENTITY_DOMAINS = new Set([
 ]);
 const BUTTON_MODES = new Set([
   "auto",
+  "run",
   "play_pause",
   "stop",
   "next",
@@ -259,6 +286,8 @@ const WEB_I18N_BUILTIN = {
     "layout.widgets.heading": "Widgets",
     "layout.widgets.add_sensor": "+ Sensor",
     "layout.widgets.add_button": "+ Button",
+    "layout.widgets.add_script": "+ Script",
+    "layout.widgets.add_scene": "+ Scene",
     "layout.widgets.add_slider": "+ Slider",
     "layout.widgets.add_graph": "+ Graph",
     "layout.widgets.add_empty_tile": "+ Empty Tile",
@@ -276,6 +305,8 @@ const WEB_I18N_BUILTIN = {
     "entity_picker.title_sensor": "Choose Sensor",
     "entity_picker.title_light": "Choose Light",
     "entity_picker.title_switch": "Choose Switch",
+    "entity_picker.title_script": "Choose Script",
+    "entity_picker.title_scene": "Choose Scene",
     "entity_picker.title_weather": "Choose Weather",
     "entity_picker.title_climate": "Choose Heating",
     "entity_picker.title_roborock": "Choose Roborock",
@@ -289,6 +320,8 @@ const WEB_I18N_BUILTIN = {
     "entity_picker.blank_sensor": "Blank Sensor Tile",
     "entity_picker.blank_light": "Blank Light Tile",
     "entity_picker.blank_button": "Blank Button Tile",
+    "entity_picker.blank_script": "Blank Script Button",
+    "entity_picker.blank_scene": "Blank Scene Button",
     "entity_picker.blank_weather": "Blank Weather Tile",
     "entity_picker.blank_weather_3day": "Blank Weather Forecast Tile",
     "entity_picker.blank_graph": "Blank Graph Tile",
@@ -313,12 +346,16 @@ const WEB_I18N_BUILTIN = {
     "entity_picker.items_light": "lights",
     "entity_picker.items_sensor": "sensors",
     "entity_picker.items_switch": "switches",
+    "entity_picker.items_script": "scripts",
+    "entity_picker.items_scene": "scenes",
     "entity_picker.items_weather": "weather entities",
     "entity_picker.items_climate": "climate entities",
     "entity_picker.items_vacuum": "vacuum robots",
     "entity_picker.widget_light": "Light tile",
     "entity_picker.widget_sensor": "Sensor tile",
     "entity_picker.widget_button": "Button tile",
+    "entity_picker.widget_script": "Script button",
+    "entity_picker.widget_scene": "Scene button",
     "entity_picker.widget_weather": "Weather tile",
     "entity_picker.widget_weather_3day": "Weather Forecast tile",
     "entity_picker.widget_graph": "Graph tile",
@@ -345,6 +382,7 @@ const WEB_I18N_BUILTIN = {
     "layout.option.graph_display_mode.bars": "Bars",
     "layout.inspector.apply": "Apply",
     "layout.option.button_mode.auto": "auto (default switch)",
+    "layout.option.button_mode.run": "run (script / scene)",
     "layout.option.button_mode.play_pause": "play/pause (media_player)",
     "layout.option.button_mode.stop": "stop (media_player)",
     "layout.option.button_mode.next": "next (media_player)",
@@ -1492,6 +1530,8 @@ const el = {
   applyEnergyPageBtn: document.getElementById("applyEnergyPageBtn"),
   addSensorBtn: document.getElementById("addSensorBtn"),
   addButtonBtn: document.getElementById("addButtonBtn"),
+  addScriptBtn: document.getElementById("addScriptBtn"),
+  addSceneBtn: document.getElementById("addSceneBtn"),
   addSliderBtn: document.getElementById("addSliderBtn"),
   addGraphBtn: document.getElementById("addGraphBtn"),
   addEmptyTileBtn: document.getElementById("addEmptyTileBtn"),
@@ -1652,6 +1692,10 @@ function buttonModeRequiresMediaPlayer(value) {
   return mode === "play_pause" || mode === "stop" || mode === "next" || mode === "previous";
 }
 
+function buttonModeRequiresRunnable(value) {
+  return normalizeButtonMode(value) === "run";
+}
+
 function normalizeHexColor(value, fallback = DEFAULT_SLIDER_ACCENT_COLOR) {
   const source = (typeof value === "string" ? value : "").trim();
   const fallbackNorm = typeof fallback === "string" ? fallback.trim().toLowerCase() : DEFAULT_SLIDER_ACCENT_COLOR;
@@ -1718,12 +1762,17 @@ function normalizeLayoutWidgets(layout) {
       if (!widget || typeof widget !== "object") continue;
       if (widget.type === "button") {
         widget.button_accent_color = normalizeHexColor(widget.button_accent_color, DEFAULT_BUTTON_ACCENT_COLOR);
-        const buttonMode = normalizeButtonMode(widget.button_mode);
-        if (buttonModeRequiresMediaPlayer(buttonMode) && !String(widget.entity_id || "").startsWith("media_player.")) {
-          widget.button_mode = DEFAULT_BUTTON_MODE;
-        } else {
-          widget.button_mode = buttonMode;
+        const entityId = String(widget.entity_id || "");
+        const isRunnableEntity = entityId.startsWith("script.") || entityId.startsWith("scene.");
+        let buttonMode = normalizeButtonMode(widget.button_mode);
+        if (buttonModeRequiresMediaPlayer(buttonMode) && !entityId.startsWith("media_player.")) {
+          buttonMode = DEFAULT_BUTTON_MODE;
+        } else if (buttonModeRequiresRunnable(buttonMode) && !isRunnableEntity) {
+          buttonMode = DEFAULT_BUTTON_MODE;
+        } else if (isRunnableEntity && !buttonModeRequiresRunnable(buttonMode)) {
+          buttonMode = "run";
         }
+        widget.button_mode = buttonMode;
       }
       if (widget.type === "slider") {
         widget.slider_direction = normalizeSliderDirection(widget.slider_direction);
@@ -2168,6 +2217,8 @@ function applyWebTranslations() {
   setTextById("widgetsHeading", "layout.widgets.heading");
   setTextById("addSensorBtn", "layout.widgets.add_sensor");
   setTextById("addButtonBtn", "layout.widgets.add_button");
+  setTextById("addScriptBtn", "layout.widgets.add_script");
+  setTextById("addSceneBtn", "layout.widgets.add_scene");
   setTextById("addSliderBtn", "layout.widgets.add_slider");
   setTextById("addGraphBtn", "layout.widgets.add_graph");
   setTextById("addEmptyTileBtn", "layout.widgets.add_empty_tile");
@@ -2206,6 +2257,7 @@ function applyWebTranslations() {
   setSelectOptionText(el.fGraphDisplayMode, "bars", "layout.option.graph_display_mode.bars");
   setTextById("applyInspectorBtn", "layout.inspector.apply");
   setSelectOptionText(el.fButtonMode, "auto", "layout.option.button_mode.auto");
+  setSelectOptionText(el.fButtonMode, "run", "layout.option.button_mode.run");
   setSelectOptionText(el.fButtonMode, "play_pause", "layout.option.button_mode.play_pause");
   setSelectOptionText(el.fButtonMode, "stop", "layout.option.button_mode.stop");
   setSelectOptionText(el.fButtonMode, "next", "layout.option.button_mode.next");
@@ -3375,7 +3427,9 @@ function allowedEntityDomainsForWidgetType(
   if (type === "sensor" || type === "graph") return ["sensor"];
   if (type === "button") {
     const normalizedMode = normalizeButtonMode(buttonMode);
-    return buttonModeRequiresMediaPlayer(normalizedMode) ? ["media_player"] : ["switch", "media_player"];
+    if (buttonModeRequiresMediaPlayer(normalizedMode)) return ["media_player"];
+    if (buttonModeRequiresRunnable(normalizedMode)) return ["script", "scene"];
+    return ["switch", "media_player"];
   }
   if (type === "light_tile") return ["light"];
   if (type === "heating_tile") return ["climate"];
@@ -3936,6 +3990,7 @@ function renderLightEntityPicker(data = {}) {
         addWidget(config.widgetType || editor.lightPicker.widgetType, {
           entityId: item.id,
           title: item.name || item.id,
+          buttonMode: config.buttonMode,
         });
         closeLightEntityPicker();
         setStatus(t("entity_picker.added_widget", { widget: widgetLabel, entity: item.id }));
@@ -4004,7 +4059,7 @@ async function fetchLightEntityPicker(options = {}) {
 function openLightEntityPicker(widgetType = "light_tile") {
   const config = entityPickerConfig(widgetType);
   if (!el.lightEntityPickerOverlay) {
-    addWidget(config.widgetType || widgetType);
+    addWidget(config.widgetType || widgetType, { buttonMode: config.buttonMode });
     return;
   }
   editor.lightPicker.widgetType = widgetType;
@@ -4360,6 +4415,8 @@ function renderWidgets() {
   const addButtons = [
     el.addSensorBtn,
     el.addButtonBtn,
+    el.addScriptBtn,
+    el.addSceneBtn,
     el.addSliderBtn,
     el.addGraphBtn,
     el.addEmptyTileBtn,
@@ -5185,8 +5242,13 @@ function addWidget(type, options = {}) {
     return null;
   }
   const sliderDomain = DEFAULT_SLIDER_ENTITY_DOMAIN;
+  const resolvedButtonMode = type === "button" && BUTTON_MODES.has(options.buttonMode)
+    ? options.buttonMode
+    : DEFAULT_BUTTON_MODE;
   const id = createWidgetIdForPage(page, type);
-  const entityId = typeof options.entityId === "string" ? options.entityId : pickDefaultEntityForWidgetType(type, sliderDomain);
+  const entityId = typeof options.entityId === "string"
+    ? options.entityId
+    : pickDefaultEntityForWidgetType(type, sliderDomain, resolvedButtonMode);
   const secondaryEntityId = type === "heating_tile" ? pickDefaultEntityForWidgetType("sensor") : "";
   const compact = isCompactCanvas();
   const defaultW = compact
@@ -5235,7 +5297,7 @@ function addWidget(type, options = {}) {
     widget.slider_accent_color = DEFAULT_SLIDER_ACCENT_COLOR;
   }
   if (type === "button") {
-    widget.button_mode = DEFAULT_BUTTON_MODE;
+    widget.button_mode = resolvedButtonMode;
     widget.button_accent_color = DEFAULT_BUTTON_ACCENT_COLOR;
   }
   if (type === "graph") {
@@ -5480,6 +5542,12 @@ function bindUi() {
   }
   el.addSensorBtn.onclick = () => openLightEntityPicker("sensor");
   el.addButtonBtn.onclick = () => openLightEntityPicker("button");
+  if (el.addScriptBtn) {
+    el.addScriptBtn.onclick = () => openLightEntityPicker("button_script");
+  }
+  if (el.addSceneBtn) {
+    el.addSceneBtn.onclick = () => openLightEntityPicker("button_scene");
+  }
   el.addSliderBtn.onclick = () => addWidget("slider");
   el.addGraphBtn.onclick = () => openLightEntityPicker("graph");
   el.addEmptyTileBtn.onclick = () => addWidget("empty_tile");
