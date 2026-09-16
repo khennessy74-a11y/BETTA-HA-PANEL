@@ -29,7 +29,7 @@ dependencies:
   espressif/esp_websocket_client:
     version: "*"
   espressif/esp_lcd_st7701:
-    version: "^2.0.2"
+    version: "2.0.2"
     rules:
       - if: "target in [esp32s3]"
   espressif/esp_lcd_panel_io_additions:
