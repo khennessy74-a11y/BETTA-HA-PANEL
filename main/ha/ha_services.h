@@ -12,3 +12,5 @@
 #define HA_DOMAIN_SWITCH "switch"
 #define HA_DOMAIN_MEDIA_PLAYER "media_player"
 #define HA_DOMAIN_CLIMATE "climate"
+#define HA_DOMAIN_SCRIPT "script"
+#define HA_DOMAIN_SCENE "scene"
