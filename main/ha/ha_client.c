@@ -1387,7 +1387,9 @@ static bool ha_client_discovery_domain_supported(const char *domain)
            strcmp(domain, "todo") == 0 ||
            strcmp(domain, "media_player") == 0 ||
            strcmp(domain, "vacuum") == 0 ||
-           strcmp(domain, "image") == 0;
+           strcmp(domain, "image") == 0 ||
+           strcmp(domain, "script") == 0 ||
+           strcmp(domain, "scene") == 0;
 }
 
 static const char *ha_client_discovery_domain_or_default(const char *domain)
