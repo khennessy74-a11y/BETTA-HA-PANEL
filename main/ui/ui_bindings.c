@@ -211,6 +211,86 @@ esp_err_t ui_bindings_toggle_entity(const char *entity_id)
     return err;
 }
 
+bool ui_bindings_entity_is_runnable(const char *entity_id)
+{
+    if (entity_id == NULL || entity_id[0] == '\0') {
+        return false;
+    }
+    char domain[32] = {0};
+    if (!split_entity_id(entity_id, domain, sizeof(domain))) {
+        return false;
+    }
+    return (strcmp(domain, HA_DOMAIN_SCRIPT) == 0) || (strcmp(domain, HA_DOMAIN_SCENE) == 0);
+}
+
+esp_err_t ui_bindings_run_entity(const char *entity_id)
+{
+    if (entity_id == NULL || entity_id[0] == '\0') {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    char domain[32] = {0};
+    if (!split_entity_id(entity_id, domain, sizeof(domain))) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    const bool is_script = (strcmp(domain, HA_DOMAIN_SCRIPT) == 0);
+    const bool is_scene = (strcmp(domain, HA_DOMAIN_SCENE) == 0);
+    if (!is_script && !is_scene) {
+        return ESP_ERR_NOT_SUPPORTED;
+    }
+
+    /* Reuse the power debounce so a double tap does not start the script
+     * twice; "target on" is the semantic for an activation. */
+    if (!ui_bindings_allow_power_command_now(entity_id, true, true)) {
+        return ESP_OK;
+    }
+
+    char payload[192] = {0};
+    snprintf(payload, sizeof(payload), "{\"entity_id\":\"%s\"}", entity_id);
+
+    esp_err_t err = ha_client_call_service(domain, HA_SERVICE_TURN_ON, payload);
+    if (err == ESP_OK) {
+        /* Scenes have a timestamp state that never reads as "on", so only
+         * scripts get optimistic running feedback. */
+        if (is_script) {
+            ui_bindings_apply_optimistic_state_text(entity_id, "on");
+        }
+    } else {
+        ESP_LOGW(TAG, "run failed entity=%s err=%s", entity_id, esp_err_to_name(err));
+    }
+    return err;
+}
+
+esp_err_t ui_bindings_cancel_entity(const char *entity_id)
+{
+    if (entity_id == NULL || entity_id[0] == '\0') {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    char domain[32] = {0};
+    if (!split_entity_id(entity_id, domain, sizeof(domain))) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    if (strcmp(domain, HA_DOMAIN_SCRIPT) != 0) {
+        return ESP_ERR_NOT_SUPPORTED;
+    }
+
+    if (!ui_bindings_allow_power_command_now(entity_id, true, false)) {
+        return ESP_OK;
+    }
+
+    char payload[192] = {0};
+    snprintf(payload, sizeof(payload), "{\"entity_id\":\"%s\"}", entity_id);
+
+    esp_err_t err = ha_client_call_service(domain, HA_SERVICE_TURN_OFF, payload);
+    if (err == ESP_OK) {
+        ui_bindings_apply_optimistic_state_text(entity_id, "off");
+    } else {
+        ESP_LOGW(TAG, "cancel failed entity=%s err=%s", entity_id, esp_err_to_name(err));
+    }
+    return err;
+}
+
 esp_err_t ui_bindings_set_entity_power(const char *entity_id, bool on)
 {
     if (entity_id == NULL || entity_id[0] == '\0') {
