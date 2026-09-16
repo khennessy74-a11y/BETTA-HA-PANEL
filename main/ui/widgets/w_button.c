@@ -769,8 +769,8 @@ esp_err_t w_button_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widge
     } else if (ctx->mode != W_BUTTON_MODE_AUTO && ctx->mode != W_BUTTON_MODE_RUN && !is_media_player) {
         ctx->mode = W_BUTTON_MODE_AUTO;
     } else if (is_runnable && ctx->mode == W_BUTTON_MODE_AUTO) {
-        /* Layout validation requires run mode for script.*/scene.* entities;
-         * default to it defensively in case a stored layout predates that
+        /* Layout validation requires run mode for script.* and scene.* entities.
+         * Default to it defensively in case a stored layout predates that
          * rule so a one-shot entity is never driven via switch-toggle. */
         ctx->mode = W_BUTTON_MODE_RUN;
     }
