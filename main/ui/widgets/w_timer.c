@@ -94,6 +94,67 @@ static bool timer_state_is_unavailable(const char *state)
 }
 
 
+#define TIMER_DEFAULT_ICON_CP 0xF051BU
+
+static bool timer_font_has_glyph(const lv_font_t *font, uint32_t codepoint)
+{
+    if (font == NULL) {
+        return false;
+    }
+
+    lv_font_glyph_dsc_t dsc = {0};
+
+    return lv_font_get_glyph_dsc(font, &dsc, codepoint, 0);
+}
+
+static const char *timer_utf8_from_codepoint(uint32_t codepoint)
+{
+    static char utf8[5] = {0};
+
+    if (codepoint <= 0x7FU) {
+        utf8[0] = (char)codepoint; utf8[1] = '\0'; return utf8;
+    }
+    if (codepoint <= 0x7FFU) {
+        utf8[0] = (char)(0xC0U | ((codepoint >> 6) & 0x1FU));
+        utf8[1] = (char)(0x80U | (codepoint & 0x3FU));
+        utf8[2] = '\0'; return utf8;
+    }
+    if (codepoint <= 0xFFFFU) {
+        utf8[0] = (char)(0xE0U | ((codepoint >> 12) & 0x0FU));
+        utf8[1] = (char)(0x80U | ((codepoint >> 6) & 0x3FU));
+        utf8[2] = (char)(0x80U | (codepoint & 0x3FU));
+        utf8[3] = '\0'; return utf8;
+    }
+    utf8[0] = (char)(0xF0U | ((codepoint >> 18) & 0x07U));
+    utf8[1] = (char)(0x80U | ((codepoint >> 12) & 0x3FU));
+    utf8[2] = (char)(0x80U | ((codepoint >> 6) & 0x3FU));
+    utf8[3] = (char)(0x80U | (codepoint & 0x3FU));
+    utf8[4] = '\0';
+    return utf8;
+}
+
+static void timer_apply_icon(lv_obj_t *icon)
+{
+    if (icon == NULL) {
+        return;
+    }
+
+    const lv_font_t *font = mdi_font_icon_56();
+    if (font == NULL) {
+        font = mdi_font_large();
+    }
+
+    if (font != NULL && timer_font_has_glyph(font, TIMER_DEFAULT_ICON_CP)) {
+        lv_obj_set_style_text_font(icon, font, LV_PART_MAIN);
+        lv_label_set_text(icon, timer_utf8_from_codepoint(TIMER_DEFAULT_ICON_CP));
+        return;
+    }
+
+    lv_obj_set_style_text_font(icon, LV_FONT_DEFAULT, LV_PART_MAIN);
+    lv_label_set_text(icon, LV_SYMBOL_REFRESH);
+}
+
+
 static int64_t timer_now_unix_ms(void)
 {
     struct timeval tv;
@@ -1052,9 +1113,8 @@ esp_err_t w_timer_create(
     /*
      * Timer icon.
      *
-     * LVGL's standard timer/refresh symbol is used here as a safe fallback.
-     * The custom MDI icon registry can be connected separately once the
-     * firmware-side MDI name -> glyph lookup is in place.
+     * Use the existing firmware MDI font registry for the default
+     * mdi:timer-outline icon, with LV_SYMBOL_REFRESH as a safe fallback.
      */
     lv_obj_t *icon =
         lv_label_create(card);
@@ -1064,18 +1124,11 @@ esp_err_t w_timer_create(
         return ESP_ERR_NO_MEM;
     }
 
-    lv_label_set_text(
-        icon,
-        LV_SYMBOL_REFRESH);
+    timer_apply_icon(icon);
 
     lv_obj_set_style_text_color(
         icon,
         theme_default_color_text_primary(),
-        LV_PART_MAIN);
-
-    lv_obj_set_style_text_font(
-        icon,
-        APP_FONT_TEXT_28,
         LV_PART_MAIN);
 
 
