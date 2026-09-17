@@ -63,6 +63,18 @@ esp_err_t ui_widget_factory_create(const ui_widget_def_t *def, lv_obj_t *parent,
     snprintf(out_instance->type, sizeof(out_instance->type), "%s", def->type);
     snprintf(out_instance->title, sizeof(out_instance->title), "%s", def->title);
     snprintf(out_instance->entity_id, sizeof(out_instance->entity_id), "%s", def->entity_id);
+    snprintf(out_instance->icon,
+    sizeof(out_instance->icon),
+    "%s",
+    def->icon);
+
+out_instance->show_icon = def->show_icon;
+out_instance->show_state = def->show_state;
+
+out_instance->timer_show_start = def->timer_show_start;
+out_instance->timer_show_pause = def->timer_show_pause;
+out_instance->timer_show_cancel = def->timer_show_cancel;
+out_instance->timer_show_finish = def->timer_show_finish;
     snprintf(out_instance->secondary_entity_id, sizeof(out_instance->secondary_entity_id), "%s", def->secondary_entity_id);
     snprintf(out_instance->slider_direction, sizeof(out_instance->slider_direction), "%s", def->slider_direction);
     snprintf(out_instance->slider_accent_color, sizeof(out_instance->slider_accent_color), "%s", def->slider_accent_color);
