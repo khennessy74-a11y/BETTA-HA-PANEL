@@ -14,3 +14,9 @@
 #define HA_DOMAIN_CLIMATE "climate"
 #define HA_DOMAIN_SCRIPT "script"
 #define HA_DOMAIN_SCENE "scene"
+#define HA_DOMAIN_TIMER "timer"
+
+#define HA_SERVICE_TIMER_START  "start"
+#define HA_SERVICE_TIMER_PAUSE  "pause"
+#define HA_SERVICE_TIMER_CANCEL "cancel"
+#define HA_SERVICE_TIMER_FINISH "finish"
