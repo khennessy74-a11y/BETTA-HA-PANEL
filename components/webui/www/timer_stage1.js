@@ -877,7 +877,6 @@ function bindTimerButton() {
     ensureTimerTypeOption();
     bindTimerButton();
     ensureTimerInspector();
-    interceptTimerCoreInspectorEvents();
 
     /*
      * The existing editor completes its own initial render first.
