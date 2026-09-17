@@ -935,6 +935,7 @@ static bool ui_runtime_widget_from_json(
      */
     out->show_icon = true;
     out->show_state = true;
+    out->show_title = true;
 
     if (cJSON_IsString(icon) &&
         icon->valuestring != NULL) {
