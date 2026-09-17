@@ -3,6 +3,7 @@
  */
 
 #include "ui/ui_widget_factory.h"
+#include "ui/fonts/mdi_font_registry.h"
 
 #include <stdbool.h>
 #include <stdint.h>
