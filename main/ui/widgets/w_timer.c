@@ -1464,15 +1464,10 @@ esp_err_t w_timer_create(
     timer_apply_layout(ctx);
 
 
-    memset(
-        out_instance,
-        0,
-        sizeof(*out_instance));
-
     out_instance->obj = card;
     out_instance->ctx = ctx;
 
-    return ESP_OK;
+return ESP_OK;
 }
 
 
