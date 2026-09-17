@@ -270,90 +270,29 @@
     }, 0);
   }
 
-  function addTimerButton() {
-    if (document.getElementById("addTimerBtn")) {
-      return;
-    }
+function bindTimerButton() {
+  const button =
+    document.getElementById("addTimerBtn");
 
-    /*
-     * Hidden compatibility button.
-     *
-     * The existing editor uses hidden legacy buttons behind the newer
-     * dropdown UI. Keeping the same pattern makes the timer addition
-     * independent of the dropdown implementation.
-     */
-    const widgetsSectionBody =
-      document.getElementById("widgetsSectionBody");
-
-    if (!widgetsSectionBody) {
-      return;
-    }
-
-    const hiddenButton = document.createElement("button");
-
-    hiddenButton.id = "addTimerBtn";
-    hiddenButton.type = "button";
-    hiddenButton.textContent = "+ Timer";
-    hiddenButton.className = "legacy-hidden";
-
-    hiddenButton.addEventListener("click", (event) => {
-      event.preventDefault();
-      addTimerWidget();
-    });
-
-    widgetsSectionBody.appendChild(hiddenButton);
-
-    /*
-     * Add the visible menu item beside the other widget types.
-     */
-    const dropdownTarget =
-      document.querySelector(
-        '[data-add-target="addTodoListBtn"]'
-      );
-
-    if (dropdownTarget) {
-      const timerButton = document.createElement("button");
-
-      timerButton.type = "button";
-      timerButton.className = "dropdown-item";
-      timerButton.setAttribute("role", "menuitem");
-      timerButton.textContent = "Timer";
-
-      timerButton.addEventListener("click", (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        addTimerWidget();
-      });
-
-      dropdownTarget.parentElement.insertBefore(
-        timerButton,
-        dropdownTarget.nextSibling
-      );
-    } else {
-      /*
-       * Fallback for future Web UI markup changes.
-       */
-      const addWidgetButtons =
-        document.querySelector(".dropdown-menu");
-
-      if (addWidgetButtons) {
-        const timerButton = document.createElement("button");
-
-        timerButton.type = "button";
-        timerButton.className = "dropdown-item";
-        timerButton.setAttribute("role", "menuitem");
-        timerButton.textContent = "Timer";
-
-        timerButton.addEventListener("click", (event) => {
-          event.preventDefault();
-          event.stopPropagation();
-          addTimerWidget();
-        });
-
-        addWidgetButtons.appendChild(timerButton);
-      }
-    }
+  if (!button) {
+    return;
   }
+
+  /*
+   * index.html now owns the Timer button.
+   * Only attach the Timer widget behaviour here.
+   */
+  if (button.dataset.timerStage1Bound === "1") {
+    return;
+  }
+
+  button.dataset.timerStage1Bound = "1";
+
+  button.addEventListener("click", (event) => {
+    event.preventDefault();
+    addTimerWidget();
+  });
+}
 
   function ensureTimerTypeOption() {
     const typeSelect = document.getElementById("fType");
@@ -943,7 +882,7 @@
   function initialiseTimerStage1() {
     addTimerStyles();
     ensureTimerTypeOption();
-    addTimerButton();
+    bindTimerButton();
     ensureTimerInspector();
     interceptTimerCoreInspectorEvents();
 
