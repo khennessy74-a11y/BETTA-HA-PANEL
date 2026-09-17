@@ -1800,6 +1800,54 @@ function normalizeLayoutWidgets(layout) {
         widget.slider_accent_color = normalizeHexColor(widget.slider_accent_color, DEFAULT_SLIDER_ACCENT_COLOR);
         widget.slider_entity_domain = normalizeSliderEntityDomain(widget.slider_entity_domain);
       }
+      if (widget.type === "timer") {
+        /*
+         * Backwards compatibility for Timer tiles created before
+         * these display/control options existed.
+         *
+         * Only default missing/non-boolean values to true.
+         * Explicit false values must be preserved.
+         */
+        widget.icon =
+           typeof widget.icon === "string"
+           ? widget.icon.trim()
+          : "";
+
+        widget.show_title =
+          typeof widget.show_title === "boolean"
+          ? widget.show_title
+          : true;
+
+  widget.show_icon =
+    typeof widget.show_icon === "boolean"
+      ? widget.show_icon
+      : true;
+
+  widget.show_state =
+    typeof widget.show_state === "boolean"
+      ? widget.show_state
+      : true;
+
+  widget.timer_show_start =
+    typeof widget.timer_show_start === "boolean"
+      ? widget.timer_show_start
+      : true;
+
+  widget.timer_show_pause =
+    typeof widget.timer_show_pause === "boolean"
+      ? widget.timer_show_pause
+      : true;
+
+  widget.timer_show_cancel =
+    typeof widget.timer_show_cancel === "boolean"
+      ? widget.timer_show_cancel
+      : true;
+
+  widget.timer_show_finish =
+    typeof widget.timer_show_finish === "boolean"
+      ? widget.timer_show_finish
+      : true;
+}
       if (widget.type === "graph") {
         widget.graph_line_color = normalizeHexColor(widget.graph_line_color, DEFAULT_GRAPH_LINE_COLOR);
         widget.graph_time_window_min = normalizeGraphTimeWindowMin(widget.graph_time_window_min);
