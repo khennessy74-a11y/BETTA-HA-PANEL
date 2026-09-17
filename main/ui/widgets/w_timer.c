@@ -41,6 +41,7 @@
 
 typedef struct {
     char entity_id[APP_MAX_ENTITY_ID_LEN];
+    char configured_icon[APP_MAX_ICON_LEN];
 
     lv_obj_t *card;
     lv_obj_t *icon;
@@ -133,25 +134,126 @@ static const char *timer_utf8_from_codepoint(uint32_t codepoint)
     return utf8;
 }
 
-static void timer_apply_icon(lv_obj_t *icon)
+static bool timer_parse_icon_codepoint(
+    const char *configured_icon,
+    uint32_t *out_codepoint)
+{
+    if (configured_icon == NULL ||
+        out_codepoint == NULL ||
+        configured_icon[0] == '\0') {
+        return false;
+    }
+
+    /*
+     * Automatic/default timer icon.
+     */
+    if (strcmp(configured_icon, "auto") == 0 ||
+        strcmp(configured_icon, "automatic") == 0 ||
+        strcmp(configured_icon, "mdi:timer-outline") == 0) {
+        *out_codepoint = TIMER_DEFAULT_ICON_CP;
+        return true;
+    }
+
+    /*
+     * The Web UI icon picker can store the selected MDI codepoint in any of
+     * these compact forms:
+     *
+     *   F051B
+     *   0xF051B
+     *   U+F051B
+     *
+     * This keeps the firmware independent of a very large MDI name table.
+     */
+    const char *hex = configured_icon;
+
+    if (strncmp(hex, "U+", 2) == 0 ||
+        strncmp(hex, "u+", 2) == 0) {
+        hex += 2;
+    } else if (strncmp(hex, "0x", 2) == 0 ||
+               strncmp(hex, "0X", 2) == 0) {
+        hex += 2;
+    }
+
+    if (*hex == '\0') {
+        return false;
+    }
+
+    char *end = NULL;
+    unsigned long value = strtoul(hex, &end, 16);
+
+    if (end == hex ||
+        *end != '\0' ||
+        value > 0x10FFFFUL) {
+        return false;
+    }
+
+    *out_codepoint = (uint32_t)value;
+    return true;
+}
+
+
+static void timer_apply_icon(
+    lv_obj_t *icon,
+    const char *configured_icon)
 {
     if (icon == NULL) {
         return;
     }
 
+    uint32_t codepoint = TIMER_DEFAULT_ICON_CP;
+
+    if (configured_icon != NULL &&
+        configured_icon[0] != '\0') {
+        uint32_t parsed_codepoint = 0;
+
+        if (timer_parse_icon_codepoint(
+                configured_icon,
+                &parsed_codepoint)) {
+            codepoint = parsed_codepoint;
+        }
+    }
+
     const lv_font_t *font = mdi_font_icon_56();
+
     if (font == NULL) {
         font = mdi_font_large();
     }
 
-    if (font != NULL && timer_font_has_glyph(font, TIMER_DEFAULT_ICON_CP)) {
-        lv_obj_set_style_text_font(icon, font, LV_PART_MAIN);
-        lv_label_set_text(icon, timer_utf8_from_codepoint(TIMER_DEFAULT_ICON_CP));
+    /*
+     * A custom icon is only usable if that glyph is actually present in the
+     * firmware's compiled MDI font subset. If it is not present, fall back to
+     * mdi:timer-outline. This prevents a missing-glyph box on the panel.
+     */
+    if (font != NULL &&
+        !timer_font_has_glyph(font, codepoint)) {
+        codepoint = TIMER_DEFAULT_ICON_CP;
+    }
+
+    if (font != NULL &&
+        timer_font_has_glyph(font, codepoint)) {
+        lv_obj_set_style_text_font(
+            icon,
+            font,
+            LV_PART_MAIN);
+
+        lv_label_set_text(
+            icon,
+            timer_utf8_from_codepoint(codepoint));
+
         return;
     }
 
-    lv_obj_set_style_text_font(icon, LV_FONT_DEFAULT, LV_PART_MAIN);
-    lv_label_set_text(icon, LV_SYMBOL_REFRESH);
+    /*
+     * Last-resort fallback for firmware builds without a usable MDI font.
+     */
+    lv_obj_set_style_text_font(
+        icon,
+        LV_FONT_DEFAULT,
+        LV_PART_MAIN);
+
+    lv_label_set_text(
+        icon,
+        LV_SYMBOL_REFRESH);
 }
 
 
@@ -1124,7 +1226,9 @@ esp_err_t w_timer_create(
         return ESP_ERR_NO_MEM;
     }
 
-    timer_apply_icon(icon);
+    timer_apply_icon(
+        icon,
+        def->icon);
 
     lv_obj_set_style_text_color(
         icon,
@@ -1244,6 +1348,12 @@ esp_err_t w_timer_create(
         sizeof(ctx->entity_id),
         "%s",
         def->entity_id);
+
+    snprintf(
+        ctx->configured_icon,
+        sizeof(ctx->configured_icon),
+        "%s",
+        def->icon);
 
     ctx->card = card;
     ctx->icon = icon;
