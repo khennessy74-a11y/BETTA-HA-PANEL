@@ -145,26 +145,39 @@
     return `timer_${index}`;
   }
 
-  function findFirstTimerEntity() {
-    try {
-      if (
-        typeof editor !== "undefined" &&
-        editor &&
-        editor.states &&
-        typeof editor.states.keys === "function"
-      ) {
-        for (const entityId of editor.states.keys()) {
-          if (String(entityId).startsWith("timer.")) {
-            return String(entityId);
-          }
+function findFirstTimerEntity() {
+  try {
+    if (
+      typeof editor !== "undefined" &&
+      editor &&
+      editor.states &&
+      typeof editor.states.keys === "function"
+    ) {
+      const timerEntities = [];
+
+      for (const entityId of editor.states.keys()) {
+        const value =
+          String(entityId || "");
+
+        if (value.startsWith("timer.")) {
+          timerEntities.push(value);
         }
       }
-    } catch (_) {
-      // Ignore.
-    }
 
-    return "timer.example";
+      timerEntities.sort(
+        (a, b) => a.localeCompare(b)
+      );
+
+      if (timerEntities.length > 0) {
+        return timerEntities[0];
+      }
+    }
+  } catch (_) {
+    // HA states may not be available yet.
   }
+
+  return "";
+}
 
 function refreshTimerEntityOptions() {
   const list =
