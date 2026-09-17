@@ -1393,6 +1393,10 @@ function widgetSizeLimits(type) {
       return compact
         ? { minW: 150, minH: 150, maxW: 480, maxH: 480 }
         : { minW: 220, minH: 200, maxW: 480, maxH: 480 };
+    case "timer":
+      return compact
+        ? { minW: 180, minH: 130, maxW: 360, maxH: 260 }
+        : { minW: 220, minH: 160, maxW: CANVAS_WIDTH, maxH: CANVAS_HEIGHT };
     case "weather_tile":
       return compact
         ? { minW: 160, minH: 150, maxW: 480, maxH: 480 }
