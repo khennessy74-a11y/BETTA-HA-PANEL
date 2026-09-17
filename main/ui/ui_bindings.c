@@ -541,6 +541,59 @@ esp_err_t ui_bindings_media_player_action(const char *entity_id, ui_bindings_med
         } else {
             ui_bindings_apply_optimistic_state_text(entity_id, "playing");
         }
+
+esp_err_t ui_bindings_timer_action(
+    const char *entity_id,
+    ui_bindings_timer_action_t action)
+{
+    if (entity_id == NULL || entity_id[0] == '\0') {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    char domain[32] = {0};
+    if (!split_entity_id(entity_id, domain, sizeof(domain))) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    if (strcmp(domain, HA_DOMAIN_TIMER) != 0) {
+        return ESP_ERR_NOT_SUPPORTED;
+    }
+
+    const char *service = NULL;
+
+    switch (action) {
+    case UI_BINDINGS_TIMER_START:
+        service = HA_SERVICE_TIMER_START;
+        break;
+
+    case UI_BINDINGS_TIMER_PAUSE:
+        service = HA_SERVICE_TIMER_PAUSE;
+        break;
+
+    case UI_BINDINGS_TIMER_CANCEL:
+        service = HA_SERVICE_TIMER_CANCEL;
+        break;
+
+    case UI_BINDINGS_TIMER_FINISH:
+        service = HA_SERVICE_TIMER_FINISH;
+        break;
+
+    default:
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    char payload[192] = {0};
+    snprintf(
+        payload,
+        sizeof(payload),
+        "{\"entity_id\":\"%s\"}",
+        entity_id);
+
+    return ha_client_call_service(
+        HA_DOMAIN_TIMER,
+        service,
+        payload);
+}
     }
     return err;
 }
