@@ -675,7 +675,7 @@ static lv_obj_t *timer_create_button(
 
     lv_obj_set_style_bg_color(
         button,
-        theme_default_color_surface_alt(),
+        lv_color_hex(APP_UI_COLOR_CARD_BG_OFF),
         LV_PART_MAIN);
 
     lv_obj_set_style_bg_opa(
