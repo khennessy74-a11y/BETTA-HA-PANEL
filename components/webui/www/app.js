@@ -5685,6 +5685,9 @@ function bindUi() {
   el.addWeather3DayBtn.onclick = () => openLightEntityPicker("weather_3day");
   if (el.addTodoListBtn) {
     el.addTodoListBtn.onclick = () => openLightEntityPicker("todo_list");
+    }
+  if (el.addTimerBtn) {
+    el.addTimerBtn.onclick = () => openLightEntityPicker("timer");
   }
   if (el.addMediaPlayerBtn) {
     el.addMediaPlayerBtn.onclick = () => openLightEntityPicker("media_player");
