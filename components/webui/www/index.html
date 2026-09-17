@@ -228,6 +228,7 @@
                     <option value="empty_tile">empty_tile</option>
                     <option value="light_tile">light_tile</option>
                     <option value="heating_tile">heating_tile</option>
+                    <option value="timer">timer</option>
                     <option value="weather_tile">weather_tile</option>
                     <option value="weather_3day">weather_3day</option>
                     <option value="todo_list">todo_list</option>
@@ -330,6 +331,66 @@
                       </select>
                     </label>
                   </div>
+                  <div id="timerOptions" class="slider-options hidden">
+  <label class="row">
+    <input id="fTimerShowTitle" type="checkbox" checked />
+    <span>Show title</span>
+  </label>
+
+  <label class="row">
+    <input id="fTimerShowIcon" type="checkbox" checked />
+    <span>Show icon</span>
+  </label>
+
+  <label class="row">
+    <input id="fTimerShowState" type="checkbox" checked />
+    <span>Show state</span>
+  </label>
+
+  <label>
+    <span>Icon</span>
+    <select id="fTimerIconMode">
+      <option value="automatic">Automatic</option>
+      <option value="custom">Custom MDI icon</option>
+    </select>
+  </label>
+
+  <label id="fTimerCustomIconWrap" class="hidden">
+    <span>Custom MDI icon</span>
+    <input
+      id="fTimerCustomIcon"
+      type="text"
+      maxlength="63"
+      placeholder="mdi:timer-outline"
+      autocomplete="off"
+      spellcheck="false"
+    />
+  </label>
+
+  <div class="timer-stage1-controls">
+    <strong>Timer controls</strong>
+
+    <label class="row">
+      <input id="fTimerShowStart" type="checkbox" checked />
+      <span>Show Start</span>
+    </label>
+
+    <label class="row">
+      <input id="fTimerShowPause" type="checkbox" checked />
+      <span>Show Pause</span>
+    </label>
+
+    <label class="row">
+      <input id="fTimerShowCancel" type="checkbox" checked />
+      <span>Show Cancel</span>
+    </label>
+
+    <label class="row">
+      <input id="fTimerShowFinish" type="checkbox" checked />
+      <span>Show Finish</span>
+    </label>
+  </div>
+</div>
                   <div id="inspectorStyleEmpty" class="meta hidden" data-i18n-key="inspector.style.empty">No style options for this widget.</div>
                 </div>
               </details>
