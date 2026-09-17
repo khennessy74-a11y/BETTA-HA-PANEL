@@ -163,6 +163,19 @@ const ENTITY_PICKER_CONFIGS = {
     widgetFallback: "Todo List tile",
     itemsFallback: "todo lists",
   },
+
+  timer: {
+  domain: "timer",
+  titleKey: "entity_picker.title_timer",
+  blankKey: "entity_picker.blank_timer",
+  widgetKey: "entity_picker.widget_timer",
+  itemsKey: "entity_picker.items_timer",
+  titleFallback: "Choose Timer",
+  blankFallback: "Blank Timer Tile",
+  widgetFallback: "Timer tile",
+  itemsFallback: "timers",
+},
+  
   media_player: {
     domain: "media_player",
     titleKey: "entity_picker.title_media_player",
@@ -309,6 +322,10 @@ const WEB_I18N_BUILTIN = {
     "entity_picker.title_scene": "Choose Scene",
     "entity_picker.title_weather": "Choose Weather",
     "entity_picker.title_climate": "Choose Heating",
+    "entity_picker.title_timer": "Choose Timer",
+    "entity_picker.blank_timer": "Blank Timer Tile",
+    "entity_picker.items_timer": "timers",
+    "entity_picker.widget_timer": "Timer tile",
     "entity_picker.title_roborock": "Choose Roborock",
     "entity_picker.refresh": "Refresh",
     "entity_picker.search": "Search",
