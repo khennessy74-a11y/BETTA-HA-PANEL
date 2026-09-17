@@ -635,146 +635,162 @@ function bindTimerButton() {
   }
 
   function syncTimerInspector(force = false) {
-    const widget = getSelectedWidgetSafe();
+  const widget = getSelectedWidgetSafe();
 
-    const options =
-      ensureTimerInspector();
+  const options =
+    ensureTimerInspector();
 
-    if (!options) {
-      return;
-    }
+  if (!options) {
+    return;
+  }
 
-    const isTimer =
-      Boolean(widget && widget.type === TIMER_TYPE);
+  const isTimer =
+    Boolean(widget && widget.type === TIMER_TYPE);
 
-    options.classList.toggle(
-      "hidden",
-      !isTimer
-    );
+  options.classList.toggle(
+    "hidden",
+    !isTimer
+  );
 
-    if (!isTimer) {
-      return;
-    }
-
-    const title =
-      document.getElementById("fTitle");
-
+  /*
+   * Restore the normal entity list whenever the selected
+   * widget is not a Timer.
+   */
+  if (!isTimer) {
     const entity =
       document.getElementById("fEntity");
 
-    const type =
-      document.getElementById("fType");
-
-    /*
-     * Keep the normal title/entity controls synchronised.
-     *
-     * The timer event interception below prevents the existing widget
-     * validator from rejecting timer.* entities.
-     */
-    if (title && (force || document.activeElement !== title)) {
-      title.value =
-        String(widget.title || "");
-    }
-  const entity =
-  document.getElementById("fEntity");
-
-if (entity) {
-  entity.setAttribute(
-    "list",
-    "entityOptions"
-  );
-}
-    
-  if (entity) {
-  entity.setAttribute(
-    "list",
-    "timerEntityOptions"
-  );
-
-  refreshTimerEntityOptions();
-}
-    if (entity && (force || document.activeElement !== entity)) {
-      entity.value =
-        String(widget.entity_id || "");
-    }
-
-    if (type) {
-      type.value = TIMER_TYPE;
-    }
-
-    const defaults = {
-      show_title: DEFAULT_TIMER_SHOW_TITLE,
-      show_icon: DEFAULT_TIMER_SHOW_ICON,
-      show_state: DEFAULT_TIMER_SHOW_STATE,
-      timer_show_start: DEFAULT_TIMER_SHOW_START,
-      timer_show_pause: DEFAULT_TIMER_SHOW_PAUSE,
-      timer_show_cancel: DEFAULT_TIMER_SHOW_CANCEL,
-      timer_show_finish: DEFAULT_TIMER_SHOW_FINISH,
-    };
-
-    for (const [property, defaultValue] of Object.entries(defaults)) {
-      if (typeof widget[property] !== "boolean") {
-        widget[property] = defaultValue;
-      }
-    }
-
-    if (typeof widget.icon !== "string") {
-      widget.icon = "";
-    }
-
-    const controls = [
-      ["fTimerShowTitle", widget.show_title],
-      ["fTimerShowIcon", widget.show_icon],
-      ["fTimerShowState", widget.show_state],
-      ["fTimerShowStart", widget.timer_show_start],
-      ["fTimerShowPause", widget.timer_show_pause],
-      ["fTimerShowCancel", widget.timer_show_cancel],
-      ["fTimerShowFinish", widget.timer_show_finish],
-    ];
-
-    for (const [id, value] of controls) {
-      const control = document.getElementById(id);
-
-      if (control && (force || document.activeElement !== control)) {
-        control.checked = Boolean(value);
-      }
-    }
-
-    const iconMode =
-      document.getElementById("fTimerIconMode");
-
-    const customIcon =
-      document.getElementById("fTimerCustomIcon");
-
-    const customWrap =
-      document.getElementById("fTimerCustomIconWrap");
-
-    const customIconValue =
-      String(widget.icon || "").trim();
-
-    const resolvedIconMode =
-      customIconValue
-        ? "custom"
-        : "automatic";
-
-    if (iconMode && (force || document.activeElement !== iconMode)) {
-      iconMode.value = resolvedIconMode;
-    }
-
-    if (
-      customIcon &&
-      (force || document.activeElement !== customIcon)
-    ) {
-      customIcon.value = customIconValue;
-    }
-
-    if (customWrap) {
-      customWrap.classList.toggle(
-        "hidden",
-        resolvedIconMode !== "custom"
+    if (entity) {
+      entity.setAttribute(
+        "list",
+        "entityOptions"
       );
     }
+
+    return;
   }
+
+  const title =
+    document.getElementById("fTitle");
+
+  const entity =
+    document.getElementById("fEntity");
+
+  const type =
+    document.getElementById("fType");
+
+  /*
+   * Keep the normal title/entity controls synchronised.
+   *
+   * The timer event interception below prevents the existing widget
+   * validator from rejecting timer.* entities.
+   */
+  if (title && (force || document.activeElement !== title)) {
+    title.value =
+      String(widget.title || "");
+  }
+
+  /*
+   * Timer widgets use a dedicated entity suggestion list
+   * containing only timer.* Home Assistant entities.
+   */
+  if (entity) {
+    entity.setAttribute(
+      "list",
+      "timerEntityOptions"
+    );
+
+    refreshTimerEntityOptions();
+  }
+
+  if (entity && (force || document.activeElement !== entity)) {
+    entity.value =
+      String(widget.entity_id || "");
+  }
+
+  if (type) {
+    type.value = TIMER_TYPE;
+  }
+
+  const defaults = {
+    show_title: DEFAULT_TIMER_SHOW_TITLE,
+    show_icon: DEFAULT_TIMER_SHOW_ICON,
+    show_state: DEFAULT_TIMER_SHOW_STATE,
+    timer_show_start: DEFAULT_TIMER_SHOW_START,
+    timer_show_pause: DEFAULT_TIMER_SHOW_PAUSE,
+    timer_show_cancel: DEFAULT_TIMER_SHOW_CANCEL,
+    timer_show_finish: DEFAULT_TIMER_SHOW_FINISH,
+  };
+
+  for (const [property, defaultValue] of Object.entries(defaults)) {
+    if (typeof widget[property] !== "boolean") {
+      widget[property] = defaultValue;
+    }
+  }
+
+  if (typeof widget.icon !== "string") {
+    widget.icon = "";
+  }
+
+  const controls = [
+    ["fTimerShowTitle", widget.show_title],
+    ["fTimerShowIcon", widget.show_icon],
+    ["fTimerShowState", widget.show_state],
+    ["fTimerShowStart", widget.timer_show_start],
+    ["fTimerShowPause", widget.timer_show_pause],
+    ["fTimerShowCancel", widget.timer_show_cancel],
+    ["fTimerShowFinish", widget.timer_show_finish],
+  ];
+
+  for (const [id, value] of controls) {
+    const control = document.getElementById(id);
+
+    if (
+      control &&
+      (force || document.activeElement !== control)
+    ) {
+      control.checked = Boolean(value);
+    }
+  }
+
+  const iconMode =
+    document.getElementById("fTimerIconMode");
+
+  const customIcon =
+    document.getElementById("fTimerCustomIcon");
+
+  const customWrap =
+    document.getElementById("fTimerCustomIconWrap");
+
+  const customIconValue =
+    String(widget.icon || "").trim();
+
+  const resolvedIconMode =
+    customIconValue
+      ? "custom"
+      : "automatic";
+
+  if (
+    iconMode &&
+    (force || document.activeElement !== iconMode)
+  ) {
+    iconMode.value = resolvedIconMode;
+  }
+
+  if (
+    customIcon &&
+    (force || document.activeElement !== customIcon)
+  ) {
+    customIcon.value = customIconValue;
+  }
+
+  if (customWrap) {
+    customWrap.classList.toggle(
+      "hidden",
+      resolvedIconMode !== "custom"
+    );
+  }
+}
 
   function interceptTimerCoreInspectorEvents() {
     /*
