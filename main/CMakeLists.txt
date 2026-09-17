@@ -73,6 +73,7 @@ idf_component_register(
         "ui/widgets/w_todo.c"
         "ui/widgets/w_media_player.c"
         "ui/widgets/w_roborock.c"
+        "ui/widgets/w_timer.c"
         "ui/fonts/mdi_font_registry.c"
         "ui/theme/theme_default.c"
         "ui/theme/theme_palette.c"
