@@ -4960,6 +4960,44 @@ function renderCanvas() {
     box.style.zIndex = isEmptyTile ? "1" : "10";
     const previewState = isEmptyTile ? "design" : (editor.states.get(widget.entity_id) || "unavailable");
     let extraHint = "";
+    if (widget.type === "timer") {
+  const showTitle = widget.show_title !== false;
+  const showIcon = widget.show_icon !== false;
+  const showState = widget.show_state !== false;
+
+  const timerControls = [];
+
+  if (widget.timer_show_start !== false) {
+    timerControls.push("Start");
+  }
+  if (widget.timer_show_pause !== false) {
+    timerControls.push("Pause");
+  }
+  if (widget.timer_show_cancel !== false) {
+    timerControls.push("Cancel");
+  }
+  if (widget.timer_show_finish !== false) {
+    timerControls.push("Finish");
+  }
+
+  box.innerHTML = `
+    <div class="w-type">timer</div>
+    ${showIcon ? `<div class="w-title">⏱</div>` : ""}
+    ${showTitle ? `<div class="w-title">${previewTitle}</div>` : ""}
+    ${showState ? `<div class="w-state">${previewState}</div>` : ""}
+    ${
+      timerControls.length
+        ? `<div class="w-hint">${timerControls.join(" · ")}</div>`
+        : ""
+    }
+    <div class="resize-handle"></div>
+  `;
+
+  geometryStyle(box, widget.rect);
+  attachDragAndResize(box, widget);
+  el.canvas.appendChild(box);
+  continue;
+}
     if (widget.type === "weather_3day") {
       /* Mirrors the firmware layout in w_weather_tile.c:
        *   compact/panels3: ROWS_TOP=108, BOTTOM_PAD=12, ROW_HEIGHT=36, ROW_GAP=2
