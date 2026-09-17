@@ -484,6 +484,36 @@ static bool ui_runtime_widget_from_json(cJSON *widget_json, ui_widget_def_t *out
     cJSON *graph_bar_bucket_min = cJSON_GetObjectItemCaseSensitive(widget_json, "graph_bar_bucket_min");
     cJSON *style_variant = cJSON_GetObjectItemCaseSensitive(widget_json, "style_variant");
     cJSON *arc_opening = cJSON_GetObjectItemCaseSensitive(widget_json, "arc_opening");
+    cJSON *icon = cJSON_GetObjectItemCaseSensitive(widget_json, "icon");
+if (cJSON_IsString(icon) && icon->valuestring != NULL) {
+    strlcpy(def.icon, icon->valuestring, sizeof(def.icon));
+}
+
+cJSON *show_icon = cJSON_GetObjectItemCaseSensitive(widget_json, "show_icon");
+def.show_icon = !cJSON_IsBool(show_icon) || cJSON_IsTrue(show_icon);
+
+cJSON *show_state = cJSON_GetObjectItemCaseSensitive(widget_json, "show_state");
+def.show_state = !cJSON_IsBool(show_state) || cJSON_IsTrue(show_state);
+
+cJSON *timer_show_start =
+    cJSON_GetObjectItemCaseSensitive(widget_json, "timer_show_start");
+def.timer_show_start =
+    !cJSON_IsBool(timer_show_start) || cJSON_IsTrue(timer_show_start);
+
+cJSON *timer_show_pause =
+    cJSON_GetObjectItemCaseSensitive(widget_json, "timer_show_pause");
+def.timer_show_pause =
+    !cJSON_IsBool(timer_show_pause) || cJSON_IsTrue(timer_show_pause);
+
+cJSON *timer_show_cancel =
+    cJSON_GetObjectItemCaseSensitive(widget_json, "timer_show_cancel");
+def.timer_show_cancel =
+    !cJSON_IsBool(timer_show_cancel) || cJSON_IsTrue(timer_show_cancel);
+
+cJSON *timer_show_finish =
+    cJSON_GetObjectItemCaseSensitive(widget_json, "timer_show_finish");
+def.timer_show_finish =
+    !cJSON_IsBool(timer_show_finish) || cJSON_IsTrue(timer_show_finish);
     cJSON *rect = cJSON_GetObjectItemCaseSensitive(widget_json, "rect");
     if (!cJSON_IsString(id) || !cJSON_IsString(type) || !cJSON_IsObject(rect)) {
         return false;
