@@ -54,6 +54,7 @@ typedef struct {
 
     bool show_icon;
     bool show_state;
+    bool show_title;
 
     bool show_start;
     bool show_pause;
@@ -689,9 +690,14 @@ static void timer_apply_layout(
         }
     }
 
-    /*
-     * Title.
-     */
+/*
+ * Title.
+ */
+if (ctx->show_title) {
+    lv_obj_clear_flag(
+        ctx->title,
+        LV_OBJ_FLAG_HIDDEN);
+
     lv_obj_set_width(
         ctx->title,
         content_w);
@@ -706,6 +712,11 @@ static void timer_apply_layout(
         LV_ALIGN_TOP_MID,
         0,
         ctx->show_icon ? 30 : 0);
+} else {
+    lv_obj_add_flag(
+        ctx->title,
+        LV_OBJ_FLAG_HIDDEN);
+}
 
     /*
      * State.
@@ -1191,6 +1202,9 @@ esp_err_t w_timer_create(
 
     ctx->show_state =
         def->show_state;
+
+    ctx->show_title =
+        def->show_title;
 
     ctx->show_start =
         def->timer_show_start;
