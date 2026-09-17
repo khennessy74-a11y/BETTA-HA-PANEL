@@ -5317,10 +5317,10 @@ function addWidget(type, options = {}) {
     widget.button_mode = resolvedButtonMode;
     widget.button_accent_color = DEFAULT_BUTTON_ACCENT_COLOR;
   }
- if (type === "graph") {
-  widget.graph_line_color = DEFAULT_GRAPH_LINE_COLOR;
-  widget.graph_time_window_min = DEFAULT_GRAPH_TIME_WINDOW_MIN;
-}
+   if (type === "graph") {
+    widget.graph_line_color = DEFAULT_GRAPH_LINE_COLOR;
+    widget.graph_time_window_min = DEFAULT_GRAPH_TIME_WINDOW_MIN;
+  }
 
 if (type === "timer") {
   /*
