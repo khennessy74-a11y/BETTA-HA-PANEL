@@ -667,6 +667,18 @@ static lv_obj_t *timer_create_button(
     lv_obj_set_user_data(
         button,
         (void *)(uintptr_t)action);
+        /*
+         * Timer controls must handle their own touch events.
+         * Prevent a button click from bubbling up to the
+         * containing Timer card/page.
+     */
+    lv_obj_add_flag(
+        button,
+        LV_OBJ_FLAG_CLICKABLE);
+
+    lv_obj_clear_flag(
+        button,
+        LV_OBJ_FLAG_EVENT_BUBBLE);
 
     lv_obj_set_style_radius(
         button,
