@@ -947,13 +947,29 @@ static bool ui_runtime_widget_from_json(
             icon->valuestring);
     }
 
-    if (cJSON_IsBool(show_icon)) {
-        out->show_icon = cJSON_IsTrue(show_icon);
-    }
+cJSON *icon =
+    cJSON_GetObjectItemCaseSensitive(
+        widget_json,
+        "icon");
 
-    if (cJSON_IsBool(show_state)) {
-        out->show_state = cJSON_IsTrue(show_state);
-    }
+cJSON *show_icon =
+    cJSON_GetObjectItemCaseSensitive(
+        widget_json,
+        "show_icon");
+
+cJSON *show_state =
+    cJSON_GetObjectItemCaseSensitive(
+        widget_json,
+        "show_state");
+
+cJSON *show_title =
+    cJSON_GetObjectItemCaseSensitive(
+        widget_json,
+        "show_title");
+
+if (cJSON_IsBool(show_title)) {
+    out->show_title = cJSON_IsTrue(show_title);
+}
 
     /*
      * Timer control defaults are also enabled for backwards
