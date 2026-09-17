@@ -3454,6 +3454,7 @@ function allowedEntityDomainsForWidgetType(
   }
   if (type === "light_tile") return ["light"];
   if (type === "heating_tile") return ["climate"];
+  if (type === "timer") return ["timer"];
   if (type === "weather_tile" || type === "weather_3day") return ["weather"];
   if (type === "todo_list") return ["todo"];
   if (type === "media_player") return ["media_player"];
