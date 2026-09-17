@@ -166,6 +166,46 @@
     return "timer.example";
   }
 
+function refreshTimerEntityOptions() {
+  const list =
+    document.getElementById("timerEntityOptions");
+
+  if (!list) {
+    return;
+  }
+
+  const entityIds = [];
+
+  try {
+    if (
+      typeof editor !== "undefined" &&
+      editor &&
+      editor.states &&
+      typeof editor.states.keys === "function"
+    ) {
+      for (const entityId of editor.states.keys()) {
+        const value = String(entityId || "");
+
+        if (value.startsWith("timer.")) {
+          entityIds.push(value);
+        }
+      }
+    }
+  } catch (_) {
+    // Leave the list empty if HA states are unavailable.
+  }
+
+  entityIds.sort((a, b) => a.localeCompare(b));
+
+  list.replaceChildren();
+
+  for (const entityId of entityIds) {
+    const option = document.createElement("option");
+    option.value = entityId;
+    list.appendChild(option);
+  }
+}
+  
   function addTimerWidget() {
     const page = getSelectedPageSafe();
 
@@ -635,7 +675,24 @@ function bindTimerButton() {
       title.value =
         String(widget.title || "");
     }
+  const entity =
+  document.getElementById("fEntity");
 
+if (entity) {
+  entity.setAttribute(
+    "list",
+    "entityOptions"
+  );
+}
+    
+  if (entity) {
+  entity.setAttribute(
+    "list",
+    "timerEntityOptions"
+  );
+
+  refreshTimerEntityOptions();
+}
     if (entity && (force || document.activeElement !== entity)) {
       entity.value =
         String(widget.entity_id || "");
