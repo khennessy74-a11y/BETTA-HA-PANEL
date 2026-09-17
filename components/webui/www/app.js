@@ -1573,6 +1573,7 @@ const el = {
   addWeatherTileBtn: document.getElementById("addWeatherTileBtn"),
   addWeather3DayBtn: document.getElementById("addWeather3DayBtn"),
   addTodoListBtn: document.getElementById("addTodoListBtn"),
+  addTimerBtn: document.getElementById("addTimerBtn"),
   addMediaPlayerBtn: document.getElementById("addMediaPlayerBtn"),
   addRoborockTileBtn: document.getElementById("addRoborockTileBtn"),
   deleteWidgetBtn: document.getElementById("deleteWidgetBtn"),
