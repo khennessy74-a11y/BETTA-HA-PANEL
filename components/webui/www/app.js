@@ -5340,12 +5340,10 @@ if (type === "timer") {
 }
 
 page.widgets.push(widget);
-
-  page.widgets.push(widget);
-  editor.selectedWidgetId = id;
-  renderAll();
-  onSetupWizardWidgetAdded(widget);
-  return widget;
+editor.selectedWidgetId = id;
+renderAll();
+onSetupWizardWidgetAdded(widget);
+return widget;
 }
 
 function deleteWidget() {
