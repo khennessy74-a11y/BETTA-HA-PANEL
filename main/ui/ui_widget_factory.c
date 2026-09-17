@@ -82,6 +82,7 @@ esp_err_t ui_widget_factory_create(const ui_widget_def_t *def, lv_obj_t *parent,
 
 out_instance->show_icon = def->show_icon;
 out_instance->show_state = def->show_state;
+out_instance->show_title = def->show_title;
 
 out_instance->timer_show_start = def->timer_show_start;
 out_instance->timer_show_pause = def->timer_show_pause;
