@@ -332,19 +332,24 @@ function bindTimerButton() {
   }
 
   /*
-   * index.html now owns the Timer button.
-   * Only attach the Timer widget behaviour here.
+   * index.html owns the Timer button.
+   *
+   * Prefer BETTA's standard Home Assistant entity picker.
+   * Fall back to the Stage 1 timer creator if the picker
+   * is unavailable for any reason.
    */
-  if (button.dataset.timerStage1Bound === "1") {
-    return;
-  }
-
-  button.dataset.timerStage1Bound = "1";
-
-  button.addEventListener("click", (event) => {
+  button.onclick = (event) => {
     event.preventDefault();
+
+    if (
+      typeof openLightEntityPicker === "function"
+    ) {
+      openLightEntityPicker("timer");
+      return;
+    }
+
     addTimerWidget();
-  });
+  };
 }
 
   function ensureTimerTypeOption() {
