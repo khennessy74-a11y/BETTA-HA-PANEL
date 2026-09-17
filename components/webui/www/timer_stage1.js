@@ -374,8 +374,13 @@ function bindTimerButton() {
   }
 
   function ensureTimerInspector() {
-    if (document.getElementById("timerOptions")) {
-      return document.getElementById("timerOptions");
+    const existing =
+      document.getElementById("timerOptions");
+
+    if (existing) {
+      bindTimerInspectorEvents();
+
+      return existing;
     }
 
     const inspectorBody =
