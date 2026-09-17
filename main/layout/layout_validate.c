@@ -91,7 +91,8 @@ static bool is_supported_widget_type(const char *type)
            (strcmp(type, "graph") == 0) || (strcmp(type, "empty_tile") == 0) || (strcmp(type, "light_tile") == 0) ||
            (strcmp(type, "heating_tile") == 0) || (strcmp(type, "weather_tile") == 0) ||
            (strcmp(type, "weather_3day") == 0) || (strcmp(type, "todo_list") == 0) ||
-           (strcmp(type, "media_player") == 0) || (strcmp(type, "roborock_tile") == 0);
+           (strcmp(type, "roborock_tile") == 0) ||
+           (strcmp(type, "timer") == 0);
 }
 
 static bool is_supported_page_type(const char *type)
@@ -271,6 +272,9 @@ static const char *required_domain_for_widget_type(const char *type)
     }
     if (strcmp(type, "roborock_tile") == 0) {
         return "vacuum";
+    }
+    if (strcmp(type, "timer") == 0) {
+    return "timer";
     }
     return NULL;
 }
