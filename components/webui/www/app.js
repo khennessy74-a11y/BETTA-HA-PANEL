@@ -4663,7 +4663,7 @@ function movePage(draggedPageId, targetPageId, placeAfter = false) {
 
 function renderPages() {
   el.pagesList.innerHTML = "";
-  for (const page of editor.layout.pages) {
+  for (const page of pagesInPhysicalNavOrder()) {
     const li = document.createElement("li");
     li.className = `list-item ${page.id === editor.selectedPageId ? "active selected" : ""}`;
     li.draggable = false;
