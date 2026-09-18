@@ -270,6 +270,31 @@ h2 {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.page-drag-handle {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  color: var(--muted);
+  cursor: grab;
+  font-size: 15px;
+  line-height: 1;
+  user-select: none;
+}
+
+.page-drag-handle:hover {
+  color: var(--text);
+}
+
+.list-item.dragging {
+  opacity: 0.45;
+  cursor: grabbing;
+}
+
+.list-item.dragging .page-drag-handle {
+  cursor: grabbing;
+}
 
 .list-item.active {
   border-color: var(--accent);
