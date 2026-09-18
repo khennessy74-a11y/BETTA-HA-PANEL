@@ -6566,7 +6566,9 @@ function bindUi() {
       }
       autoApplyInspector();
     };
-    if (el.fSliderShowTitle) {
+  }
+
+  if (el.fSliderShowTitle) {
   el.fSliderShowTitle.addEventListener("change", () => {
     if (inspectorWidgetType() === "slider") {
       autoApplyInspector();
