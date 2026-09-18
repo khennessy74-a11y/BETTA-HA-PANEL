@@ -3,6 +3,14 @@
  */
 #include "ui/fonts/mdi_font_registry.h"
 
+#include <string.h>
+
+
+static const mdi_icon_entry_t s_mdi_icons[] = {
+    { "mdi:power",         0xF0425U },
+    { "mdi:timer-outline", 0xF051BU },
+};
+
 #ifndef APP_HAVE_MDI_ICON_FONT
 #define APP_HAVE_MDI_ICON_FONT 0
 #endif
@@ -182,4 +190,110 @@ const lv_font_t *mdi_font_weather(void)
 bool mdi_font_weather_available(void)
 {
     return mdi_font_weather() != NULL;
+}
+const mdi_icon_entry_t *mdi_icon_registry(
+    size_t *out_count)
+{
+    if (out_count != NULL) {
+        *out_count =
+            sizeof(s_mdi_icons) /
+            sizeof(s_mdi_icons[0]);
+    }
+
+    return s_mdi_icons;
+}
+
+
+bool mdi_icon_lookup(
+    const char *name,
+    uint32_t *out_codepoint)
+{
+    if (name == NULL ||
+        out_codepoint == NULL ||
+        name[0] == '\0') {
+        return false;
+    }
+
+    const size_t count =
+        sizeof(s_mdi_icons) /
+        sizeof(s_mdi_icons[0]);
+
+    for (size_t i = 0; i < count; ++i) {
+        if (strcmp(name, s_mdi_icons[i].name) == 0) {
+            *out_codepoint =
+                s_mdi_icons[i].codepoint;
+            return true;
+        }
+    }
+
+    return false;
+}
+
+
+bool mdi_icon_codepoint_to_utf8(
+    uint32_t codepoint,
+    char out_utf8[5])
+{
+    if (out_utf8 == NULL ||
+        codepoint > 0x10FFFFU ||
+        (codepoint >= 0xD800U &&
+         codepoint <= 0xDFFFU)) {
+        return false;
+    }
+
+    if (codepoint <= 0x7FU) {
+        out_utf8[0] = (char)codepoint;
+        out_utf8[1] = '\0';
+        return true;
+    }
+
+    if (codepoint <= 0x7FFU) {
+        out_utf8[0] =
+            (char)(0xC0U |
+                   ((codepoint >> 6) & 0x1FU));
+
+        out_utf8[1] =
+            (char)(0x80U |
+                   (codepoint & 0x3FU));
+
+        out_utf8[2] = '\0';
+        return true;
+    }
+
+    if (codepoint <= 0xFFFFU) {
+        out_utf8[0] =
+            (char)(0xE0U |
+                   ((codepoint >> 12) & 0x0FU));
+
+        out_utf8[1] =
+            (char)(0x80U |
+                   ((codepoint >> 6) & 0x3FU));
+
+        out_utf8[2] =
+            (char)(0x80U |
+                   (codepoint & 0x3FU));
+
+        out_utf8[3] = '\0';
+        return true;
+    }
+
+    out_utf8[0] =
+        (char)(0xF0U |
+               ((codepoint >> 18) & 0x07U));
+
+    out_utf8[1] =
+        (char)(0x80U |
+               ((codepoint >> 12) & 0x3FU));
+
+    out_utf8[2] =
+        (char)(0x80U |
+               ((codepoint >> 6) & 0x3FU));
+
+    out_utf8[3] =
+        (char)(0x80U |
+               (codepoint & 0x3FU));
+
+    out_utf8[4] = '\0';
+
+    return true;
 }
