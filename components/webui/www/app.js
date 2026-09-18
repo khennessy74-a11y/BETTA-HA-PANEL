@@ -1599,8 +1599,16 @@ const el = {
   fButtonCustomIcon: document.getElementById("fButtonCustomIcon"),
   fButtonCustomIconWrap: document.getElementById("fButtonCustomIconWrap"),
   fButtonShowTitle: document.getElementById("fButtonShowTitle"),
-  fButtonShowState: document.getElementById("fButtonShowState"),
+   fButtonShowState: document.getElementById("fButtonShowState"),
   fButtonMode: document.getElementById("fButtonMode"),
+    sensorOptions: document.getElementById("sensorOptions"),
+  fSensorShowTitle: document.getElementById("fSensorShowTitle"),
+  fSensorShowIcon: document.getElementById("fSensorShowIcon"),
+  fSensorIconMode: document.getElementById("fSensorIconMode"),
+  fSensorIconModeWrap: document.getElementById("fSensorIconModeWrap"),
+  fSensorCustomIcon: document.getElementById("fSensorCustomIcon"),
+  fSensorCustomIconWrap: document.getElementById("fSensorCustomIconWrap"),
+  fSensorShowState: document.getElementById("fSensorShowState"),
   fSliderEntityDomain: document.getElementById("fSliderEntityDomain"),
   fButtonAccentColor: document.getElementById("fButtonAccentColor"),
   sliderOptions: document.getElementById("sliderOptions"),
@@ -3557,6 +3565,81 @@ function setButtonCustomIconValue(iconName) {
   select.appendChild(option);
   select.value = value;
 }
+function setSensorCustomIconValue(iconName) {
+  if (!el.fSensorCustomIcon) {
+    return;
+  }
+
+  const value =
+    typeof iconName === "string"
+      ? iconName.trim()
+      : "";
+
+  const select = el.fSensorCustomIcon;
+
+  const previous = select.querySelector(
+    'option[data-legacy-sensor-icon="true"]'
+  );
+
+  if (previous) {
+    previous.remove();
+  }
+
+  if (!value) {
+    select.value = "";
+    return;
+  }
+
+  const known = Array.from(select.options).some(
+    (option) => option.value === value
+  );
+
+  if (known) {
+    select.value = value;
+    return;
+  }
+
+  /*
+   * Preserve an existing custom icon from an older layout even
+   * when it is not currently offered by the Sensor picker.
+   */
+  const option = document.createElement("option");
+
+  option.value = value;
+  option.textContent = `${value} (existing)`;
+  option.dataset.legacySensorIcon = "true";
+
+  select.appendChild(option);
+  select.value = value;
+}
+
+function updateSensorIconControls() {
+  if (
+    !el.fSensorShowIcon ||
+    !el.fSensorIconModeWrap ||
+    !el.fSensorIconMode ||
+    !el.fSensorCustomIconWrap
+  ) {
+    return;
+  }
+
+  const showIcon =
+    el.fSensorShowIcon.value !== "false";
+
+  el.fSensorIconModeWrap.classList.toggle(
+    "hidden",
+    !showIcon
+  );
+
+  const customIcon =
+    showIcon &&
+    el.fSensorIconMode.value === "custom";
+
+  el.fSensorCustomIconWrap.classList.toggle(
+    "hidden",
+    !customIcon
+  );
+}
 
 function updateButtonIconControls() {
   if (
@@ -5216,6 +5299,9 @@ function renderInspector() {
     if (el.heatingOptions) {
       el.heatingOptions.classList.add("hidden");
     }
+    if (el.sensorOptions) {
+      el.sensorOptions.classList.add("hidden");
+    }
     const timerOptions =
     document.getElementById("timerOptions");
 
@@ -5244,12 +5330,17 @@ function renderInspector() {
   el.fH.value = widget.rect.h;
 
   const isButton = widget.type === "button";
+  const isSensor = widget.type === "sensor";
   const isSlider = widget.type === "slider";
   const isGraph = widget.type === "graph";
   const isHeating = widget.type === "heating_tile";
+  
   if (el.buttonOptions) {
     el.buttonOptions.classList.toggle("hidden", !isButton);
   }
+  if (el.sensorOptions) {
+  el.sensorOptions.classList.toggle("hidden", !isSensor);
+}
   if (el.sliderOptions) {
     el.sliderOptions.classList.toggle("hidden", !isSlider);
   }
@@ -5275,7 +5366,35 @@ function renderInspector() {
     syncTimerInspector();
   }
   
- 
+ if (isSensor) {
+  const configuredIcon =
+    typeof widget.icon === "string"
+      ? widget.icon.trim()
+      : "";
+
+  if (el.fSensorShowTitle) {
+    el.fSensorShowTitle.value =
+      widget.show_title !== false ? "true" : "false";
+  }
+
+  if (el.fSensorShowIcon) {
+    el.fSensorShowIcon.value =
+      widget.show_icon !== false ? "true" : "false";
+  }
+
+  if (el.fSensorShowState) {
+    el.fSensorShowState.value =
+      widget.show_state !== false ? "true" : "false";
+  }
+
+  if (el.fSensorIconMode) {
+    el.fSensorIconMode.value =
+      configuredIcon ? "custom" : "automatic";
+  }
+
+  setSensorCustomIconValue(configuredIcon);
+  updateSensorIconControls();
+}
 if (isButton) {
   const appearance = normalizeButtonAppearance(
     widget.button_appearance
@@ -5628,6 +5747,15 @@ function addWidget(type, options = {}) {
     secondary_entity_id: secondaryEntityId,
     rect,
   };
+  if (type === "sensor") {
+  // Empty icon means Automatic.
+  widget.icon = "";
+
+  widget.show_title = true;
+  widget.show_icon = true;
+  widget.show_state = true;
+}
+
   if (type === "slider") {
     widget.slider_entity_domain = DEFAULT_SLIDER_ENTITY_DOMAIN;
     widget.slider_direction = DEFAULT_SLIDER_DIRECTION;
@@ -5736,6 +5864,30 @@ function applyInspector(options = {}) {
   } else {
     widget.secondary_entity_id = "";
   }
+  if (widgetType === "sensor") {
+  widget.show_title =
+    el.fSensorShowTitle?.value !== "false";
+
+  widget.show_icon =
+    el.fSensorShowIcon?.value !== "false";
+
+  widget.show_state =
+    el.fSensorShowState?.value !== "false";
+
+  const sensorIconMode =
+    el.fSensorIconMode?.value === "custom"
+      ? "custom"
+      : "automatic";
+
+  if (sensorIconMode === "custom") {
+    widget.icon =
+      typeof el.fSensorCustomIcon?.value === "string"
+        ? el.fSensorCustomIcon.value.trim()
+        : "";
+  } else {
+    widget.icon = "";
+  }
+}
   if (widgetType === "button") {
   widget.button_appearance = normalizeButtonAppearance(
     el.fButtonAppearance?.value
@@ -6260,6 +6412,44 @@ function bindUi() {
     el.fSecondaryEntity.onblur = () => autoApplyInspector();
   }
   bindInspectorAutoApply(el.fTitle, ["input"], { softEntityValidation: true });
+  bindInspectorAutoApply(
+  el.fSensorShowTitle,
+  ["change"],
+  { refreshInspector: true, softEntityValidation: true }
+);
+
+bindInspectorAutoApply(
+  el.fSensorShowState,
+  ["change"],
+  { refreshInspector: true, softEntityValidation: true }
+);
+
+if (el.fSensorShowIcon) {
+  el.fSensorShowIcon.addEventListener("change", () => {
+    updateSensorIconControls();
+
+    if (inspectorWidgetType() === "sensor") {
+      autoApplyInspector();
+    }
+  });
+}
+
+if (el.fSensorIconMode) {
+  el.fSensorIconMode.addEventListener("change", () => {
+    updateSensorIconControls();
+
+    if (inspectorWidgetType() === "sensor") {
+      autoApplyInspector();
+    }
+  });
+}
+
+bindInspectorAutoApply(
+  el.fSensorCustomIcon,
+  ["input", "change"],
+  { softEntityValidation: true }
+);
+
  bindInspectorAutoApply(
   el.fButtonAppearance,
   ["change"],
