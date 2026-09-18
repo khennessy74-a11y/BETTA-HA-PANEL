@@ -11,6 +11,8 @@ let CANVAS_HEIGHT = 600;
 const MIN_WIDGET_SIZE = 60;
 const DEFAULT_SLIDER_DIRECTION = "auto";
 const DEFAULT_BUTTON_MODE = "auto";
+const DEFAULT_BUTTON_APPEARANCE = "switch";
+const BUTTON_APPEARANCES = new Set(["switch", "icon"]);
 const DEFAULT_BUTTON_ACCENT_COLOR = "#6fe8ff";
 const DEFAULT_SLIDER_ACCENT_COLOR = "#6fe8ff";
 const DEFAULT_GRAPH_LINE_COLOR = "#6fe8ff";
@@ -1705,7 +1707,16 @@ function normalizeSliderDirection(value) {
 function normalizeSliderEntityDomain(value) {
   return SLIDER_ENTITY_DOMAINS.has(value) ? value : DEFAULT_SLIDER_ENTITY_DOMAIN;
 }
+function normalizeButtonAppearance(value) {
+  const appearance =
+    typeof value === "string"
+      ? value.trim().toLowerCase()
+      : "";
 
+  return BUTTON_APPEARANCES.has(appearance)
+    ? appearance
+    : DEFAULT_BUTTON_APPEARANCE;
+}
 function normalizeButtonMode(value) {
   return BUTTON_MODES.has(value) ? value : DEFAULT_BUTTON_MODE;
 }
