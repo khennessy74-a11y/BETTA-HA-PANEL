@@ -6566,6 +6566,49 @@ function bindUi() {
       }
       autoApplyInspector();
     };
+    if (el.fSliderShowTitle) {
+  el.fSliderShowTitle.addEventListener("change", () => {
+    if (inspectorWidgetType() === "slider") {
+      autoApplyInspector();
+    }
+  });
+}
+
+if (el.fSliderShowIcon) {
+  el.fSliderShowIcon.addEventListener("change", () => {
+    updateSliderIconControls();
+
+    if (inspectorWidgetType() === "slider") {
+      autoApplyInspector();
+    }
+  });
+}
+
+if (el.fSliderIconMode) {
+  el.fSliderIconMode.addEventListener("change", () => {
+    updateSliderIconControls();
+
+    if (inspectorWidgetType() === "slider") {
+      autoApplyInspector();
+    }
+  });
+}
+
+if (el.fSliderCustomIcon) {
+  el.fSliderCustomIcon.addEventListener("change", () => {
+    if (inspectorWidgetType() === "slider") {
+      autoApplyInspector();
+    }
+  });
+}
+
+if (el.fSliderShowState) {
+  el.fSliderShowState.addEventListener("change", () => {
+    if (inspectorWidgetType() === "slider") {
+      autoApplyInspector();
+    }
+  });
+}
   }
   if (el.fSecondaryEntity) {
     el.fSecondaryEntity.oninput = () => scheduleEntityAutocomplete("secondary");
