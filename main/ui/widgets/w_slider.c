@@ -373,44 +373,125 @@ static void slider_set_value_label(lv_obj_t *label, int value)
 
 static void slider_apply_layout(lv_obj_t *card, w_slider_ctx_t *ctx)
 {
-    if (card == NULL || ctx == NULL || ctx->state_label == NULL || ctx->title_label == NULL || ctx->slider == NULL) {
+    if (card == NULL || ctx == NULL ||
+        ctx->state_label == NULL ||
+        ctx->value_label == NULL ||
+        ctx->title_label == NULL ||
+        ctx->icon_label == NULL ||
+        ctx->slider == NULL) {
         return;
     }
 
-    lv_obj_align(ctx->state_label, LV_ALIGN_TOP_LEFT, 0, APP_UI_TILE_LAYOUT_TUNED ? 2 : 0);
-    lv_obj_align(ctx->value_label, LV_ALIGN_TOP_RIGHT, 0, APP_UI_TILE_LAYOUT_TUNED ? 2 : 0);
-    lv_obj_align(ctx->title_label, LV_ALIGN_BOTTOM_MID, 0, APP_UI_TILE_LAYOUT_TUNED ? -12 : -10);
+    const lv_coord_t tuned_top =
+        APP_UI_TILE_LAYOUT_TUNED ? 2 : 0;
+
+    const lv_coord_t tuned_bottom =
+        APP_UI_TILE_LAYOUT_TUNED ? -12 : -10;
+
+    /*
+     * Position the optional text elements first.
+     */
+    if (ctx->show_state) {
+        lv_obj_align(
+            ctx->state_label,
+            LV_ALIGN_TOP_LEFT,
+            0,
+            tuned_top);
+
+        lv_obj_align(
+            ctx->value_label,
+            LV_ALIGN_TOP_RIGHT,
+            0,
+            tuned_top);
+    }
+
+    if (ctx->show_title) {
+        lv_obj_align(
+            ctx->title_label,
+            LV_ALIGN_BOTTOM_MID,
+            0,
+            tuned_bottom);
+    }
+
+    /*
+     * Keep the icon centred.  It is deliberately allowed to sit
+     * over the slider visually, rather than consuming a separate
+     * row of valuable slider space.
+     */
+    if (ctx->show_icon) {
+        lv_obj_align(
+            ctx->icon_label,
+            LV_ALIGN_CENTER,
+            0,
+            0);
+    }
 
     lv_obj_update_layout(card);
 
-    const lv_coord_t top_gap = APP_UI_TILE_LAYOUT_TUNED ? 10 : 8;
-    const lv_coord_t bottom_gap = APP_UI_TILE_LAYOUT_TUNED ? 12 : 10;
+    const lv_coord_t top_gap =
+        APP_UI_TILE_LAYOUT_TUNED ? 10 : 8;
+
+    const lv_coord_t bottom_gap =
+        APP_UI_TILE_LAYOUT_TUNED ? 12 : 10;
+
     const lv_coord_t min_h = 50;
 
     lv_coord_t content_w =
-        lv_obj_get_width(card) - lv_obj_get_style_pad_left(card, LV_PART_MAIN) - lv_obj_get_style_pad_right(card, LV_PART_MAIN);
+        lv_obj_get_width(card) -
+        lv_obj_get_style_pad_left(card, LV_PART_MAIN) -
+        lv_obj_get_style_pad_right(card, LV_PART_MAIN);
+
     lv_coord_t content_h =
-        lv_obj_get_height(card) - lv_obj_get_style_pad_top(card, LV_PART_MAIN) - lv_obj_get_style_pad_bottom(card, LV_PART_MAIN);
+        lv_obj_get_height(card) -
+        lv_obj_get_style_pad_top(card, LV_PART_MAIN) -
+        lv_obj_get_style_pad_bottom(card, LV_PART_MAIN);
+
     if (content_w < 24) {
         content_w = 24;
     }
+
     if (content_h < 24) {
         content_h = 24;
     }
 
-    lv_coord_t top = lv_obj_get_y(ctx->state_label) + lv_obj_get_height(ctx->state_label) + top_gap;
-    lv_coord_t bottom = lv_obj_get_y(ctx->title_label) - bottom_gap;
+    /*
+     * Only reserve the top text area when state/value are visible.
+     */
+    lv_coord_t top = 0;
+
+    if (ctx->show_state) {
+        top =
+            lv_obj_get_y(ctx->state_label) +
+            lv_obj_get_height(ctx->state_label) +
+            top_gap;
+    }
+
+    /*
+     * Only reserve the bottom title area when the title is visible.
+     */
+    lv_coord_t bottom = content_h;
+
+    if (ctx->show_title) {
+        bottom =
+            lv_obj_get_y(ctx->title_label) -
+            bottom_gap;
+    }
+
     if (top < 0) {
         top = 0;
     }
+
     if (bottom > content_h) {
         bottom = content_h;
     }
+
     if (bottom < (top + min_h)) {
         bottom = top + min_h;
+
         if (bottom > content_h) {
             bottom = content_h;
             top = bottom - min_h;
+
             if (top < 0) {
                 top = 0;
             }
@@ -420,55 +501,105 @@ static void slider_apply_layout(lv_obj_t *card, w_slider_ctx_t *ctx)
     lv_coord_t area_h = bottom - top;
     lv_coord_t area_w = content_w;
 
-    ctx->direction_effective = slider_effective_direction(ctx, card);
-    bool vertical = slider_direction_is_vertical(ctx->direction_effective);
+    ctx->direction_effective =
+        slider_effective_direction(ctx, card);
+
+    bool vertical =
+        slider_direction_is_vertical(
+            ctx->direction_effective);
 
     lv_coord_t slider_x = 0;
     lv_coord_t slider_y = top;
     lv_coord_t slider_w = area_w;
     lv_coord_t slider_h = area_h;
-    lv_coord_t target_thickness = (content_w < content_h) ? content_w : content_h;
+
+    lv_coord_t target_thickness =
+        (content_w < content_h)
+            ? content_w
+            : content_h;
+
     if (target_thickness < 2) {
         target_thickness = 2;
     }
 
     if (vertical) {
         slider_w = target_thickness;
+
         if (slider_w > area_w) {
             slider_w = area_w;
         }
+
         if (slider_w < 2) {
             slider_w = 2;
         }
+
         slider_h = area_h;
         slider_x = (area_w - slider_w) / 2;
     } else {
         slider_w = area_w;
         slider_h = target_thickness;
+
         if (slider_h > area_h) {
             slider_h = area_h;
         }
+
         if (slider_h < 2) {
             slider_h = 2;
         }
-        slider_y = top + (area_h - slider_h) / 2;
+
+        slider_y =
+            top +
+            (area_h - slider_h) / 2;
     }
 
-    lv_obj_set_pos(ctx->slider, slider_x, slider_y);
-    lv_obj_set_size(ctx->slider, slider_w, slider_h);
-    lv_coord_t thickness = vertical ? slider_w : slider_h;
+    lv_obj_set_pos(
+        ctx->slider,
+        slider_x,
+        slider_y);
+
+    lv_obj_set_size(
+        ctx->slider,
+        slider_w,
+        slider_h);
+
+    lv_coord_t thickness =
+        vertical ? slider_w : slider_h;
+
     if (thickness < 2) {
         thickness = 2;
     }
-    lv_coord_t radius = thickness / 2;
+
+    lv_coord_t radius =
+        thickness / 2;
+
     if (radius < 1) {
         radius = 1;
     }
-    lv_obj_set_style_radius(ctx->slider, radius, LV_PART_MAIN);
-    lv_obj_set_style_radius(ctx->slider, radius, LV_PART_INDICATOR);
-    lv_obj_set_style_radius(ctx->slider, radius, LV_PART_KNOB);
+
+    lv_obj_set_style_radius(
+        ctx->slider,
+        radius,
+        LV_PART_MAIN);
+
+    lv_obj_set_style_radius(
+        ctx->slider,
+        radius,
+        LV_PART_INDICATOR);
+
+    lv_obj_set_style_radius(
+        ctx->slider,
+        radius,
+        LV_PART_KNOB);
 
     slider_apply_native_orientation(ctx);
+
+    /*
+     * Keep the icon above the slider so the glyph remains visible
+     * over both the track and indicator.
+     */
+    if (ctx->show_icon) {
+        lv_obj_move_foreground(ctx->icon_label);
+    }
 }
 
 static void slider_apply_visual(w_slider_ctx_t *ctx)
