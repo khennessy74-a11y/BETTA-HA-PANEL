@@ -252,27 +252,55 @@
                 <summary><span id="inspectorGroupStyleLabel">Style</span></summary>
                 <div class="inspector-group-body">
                   <div id="buttonOptions" class="slider-options hidden">
-                    <label>
+                  <label>
                     <span>Control appearance</span>
-                      <select id="fButtonAppearance">
-                        <option value="switch">Switch</option>
-                        <option value="icon">Icon button</option>
-                      </select>
-                    </label>
-                    <label><span id="fButtonModeLabel">Button mode</span>
-                      <select id="fButtonMode">
-                        <option value="auto">auto (default switch)</option>
-                        <option value="run">run (script / scene)</option>
-                        <option value="play_pause">play/pause (media_player)</option>
-                        <option value="stop">stop (media_player)</option>
-                        <option value="next">next (media_player)</option>
-                        <option value="previous">previous (media_player)</option>
-                      </select>
-                    </label>
-                    <label><span id="fButtonAccentColorLabel">Button accent color</span>
-                      <input id="fButtonAccentColor" type="color" value="#6fe8ff" />
-                    </label>
-                  </div>
+                        <select id="fButtonAppearance">
+                          <option value="switch">Switch</option>
+                          <option value="icon">Icon button</option>
+                        </select>
+                  </label>
+
+                  <label>
+                    <span id="fButtonModeLabel">Button mode</span>
+                        <select id="fButtonMode">
+                          <option value="auto">auto (default switch)</option>
+                          <option value="run">run (script / scene)</option>
+                          <option value="play_pause">play/pause (media_player)</option>
+                          <option value="stop">stop (media_player)</option>
+                          <option value="next">next (media_player)</option>
+                          <option value="previous">previous (media_player)</option>
+                        </select>
+                  </label>
+
+                <label>
+                  <span id="fButtonAccentColorLabel">Button accent color</span>
+                    <input
+                      id="fButtonAccentColor"
+                      type="color"
+                      value="#6fe8ff"
+                    />
+               </label>
+
+  <label id="fButtonIconModeWrap">
+    <span>Icon</span>
+    <select id="fButtonIconMode">
+      <option value="automatic">Automatic</option>
+      <option value="custom">Custom MDI icon</option>
+    </select>
+  </label>
+
+  <label id="fButtonCustomIconWrap" class="hidden">
+    <span>Custom MDI icon</span>
+    <input
+      id="fButtonCustomIcon"
+      type="text"
+      maxlength="63"
+      placeholder="mdi:power"
+      autocomplete="off"
+      spellcheck="false"
+    />
+  </label>
+</div>
                   <div id="sliderOptions" class="slider-options hidden">
                     <label><span id="fSliderEntityDomainLabel">Slider entity type</span>
                       <select id="fSliderEntityDomain">
