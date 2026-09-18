@@ -180,6 +180,14 @@ static bool button_mode_uses_switch(w_button_mode_t mode)
     return mode == W_BUTTON_MODE_AUTO;
 }
 
+static bool button_visual_uses_switch(
+    const w_button_ctx_t *ctx)
+{
+    return ctx != NULL &&
+           button_mode_uses_switch(ctx->mode) &&
+           !ctx->use_icon_appearance;
+}
+
 static const char *button_icon_symbol(w_button_mode_t mode, bool is_on)
 {
     switch (mode) {
@@ -520,7 +528,7 @@ static void button_apply_visual(lv_obj_t *card, w_button_ctx_t *ctx, bool is_on,
         lv_obj_add_flag(ctx->state_label, LV_OBJ_FLAG_HIDDEN);
     }
 
-    if (button_mode_uses_switch(ctx->mode)) {
+    if (button_visual_uses_switch(ctx)) {
         if (ctx->action_switch != NULL) {
             const lv_color_t track_off =
                 unavailable ? lv_color_hex(APP_UI_COLOR_CARD_BORDER) : lv_color_hex(W_BUTTON_SWITCH_TRACK_OFF_HEX);
