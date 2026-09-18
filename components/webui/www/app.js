@@ -5560,12 +5560,19 @@ function applyInspector(options = {}) {
     widget.secondary_entity_id = "";
   }
   if (widgetType === "button") {
-    widget.button_mode = buttonMode;
-    widget.button_accent_color = normalizeHexColor(el.fButtonAccentColor?.value, DEFAULT_BUTTON_ACCENT_COLOR);
-  } else {
-    delete widget.button_mode;
-    delete widget.button_accent_color;
-  }
+  widget.button_appearance = normalizeButtonAppearance(
+    el.fButtonAppearance?.value
+  );
+  widget.button_mode = buttonMode;
+  widget.button_accent_color = normalizeHexColor(
+    el.fButtonAccentColor?.value,
+    DEFAULT_BUTTON_ACCENT_COLOR
+  );
+} else {
+  delete widget.button_appearance;
+  delete widget.button_mode;
+  delete widget.button_accent_color;
+}
   if (widgetType === "slider") {
     widget.slider_entity_domain = sliderDomain;
     widget.slider_direction = normalizeSliderDirection(el.fSliderDirection?.value);
