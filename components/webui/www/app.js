@@ -4632,28 +4632,75 @@ function movePage(draggedPageId, targetPageId, placeAfter = false) {
   if (!draggedPageId || !targetPageId) return;
   if (draggedPageId === targetPageId) return;
 
-  const fromIndex = editor.layout.pages.findIndex(
+  const pages = editor.layout.pages;
+
+  if (pages.length <= 1) return;
+
+  // Page 0 is always Home/Main and must remain page 0 internally.
+  const home = pages[0];
+
+  // Home is a fixed centre anchor, so it cannot be dragged.
+  if (draggedPageId === home.id) return;
+
+  // Work in the same left-to-right order shown by the physical panel.
+  const physical = pagesInPhysicalNavOrder();
+
+  const fromIndex = physical.findIndex(
     (page) => page.id === draggedPageId
   );
 
-  if (fromIndex < 0) return;
-
-  const [draggedPage] = editor.layout.pages.splice(fromIndex, 1);
-
-  const targetIndex = editor.layout.pages.findIndex(
+  const targetIndex = physical.findIndex(
     (page) => page.id === targetPageId
   );
 
-  if (targetIndex < 0) {
-    editor.layout.pages.splice(fromIndex, 0, draggedPage);
-    return;
-  }
+  if (fromIndex < 0 || targetIndex < 0) return;
+
+  const [draggedPage] = physical.splice(fromIndex, 1);
+
+  const adjustedTargetIndex = physical.findIndex(
+    (page) => page.id === targetPageId
+  );
+
+  if (adjustedTargetIndex < 0) return;
 
   const insertIndex = placeAfter
-    ? targetIndex + 1
-    : targetIndex;
+    ? adjustedTargetIndex + 1
+    : adjustedTargetIndex;
 
-  editor.layout.pages.splice(insertIndex, 0, draggedPage);
+  physical.splice(insertIndex, 0, draggedPage);
+
+  /*
+   * Home must remain the fixed centre anchor.
+   *
+   * Remove it from the physical sequence, then convert the remaining
+   * left/right physical positions back into the alternating internal
+   * order expected by ui_pages_apply_tab_style().
+   */
+  const homeIndex = physical.findIndex(
+    (page) => page.id === home.id
+  );
+
+  if (homeIndex < 0) return;
+
+  const left = physical.slice(0, homeIndex);
+  const right = physical.slice(homeIndex + 1);
+
+  const extras = [];
+  const maxSideCount = Math.max(left.length, right.length);
+
+  for (let i = 0; i < maxSideCount; i++) {
+    const leftIndex = left.length - 1 - i;
+
+    if (leftIndex >= 0) {
+      extras.push(left[leftIndex]);
+    }
+
+    if (i < right.length) {
+      extras.push(right[i]);
+    }
+  }
+
+  editor.layout.pages = [home, ...extras];
 
   editor.selectedPageId = draggedPageId;
   editor.selectedWidgetId = null;
