@@ -5136,6 +5136,13 @@ function renderInspector() {
       widget.type !== "timer"
     );
   }
+  if (
+    widget.type === "timer" &&
+    typeof syncTimerInspector === "function"
+  ) {
+    syncTimerInspector();
+  }
+  
  
   if (isButton) {
     const accent = normalizeHexColor(widget.button_accent_color, DEFAULT_BUTTON_ACCENT_COLOR);
