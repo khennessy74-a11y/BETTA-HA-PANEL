@@ -3492,6 +3492,34 @@ function clamp(value, min, max) {
 function snap(value) {
   return Math.round(value / GRID) * GRID;
 }
+function pagesInPhysicalNavOrder() {
+  const pages = editor.layout?.pages || [];
+
+  if (pages.length <= 1) {
+    return [...pages];
+  }
+
+  // Page 0 is always the fixed Home/Main page.
+  const home = pages[0];
+  const extras = pages.slice(1);
+
+  const left = [];
+  const right = [];
+
+  extras.forEach((page, index) => {
+    if ((index & 1) === 0) {
+      // Firmware places pages 1, 3, ... on the left,
+      // filling from the centre outwards.
+      left.unshift(page);
+    } else {
+      // Firmware places pages 2, 4, ... on the right,
+      // filling from the centre outwards.
+      right.push(page);
+    }
+  });
+
+  return [...left, home, ...right];
+}
 
 function selectedPage() {
   if (!editor.layout) return null;
