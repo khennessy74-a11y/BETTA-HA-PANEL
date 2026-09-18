@@ -6133,7 +6133,6 @@ bindInspectorAutoApply(
   { softEntityValidation: true }
 );
 
-  bindInspectorAutoApply(el.fButtonAccentColor,
   bindInspectorAutoApply(el.fButtonAccentColor, ["input", "change"], { softEntityValidation: true });
   bindInspectorAutoApply(el.fSliderDirection, ["change"], { softEntityValidation: true });
   bindInspectorAutoApply(el.fSliderAccentColor, ["input", "change"], { softEntityValidation: true });
