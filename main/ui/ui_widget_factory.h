@@ -27,6 +27,7 @@ typedef struct {
     char slider_accent_color[APP_MAX_COLOR_STR_LEN];
     char button_accent_color[APP_MAX_COLOR_STR_LEN];
     char button_mode[APP_MAX_UI_OPTION_LEN];
+    char button_appearance[APP_MAX_UI_OPTION_LEN];
 
     char graph_line_color[APP_MAX_COLOR_STR_LEN];
     int graph_point_count;
@@ -65,6 +66,7 @@ typedef struct {
     char slider_accent_color[APP_MAX_COLOR_STR_LEN];
     char button_accent_color[APP_MAX_COLOR_STR_LEN];
     char button_mode[APP_MAX_UI_OPTION_LEN];
+    char button_appearance[APP_MAX_UI_OPTION_LEN];
 
     char graph_line_color[APP_MAX_COLOR_STR_LEN];
     int graph_point_count;
