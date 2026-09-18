@@ -6045,7 +6045,6 @@ function bindUi() {
     el.fSecondaryEntity.onblur = () => autoApplyInspector();
   }
   bindInspectorAutoApply(el.fTitle, ["input"], { softEntityValidation: true });
-  bindInspectorAutoApply(
  bindInspectorAutoApply(
   el.fButtonAppearance,
   ["change"],
