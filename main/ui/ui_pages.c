@@ -370,7 +370,7 @@ static void ui_pages_create_topbar(lv_obj_t *screen)
     lv_label_set_text(s_time_label, "--:--");
 
     s_api_icon = lv_label_create(s_topbar);
-    lv_obj_set_width(s_api_icon, 76);
+    lv_obj_set_width(s_api_icon, 86);
     lv_obj_align(s_api_icon, LV_ALIGN_RIGHT_MID, -72, 0);
     ui_pages_style_topbar_chip(s_api_icon);
         char api_text[32] = {0};
