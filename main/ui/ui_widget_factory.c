@@ -93,6 +93,7 @@ out_instance->timer_show_finish = def->timer_show_finish;
     snprintf(out_instance->slider_accent_color, sizeof(out_instance->slider_accent_color), "%s", def->slider_accent_color);
     snprintf(out_instance->button_accent_color, sizeof(out_instance->button_accent_color), "%s", def->button_accent_color);
     snprintf(out_instance->button_mode, sizeof(out_instance->button_mode), "%s", def->button_mode);
+    snprintf(out_instance->button_appearance, sizeof(out_instance->button_appearance), "%s", def->button_appearance);
     snprintf(out_instance->graph_line_color, sizeof(out_instance->graph_line_color), "%s", def->graph_line_color);
     out_instance->graph_point_count = def->graph_point_count;
     out_instance->graph_time_window_min = def->graph_time_window_min;
