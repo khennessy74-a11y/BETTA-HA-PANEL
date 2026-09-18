@@ -26,6 +26,7 @@ typedef enum {
 
 typedef struct {
     char entity_id[APP_MAX_ENTITY_ID_LEN];
+    char icon[APP_MAX_ICON_LEN];
     lv_obj_t *card;
     lv_obj_t *title_label;
     lv_obj_t *state_label;
@@ -764,8 +765,19 @@ esp_err_t w_button_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widge
         lv_obj_del(card);
         return ESP_ERR_NO_MEM;
     }
-    snprintf(ctx->entity_id, sizeof(ctx->entity_id), "%s", def->entity_id);
-    ctx->card = card;
+    snprintf(
+    ctx->entity_id,
+    sizeof(ctx->entity_id),
+    "%s",
+    def->entity_id);
+
+snprintf(
+    ctx->icon,
+    sizeof(ctx->icon),
+    "%s",
+    def->icon);
+
+ctx->card = card;
     ctx->title_label = title;
     ctx->state_label = state_label;
     ctx->action_switch = action_switch;
