@@ -659,24 +659,26 @@ esp_err_t w_slider_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widge
     ctx->state_label = state;
     ctx->value_label = value;
     ctx->slider = slider;
-    if (!ctx->show_title) {
-    lv_obj_add_flag(title, LV_OBJ_FLAG_HIDDEN);
-}
-
-if (!ctx->show_state) {
-    lv_obj_add_flag(state, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_add_flag(value, LV_OBJ_FLAG_HIDDEN);
-}
-
-if (ctx->show_icon) {
-    slider_apply_icon(ctx, def->icon);
-} else {
-    lv_obj_add_flag(icon, LV_OBJ_FLAG_HIDDEN);
-}
 
     ctx->show_title = def->show_title;
     ctx->show_icon = def->show_icon;
     ctx->show_state = def->show_state;
+
+    if (!ctx->show_title) {
+        lv_obj_add_flag(title, LV_OBJ_FLAG_HIDDEN);
+    }
+
+    if (!ctx->show_state) {
+        lv_obj_add_flag(state, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(value, LV_OBJ_FLAG_HIDDEN);
+    }
+
+    if (ctx->show_icon) {
+        slider_apply_icon(ctx, def->icon);
+    } else {
+        lv_obj_add_flag(icon, LV_OBJ_FLAG_HIDDEN);
+    }
+
     ctx->direction_cfg = slider_direction_from_text(def->slider_direction);
     ctx->direction_effective = slider_effective_direction(ctx, card);
     ctx->accent_color = lv_color_hex(APP_UI_COLOR_NAV_TAB_ACTIVE);
