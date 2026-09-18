@@ -5891,10 +5891,17 @@ function addWidget(type, options = {}) {
   widget.show_state = true;
 }
 
-  if (type === "slider") {
+    if (type === "slider") {
     widget.slider_entity_domain = DEFAULT_SLIDER_ENTITY_DOMAIN;
     widget.slider_direction = DEFAULT_SLIDER_DIRECTION;
     widget.slider_accent_color = DEFAULT_SLIDER_ACCENT_COLOR;
+
+    // Empty icon means Automatic.
+    widget.icon = "";
+
+    widget.show_title = true;
+    widget.show_icon = true;
+    widget.show_state = true;
   }
   if (type === "button") {
   widget.button_appearance = DEFAULT_BUTTON_APPEARANCE;
