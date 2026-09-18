@@ -296,9 +296,9 @@ static void slider_apply_icon(w_slider_ctx_t *ctx, const char *icon_name)
     }
 
     const char *requested =
-        (icon_name != NULL && icon_name[0] != '\0')
-            ? icon_name
-            "mdi:swap-vertical"
+    (icon_name != NULL && icon_name[0] != '\0')
+        ? icon_name
+        : "mdi:swap-vertical";
 
     uint32_t codepoint = 0;
 
