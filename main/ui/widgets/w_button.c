@@ -190,24 +190,95 @@ static bool button_visual_uses_switch(
            !ctx->use_icon_appearance;
 }
 
-static const char *button_icon_symbol(w_button_mode_t mode, bool is_on)
+static const char *button_icon_symbol(
+    w_button_mode_t mode,
+    bool is_on)
 {
     switch (mode) {
     case W_BUTTON_MODE_RUN:
-        return is_on ? LV_SYMBOL_STOP : LV_SYMBOL_PLAY;
+        return is_on
+            ? LV_SYMBOL_STOP
+            : LV_SYMBOL_PLAY;
+
     case W_BUTTON_MODE_PLAY_PAUSE:
-        return is_on ? LV_SYMBOL_PAUSE : LV_SYMBOL_PLAY;
+        return is_on
+            ? LV_SYMBOL_PAUSE
+            : LV_SYMBOL_PLAY;
+
     case W_BUTTON_MODE_STOP:
         return LV_SYMBOL_STOP;
+
     case W_BUTTON_MODE_NEXT:
         return LV_SYMBOL_NEXT;
+
     case W_BUTTON_MODE_PREVIOUS:
         return LV_SYMBOL_PREV;
-   case W_BUTTON_MODE_AUTO:
-    return LV_SYMBOL_POWER;
-        default:
+
+    case W_BUTTON_MODE_AUTO:
+        return LV_SYMBOL_POWER;
+
+    default:
         return "";
     }
+}
+
+
+static bool button_apply_custom_mdi_icon(
+    w_button_ctx_t *ctx)
+{
+    if (ctx == NULL ||
+        ctx->action_icon == NULL ||
+        ctx->icon[0] == '\0') {
+        return false;
+    }
+
+    uint32_t codepoint = 0;
+
+    if (!mdi_icon_lookup(
+            ctx->icon,
+            &codepoint)) {
+        return false;
+    }
+
+    const lv_font_t *font =
+        mdi_font_icon_56();
+
+    if (font == NULL) {
+        font = mdi_font_large();
+    }
+
+    if (font == NULL) {
+        return false;
+    }
+
+    lv_font_glyph_dsc_t glyph_dsc = {0};
+
+    if (!lv_font_get_glyph_dsc(
+            font,
+            &glyph_dsc,
+            codepoint,
+            0)) {
+        return false;
+    }
+
+    char utf8[5] = {0};
+
+    if (!mdi_icon_codepoint_to_utf8(
+            codepoint,
+            utf8)) {
+        return false;
+    }
+
+    lv_obj_set_style_text_font(
+        ctx->action_icon,
+        font,
+        LV_PART_MAIN);
+
+    lv_label_set_text(
+        ctx->action_icon,
+        utf8);
+
+    return true;
 }
 
 static bool button_label_visible(lv_obj_t *obj)
@@ -451,12 +522,109 @@ static void button_layout_switch(lv_obj_t *card, w_button_ctx_t *ctx)
     lv_obj_set_size(ctx->action_switch, switch_w, switch_h);
 }
 
-static void button_layout_icon(lv_obj_t *card, w_button_ctx_t *ctx)
+static void button_layout_icon(
+    lv_obj_t *card,
+    w_button_ctx_t *ctx,
+    bool custom_mdi)
 {
-    if (card == NULL || ctx == NULL || ctx->action_icon == NULL) {
+    if (card == NULL ||
+        ctx == NULL ||
+        ctx->action_icon == NULL) {
         return;
     }
 
+    lv_obj_update_layout(card);
+
+    const bool compact =
+        button_card_is_compact(card);
+
+    const lv_coord_t top_gap_base =
+#if APP_UI_TILE_LAYOUT_TUNED
+        compact ? 10 : 14;
+#else
+        12;
+#endif
+
+    const lv_coord_t bottom_gap_base =
+#if APP_UI_TILE_LAYOUT_TUNED
+        compact ? 12 : 16;
+#else
+        14;
+#endif
+
+    const lv_coord_t min_height =
+        compact ? 26 : 30;
+
+    lv_coord_t top_gap =
+        button_label_visible(ctx->state_label)
+            ? top_gap_base
+            : 4;
+
+    lv_coord_t bottom_gap =
+        button_label_visible(ctx->title_label)
+            ? bottom_gap_base
+            : 4;
+
+    lv_coord_t content_w = 24;
+    lv_coord_t top = 0;
+    lv_coord_t area_h = 20;
+
+    button_calc_action_area(
+        card,
+        ctx,
+        top_gap,
+        bottom_gap,
+        min_height,
+        &content_w,
+        &top,
+        &area_h);
+
+    lv_coord_t target_icon_h =
+        (area_h * 9) / 10;
+
+    if (target_icon_h < 20) {
+        target_icon_h = 20;
+    }
+
+    /*
+     * Custom MDI icons already have their correct
+     * MDI font assigned by button_apply_custom_mdi_icon().
+     *
+     * LVGL built-in symbols use the normal text font.
+     */
+    if (!custom_mdi) {
+        lv_obj_set_style_text_font(
+            ctx->action_icon,
+            button_pick_icon_font(target_icon_h),
+            LV_PART_MAIN);
+    }
+
+    lv_obj_set_width(
+        ctx->action_icon,
+        content_w);
+
+    lv_obj_update_layout(
+        ctx->action_icon);
+
+    lv_coord_t icon_h =
+        lv_obj_get_height(ctx->action_icon);
+
+    if (icon_h < 20) {
+        icon_h = 20;
+    }
+
+    lv_coord_t y =
+        top + (area_h - icon_h) / 2;
+
+    if (y < 0) {
+        y = 0;
+    }
+
+    lv_obj_set_pos(
+        ctx->action_icon,
+        0,
+        y);
+}
     lv_obj_update_layout(card);
 
         const bool compact = button_card_is_compact(card);
@@ -582,12 +750,42 @@ static void button_apply_visual(lv_obj_t *card, w_button_ctx_t *ctx, bool is_on,
         }
 
         if (ctx->action_icon != NULL) {
-            lv_obj_clear_flag(ctx->action_icon, LV_OBJ_FLAG_HIDDEN);
-            lv_label_set_text(ctx->action_icon, button_icon_symbol(ctx->mode, is_on && !unavailable));
-            lv_obj_set_style_text_color(ctx->action_icon, unavailable ? lv_color_hex(APP_UI_COLOR_TEXT_MUTED) : ctx->accent_color,
-                LV_PART_MAIN);
-            button_layout_icon(card, ctx);
-        }
+    lv_obj_clear_flag(
+        ctx->action_icon,
+        LV_OBJ_FLAG_HIDDEN);
+
+    /*
+     * A configured MDI icon overrides the automatic
+     * action icon.
+     *
+     * If the configured name is unknown, the font is
+     * unavailable, or the glyph isn't compiled into
+     * the font, fall back to the existing automatic
+     * LVGL symbol.
+     */
+    const bool custom_mdi =
+        button_apply_custom_mdi_icon(ctx);
+
+    if (!custom_mdi) {
+        lv_label_set_text(
+            ctx->action_icon,
+            button_icon_symbol(
+                ctx->mode,
+                is_on && !unavailable));
+    }
+
+    lv_obj_set_style_text_color(
+        ctx->action_icon,
+        unavailable
+            ? lv_color_hex(APP_UI_COLOR_TEXT_MUTED)
+            : ctx->accent_color,
+        LV_PART_MAIN);
+
+    button_layout_icon(
+        card,
+        ctx,
+        custom_mdi);
+}
     }
 
     if (ctx->show_status) {
