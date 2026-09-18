@@ -4664,6 +4664,12 @@ li.addEventListener("drop", (ev) => {
 
   movePageBefore(draggedPageId, page.id);
 });
+    const dragHandle = document.createElement("span");
+    dragHandle.className = "page-drag-handle";
+    dragHandle.textContent = "☰";
+    dragHandle.title = "Drag to reorder page";
+    dragHandle.setAttribute("aria-label", "Drag to reorder page");
+    li.appendChild(dragHandle);
 
     const label = document.createElement("span");
     const badge = isEnergyPage(page) ? " ⚡" : "";
