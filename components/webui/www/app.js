@@ -5090,6 +5090,12 @@ function renderInspector() {
     if (el.heatingOptions) {
       el.heatingOptions.classList.add("hidden");
     }
+    const timerOptions =
+    document.getElementById("timerOptions");
+
+  if (timerOptions) {
+    timerOptions.classList.add("hidden");
+  }
     if (el.fHeatingStyleVariant) {
       el.fHeatingStyleVariant.value = "default";
     }
