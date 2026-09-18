@@ -1598,6 +1598,8 @@ const el = {
   fButtonIconModeWrap: document.getElementById("fButtonIconModeWrap"),
   fButtonCustomIcon: document.getElementById("fButtonCustomIcon"),
   fButtonCustomIconWrap: document.getElementById("fButtonCustomIconWrap"),
+  fButtonShowTitle: document.getElementById("fButtonShowTitle"),
+  fButtonShowState: document.getElementById("fButtonShowState"),
   fButtonMode: document.getElementById("fButtonMode"),
   fSliderEntityDomain: document.getElementById("fSliderEntityDomain"),
   fButtonAccentColor: document.getElementById("fButtonAccentColor"),
