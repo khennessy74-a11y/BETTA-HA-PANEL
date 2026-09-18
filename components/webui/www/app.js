@@ -3558,8 +3558,6 @@ function setButtonCustomIconValue(iconName) {
   select.value = value;
 }
 
-
-function updateButtonIconControls() {
 function updateButtonIconControls() {
   if (
     !el.fButtonAppearance ||
