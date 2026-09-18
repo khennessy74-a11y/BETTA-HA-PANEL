@@ -6056,6 +6056,11 @@ if (el.fButtonAppearance) {
     updateButtonIconControls();
   });
 }
+  if (el.fButtonIconMode) {
+  el.fButtonIconMode.addEventListener("change", () => {
+    updateButtonIconControls();
+  });
+}
   bindInspectorAutoApply(el.fButtonAccentColor, ["input", "change"], { softEntityValidation: true });
   bindInspectorAutoApply(el.fSliderDirection, ["change"], { softEntityValidation: true });
   bindInspectorAutoApply(el.fSliderAccentColor, ["input", "change"], { softEntityValidation: true });
