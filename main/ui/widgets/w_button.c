@@ -941,7 +941,7 @@ ctx->card = card;
     ctx->mode = button_mode_from_text(def->button_mode);
     ctx->use_icon_appearance =
         strcmp(def->button_appearance, "icon") == 0;
-    ctx->show_title = title_text[0] != '\0';
+    ctx->show_title = def->show_title && title_text[0] != '\0';
     if (ctx->mode == W_BUTTON_MODE_RUN && !is_runnable) {
         /* run mode only makes sense for one-shot entities; fall back rather
          * than silently toggling a switch/media_player as if it were one. */
@@ -954,7 +954,11 @@ ctx->card = card;
          * rule so a one-shot entity is never driven via switch-toggle. */
         ctx->mode = W_BUTTON_MODE_RUN;
     }
-    ctx->show_status = !is_media_player && !(is_runnable && ctx->mode == W_BUTTON_MODE_RUN);
+    cctx->show_status =
+    def->show_state &&
+    !is_media_player &&
+    !(is_runnable &&
+      ctx->mode == W_BUTTON_MODE_RUN);
     ctx->suppress_event = false;
     ctx->is_on = false;
     ctx->unavailable = false;
