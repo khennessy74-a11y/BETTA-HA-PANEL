@@ -338,12 +338,11 @@ static void slider_apply_icon(w_slider_ctx_t *ctx, const char *icon_name)
     char icon_utf8[5] = {0};
 
     if (!mdi_icon_codepoint_to_utf8(
-            codepoint,
-            icon_utf8,
-            sizeof(icon_utf8))) {
-        lv_obj_add_flag(ctx->icon_label, LV_OBJ_FLAG_HIDDEN);
-        return;
-    }
+        codepoint,
+        icon_utf8)) {
+    lv_obj_add_flag(ctx->icon_label, LV_OBJ_FLAG_HIDDEN);
+    return;
+}
 
     lv_obj_set_style_text_font(
         ctx->icon_label,
