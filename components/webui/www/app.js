@@ -6481,6 +6481,37 @@ function bindUi() {
       if (el.fSliderAccentColor) {
         el.fSliderAccentColor.value = normalizeHexColor(el.fSliderAccentColor.value, DEFAULT_SLIDER_ACCENT_COLOR);
       }
+      if (el.fSliderShowTitle) {
+  el.fSliderShowTitle.addEventListener("change", () => {
+    autoApplyInspector();
+  });
+}
+
+if (el.fSliderShowIcon) {
+  el.fSliderShowIcon.addEventListener("change", () => {
+    updateSliderIconControls();
+    autoApplyInspector();
+  });
+}
+
+if (el.fSliderIconMode) {
+  el.fSliderIconMode.addEventListener("change", () => {
+    updateSliderIconControls();
+    autoApplyInspector();
+  });
+}
+
+if (el.fSliderCustomIcon) {
+  el.fSliderCustomIcon.addEventListener("change", () => {
+    autoApplyInspector();
+  });
+}
+
+if (el.fSliderShowState) {
+  el.fSliderShowState.addEventListener("change", () => {
+    autoApplyInspector();
+  });
+}
     }
     if (el.fType.value === "graph") {
       if (el.fGraphLineColor) {
