@@ -4911,7 +4911,7 @@ function startInlinePageRename(li, labelSpan, page) {
 function renderPagesMini() {
   if (!el.pagesMiniList) return;
   el.pagesMiniList.innerHTML = "";
-  for (const page of editor.layout.pages) {
+  for (const page of pagesInPhysicalNavOrder()) {
     const button = document.createElement("button");
     button.type = "button";
     button.className = `mini-page-btn ${page.id === editor.selectedPageId ? "active" : ""}`;
