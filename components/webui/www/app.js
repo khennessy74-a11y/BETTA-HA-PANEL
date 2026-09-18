@@ -5771,7 +5771,69 @@ function applyInspector(options = {}) {
   delete widget.button_mode;
   delete widget.button_accent_color;
 }
-  if (widgetType === "slider") {
+
+/*
+ * Timer display/control options.
+ *
+ * Keep these in the normal inspector apply path so explicit false
+ * values survive Save -> reload.  Missing controls default to true
+ * for backwards compatibility with older Timer widgets.
+ */
+if (widgetType === "timer") {
+  const timerCheckboxValue = (id, fallback = true) => {
+    const control = document.getElementById(id);
+    return control ? Boolean(control.checked) : fallback;
+  };
+
+  widget.show_title = timerCheckboxValue(
+    "fTimerShowTitle",
+    widget.show_title !== false
+  );
+
+  widget.show_icon = timerCheckboxValue(
+    "fTimerShowIcon",
+    widget.show_icon !== false
+  );
+
+  widget.show_state = timerCheckboxValue(
+    "fTimerShowState",
+    widget.show_state !== false
+  );
+
+  widget.timer_show_start = timerCheckboxValue(
+    "fTimerShowStart",
+    widget.timer_show_start !== false
+  );
+
+  widget.timer_show_pause = timerCheckboxValue(
+    "fTimerShowPause",
+    widget.timer_show_pause !== false
+  );
+
+  widget.timer_show_cancel = timerCheckboxValue(
+    "fTimerShowCancel",
+    widget.timer_show_cancel !== false
+  );
+
+  widget.timer_show_finish = timerCheckboxValue(
+    "fTimerShowFinish",
+    widget.timer_show_finish !== false
+  );
+
+  const timerIconMode =
+    document.getElementById("fTimerIconMode")?.value === "custom"
+      ? "custom"
+      : "automatic";
+
+  if (timerIconMode === "custom") {
+    widget.icon =
+      document.getElementById("fTimerCustomIcon")?.value?.trim() || "";
+  } else {
+    widget.icon = "";
+  }
+}
+
+if (widgetType === "slider") {
     widget.slider_entity_domain = sliderDomain;
     widget.slider_direction = normalizeSliderDirection(el.fSliderDirection?.value);
     widget.slider_accent_color = normalizeHexColor(el.fSliderAccentColor?.value, DEFAULT_SLIDER_ACCENT_COLOR);
