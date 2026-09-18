@@ -1609,7 +1609,6 @@ const el = {
   fSensorCustomIcon: document.getElementById("fSensorCustomIcon"),
   fSensorCustomIconWrap: document.getElementById("fSensorCustomIconWrap"),
   fSensorShowState: document.getElementById("fSensorShowState"),
-  fSliderEntityDomain: document.getElementById("fSliderEntityDomain"),
   fButtonAccentColor: document.getElementById("fButtonAccentColor"),
  sliderOptions: document.getElementById("sliderOptions"),
 fSliderEntityDomain: document.getElementById("fSliderEntityDomain"),
