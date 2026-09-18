@@ -6115,6 +6115,10 @@ function bindUi() {
 if (el.fButtonAppearance) {
   el.fButtonAppearance.addEventListener("change", () => {
     updateButtonIconControls();
+
+    if (inspectorWidgetType() === "button") {
+      autoApplyInspector();
+    }
   });
 }
  if (el.fButtonIconMode) {
