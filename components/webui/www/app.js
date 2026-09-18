@@ -5553,7 +5553,10 @@ function addWidget(type, options = {}) {
   widget.button_appearance = DEFAULT_BUTTON_APPEARANCE;
   widget.button_mode = resolvedButtonMode;
   widget.button_accent_color = DEFAULT_BUTTON_ACCENT_COLOR;
-}
+
+    // Empty icon means Automatic.
+    widget.icon = "";
+  }
    if (type === "graph") {
     widget.graph_line_color = DEFAULT_GRAPH_LINE_COLOR;
     widget.graph_time_window_min = DEFAULT_GRAPH_TIME_WINDOW_MIN;
