@@ -498,27 +498,95 @@
 </div>
 
 <div id="sliderOptions" class="slider-options hidden">
-                    <label><span id="fSliderEntityDomainLabel">Slider entity type</span>
-                      <select id="fSliderEntityDomain">
-                        <option value="auto">auto (light, media_player, cover)</option>
-                        <option value="light">light</option>
-                        <option value="media_player">media_player</option>
-                        <option value="cover">cover</option>
-                      </select>
-                    </label>
-                    <label><span id="fSliderDirectionLabel">Slider direction</span>
-                      <select id="fSliderDirection">
-                        <option value="auto">auto (width/height based)</option>
-                        <option value="left_to_right">left_to_right (0% -> 100%)</option>
-                        <option value="right_to_left">right_to_left (100% -> 0%)</option>
-                        <option value="bottom_to_top">bottom_to_top (0% -> 100%)</option>
-                        <option value="top_to_bottom">top_to_bottom (100% -> 0%)</option>
-                      </select>
-                    </label>
-                    <label><span id="fSliderAccentColorLabel">Slider accent color</span>
-                      <input id="fSliderAccentColor" type="color" value="#6fe8ff" />
-                    </label>
-                  </div>
+  <label><span id="fSliderEntityDomainLabel">Slider entity type</span>
+    <select id="fSliderEntityDomain">
+      <option value="auto">auto (light, media_player, cover)</option>
+      <option value="light">light</option>
+      <option value="media_player">media_player</option>
+      <option value="cover">cover</option>
+    </select>
+  </label>
+
+  <label><span>Show title</span>
+    <select id="fSliderShowTitle">
+      <option value="true">On</option>
+      <option value="false">Off</option>
+    </select>
+  </label>
+
+  <label><span>Show icon</span>
+    <select id="fSliderShowIcon">
+      <option value="true">On</option>
+      <option value="false">Off</option>
+    </select>
+  </label>
+
+  <label id="fSliderIconModeWrap"><span>Icon</span>
+    <select id="fSliderIconMode">
+      <option value="automatic">Automatic</option>
+      <option value="custom">Custom MDI</option>
+    </select>
+  </label>
+
+  <label id="fSliderCustomIconWrap" class="hidden"><span>Custom MDI icon</span>
+    <select id="fSliderCustomIcon">
+      <option value="mdi:gauge">Gauge</option>
+      <option value="mdi:fan">Fan</option>
+      <option value="mdi:thermometer">Thermometer</option>
+      <option value="mdi:water-percent">Water percent</option>
+      <option value="mdi:lightbulb">Lightbulb</option>
+      <option value="mdi:lightbulb-outline">Lightbulb outline</option>
+      <option value="mdi:weather-sunny">Weather sunny</option>
+      <option value="mdi:weather-night">Weather night</option>
+      <option value="mdi:weather-cloudy">Weather cloudy</option>
+      <option value="mdi:weather-rainy">Weather rainy</option>
+      <option value="mdi:weather-pouring">Weather pouring</option>
+      <option value="mdi:weather-snowy">Weather snowy</option>
+      <option value="mdi:weather-lightning">Weather lightning</option>
+      <option value="mdi:weather-partly-cloudy">Weather partly cloudy</option>
+      <option value="mdi:home">Home</option>
+      <option value="mdi:cog">Cog</option>
+      <option value="mdi:information-outline">Information</option>
+      <option value="mdi:alert-outline">Alert</option>
+      <option value="mdi:check-circle-outline">Check circle</option>
+      <option value="mdi:arrow-up">Arrow up</option>
+      <option value="mdi:arrow-down">Arrow down</option>
+      <option value="mdi:arrow-left">Arrow left</option>
+      <option value="mdi:arrow-right">Arrow right</option>
+      <option value="mdi:swap-vertical">Swap vertical</option>
+      <option value="mdi:play">Play</option>
+      <option value="mdi:pause">Pause</option>
+      <option value="mdi:stop">Stop</option>
+      <option value="mdi:skip-next">Skip next</option>
+      <option value="mdi:skip-previous">Skip previous</option>
+      <option value="mdi:volume-high">Volume high</option>
+      <option value="mdi:volume-off">Volume off</option>
+      <option value="mdi:file-outline">File</option>
+      <option value="mdi:folder-outline">Folder</option>
+    </select>
+  </label>
+
+  <label><span>Show state</span>
+    <select id="fSliderShowState">
+      <option value="true">On</option>
+      <option value="false">Off</option>
+    </select>
+  </label>
+
+  <label><span id="fSliderDirectionLabel">Slider direction</span>
+    <select id="fSliderDirection">
+      <option value="auto">auto (width/height based)</option>
+      <option value="left_to_right">left_to_right (0% -&gt; 100%)</option>
+      <option value="right_to_left">right_to_left (100% -&gt; 0%)</option>
+      <option value="bottom_to_top">bottom_to_top (0% -&gt; 100%)</option>
+      <option value="top_to_bottom">top_to_bottom (100% -&gt; 0%)</option>
+    </select>
+  </label>
+
+  <label><span id="fSliderAccentColorLabel">Slider accent color</span>
+    <input id="fSliderAccentColor" type="color" value="#6fe8ff" />
+  </label>
+</div>
                   <div id="graphOptions" class="slider-options hidden">
                     <label><span id="fGraphDisplayModeLabel">Display mode</span>
                       <select id="fGraphDisplayMode">
