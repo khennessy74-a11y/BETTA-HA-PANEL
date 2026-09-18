@@ -12,9 +12,19 @@
 /*
  * A named Material Design Icon that is compiled into
  * BETTA's shared icon font.
+ *
+ * name:
+ *     Home Assistant / MDI notation, for example:
+ *         mdi:power
+ *         mdi:timer-outline
+ *
+ * label:
+ *     Friendly text suitable for displaying in the
+ *     BETTA Web UI icon picker.
  */
 typedef struct {
     const char *name;
+    const char *label;
     uint32_t codepoint;
 } mdi_icon_entry_t;
 
@@ -48,11 +58,6 @@ bool mdi_font_weather_small_available(void);
 /*
  * Named icon registry
  *
- * Names use Home Assistant / MDI notation:
- *
- *     mdi:power
- *     mdi:timer-outline
- *
  * mdi_icon_lookup() returns true when the requested
  * icon is known and writes its Unicode codepoint to
  * out_codepoint.
@@ -63,7 +68,7 @@ bool mdi_icon_lookup(
 
 
 /*
- * Returns the registry table.
+ * Returns the complete supported icon registry.
  *
  * The returned table is static and must not be freed.
  */
