@@ -289,6 +289,77 @@ static void slider_apply_native_orientation(w_slider_ctx_t *ctx)
     lv_obj_set_style_base_dir(ctx->slider, LV_BASE_DIR_LTR, LV_PART_MAIN);
     lv_slider_set_range(ctx->slider, reversed ? 100 : 0, reversed ? 0 : 100);
 }
+static void slider_apply_icon(w_slider_ctx_t *ctx, const char *icon_name)
+{
+    if (ctx == NULL || ctx->icon_label == NULL) {
+        return;
+    }
+
+    const char *requested =
+        (icon_name != NULL && icon_name[0] != '\0')
+            ? icon_name
+            : "mdi:tune-vertical";
+
+    uint32_t codepoint = 0;
+
+    if (!mdi_icon_lookup(requested, &codepoint)) {
+        /*
+         * Fall back to a known Slider-style icon if the configured
+         * icon is not available in the embedded MDI registry.
+         */
+        if (!mdi_icon_lookup("mdi:tune-vertical", &codepoint)) {
+            lv_obj_add_flag(ctx->icon_label, LV_OBJ_FLAG_HIDDEN);
+            return;
+        }
+    }
+
+    const lv_font_t *font = mdi_font_icon_56();
+
+    if (font == NULL) {
+        font = mdi_font_large();
+    }
+
+    if (font == NULL) {
+        lv_obj_add_flag(ctx->icon_label, LV_OBJ_FLAG_HIDDEN);
+        return;
+    }
+
+    lv_font_glyph_dsc_t glyph_dsc;
+
+    if (!lv_font_get_glyph_dsc(
+            font,
+            &glyph_dsc,
+            codepoint,
+            0)) {
+        lv_obj_add_flag(ctx->icon_label, LV_OBJ_FLAG_HIDDEN);
+        return;
+    }
+
+    char icon_utf8[5] = {0};
+
+    if (!mdi_icon_codepoint_to_utf8(
+            codepoint,
+            icon_utf8,
+            sizeof(icon_utf8))) {
+        lv_obj_add_flag(ctx->icon_label, LV_OBJ_FLAG_HIDDEN);
+        return;
+    }
+
+    lv_obj_set_style_text_font(
+        ctx->icon_label,
+        font,
+        LV_PART_MAIN);
+
+    lv_label_set_text(
+        ctx->icon_label,
+        icon_utf8);
+
+    if (ctx->show_icon) {
+        lv_obj_clear_flag(
+            ctx->icon_label,
+            LV_OBJ_FLAG_HIDDEN);
+    }
+}
 
 static void slider_set_value_label(lv_obj_t *label, int value)
 {
