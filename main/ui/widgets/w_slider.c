@@ -298,7 +298,7 @@ static void slider_apply_icon(w_slider_ctx_t *ctx, const char *icon_name)
     const char *requested =
         (icon_name != NULL && icon_name[0] != '\0')
             ? icon_name
-            : "mdi:tune-vertical";
+            "mdi:swap-vertical"
 
     uint32_t codepoint = 0;
 
@@ -307,7 +307,7 @@ static void slider_apply_icon(w_slider_ctx_t *ctx, const char *icon_name)
          * Fall back to a known Slider-style icon if the configured
          * icon is not available in the embedded MDI registry.
          */
-        if (!mdi_icon_lookup("mdi:tune-vertical", &codepoint)) {
+        if (!mdi_icon_lookup("mdi:swap-vertical", &codepoint)) {
             lv_obj_add_flag(ctx->icon_label, LV_OBJ_FLAG_HIDDEN);
             return;
         }
