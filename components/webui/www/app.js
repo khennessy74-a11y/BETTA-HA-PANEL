@@ -5172,25 +5172,35 @@ function renderInspector() {
   }
   
  
-  if (isButton) {
-    const accent = normalizeHexColor(widget.button_accent_color, DEFAULT_BUTTON_ACCENT_COLOR);
-    const buttonMode = normalizeButtonMode(widget.button_mode);
-    widget.button_accent_color = accent;
-    widget.button_mode = buttonMode;
-    if (el.fButtonAccentColor) {
-      el.fButtonAccentColor.value = accent;
-    }
-    if (el.fButtonMode) {
-      el.fButtonMode.value = buttonMode;
-    }
-  } else {
-    if (el.fButtonAccentColor) {
-      el.fButtonAccentColor.value = DEFAULT_BUTTON_ACCENT_COLOR;
-    }
-    if (el.fButtonMode) {
-      el.fButtonMode.value = DEFAULT_BUTTON_MODE;
-    }
+if (isButton) {
+  const appearance = normalizeButtonAppearance(widget.button_appearance);
+  const accent = normalizeHexColor(widget.button_accent_color, DEFAULT_BUTTON_ACCENT_COLOR);
+  const buttonMode = normalizeButtonMode(widget.button_mode);
+
+  widget.button_appearance = appearance;
+  widget.button_accent_color = accent;
+  widget.button_mode = buttonMode;
+
+  if (el.fButtonAppearance) {
+    el.fButtonAppearance.value = appearance;
   }
+  if (el.fButtonAccentColor) {
+    el.fButtonAccentColor.value = accent;
+  }
+  if (el.fButtonMode) {
+    el.fButtonMode.value = buttonMode;
+  }
+} else {
+  if (el.fButtonAppearance) {
+    el.fButtonAppearance.value = DEFAULT_BUTTON_APPEARANCE;
+  }
+  if (el.fButtonAccentColor) {
+    el.fButtonAccentColor.value = DEFAULT_BUTTON_ACCENT_COLOR;
+  }
+  if (el.fButtonMode) {
+    el.fButtonMode.value = DEFAULT_BUTTON_MODE;
+  }
+}
   if (isSlider) {
     const sliderEntityDomain = normalizeSliderEntityDomain(widget.slider_entity_domain);
     const direction = normalizeSliderDirection(widget.slider_direction);
