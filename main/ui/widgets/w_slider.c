@@ -12,6 +12,7 @@
 #include "cJSON.h"
 
 #include "ui/fonts/app_text_fonts.h"
+#include "ui/fonts/mdi_font_registry.h"
 #include "ui/theme/theme_default.h"
 #include "ui/ui_i18n.h"
 #include "ui/ui_bindings.h"
@@ -29,9 +30,13 @@ typedef struct {
     char entity_id[APP_MAX_ENTITY_ID_LEN];
     lv_obj_t *card;
     lv_obj_t *title_label;
+    lv_obj_t *icon_label;
     lv_obj_t *state_label;
     lv_obj_t *value_label;
     lv_obj_t *slider;
+    bool show_title;
+    bool show_icon;
+    bool show_state;
     w_slider_direction_t direction_cfg;
     w_slider_direction_t direction_effective;
     lv_color_t accent_color;
