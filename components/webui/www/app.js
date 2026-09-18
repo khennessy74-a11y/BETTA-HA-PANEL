@@ -5623,13 +5623,34 @@ if (isButton) {
     if (el.fSliderAccentColor) {
       el.fSliderAccentColor.value = accent;
     }
-  } else {
+   } else {
     if (el.fSliderEntityDomain) {
       el.fSliderEntityDomain.value = DEFAULT_SLIDER_ENTITY_DOMAIN;
     }
+
+    if (el.fSliderShowTitle) {
+      el.fSliderShowTitle.value = "true";
+    }
+
+    if (el.fSliderShowIcon) {
+      el.fSliderShowIcon.value = "true";
+    }
+
+    if (el.fSliderShowState) {
+      el.fSliderShowState.value = "true";
+    }
+
+    if (el.fSliderIconMode) {
+      el.fSliderIconMode.value = "automatic";
+    }
+
+    setSliderCustomIconValue("mdi:swap-vertical");
+    updateSliderIconControls();
+
     if (el.fSliderDirection) {
       el.fSliderDirection.value = DEFAULT_SLIDER_DIRECTION;
     }
+
     if (el.fSliderAccentColor) {
       el.fSliderAccentColor.value = DEFAULT_SLIDER_ACCENT_COLOR;
     }
