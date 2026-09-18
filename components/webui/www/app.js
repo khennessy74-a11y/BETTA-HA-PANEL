@@ -3498,6 +3498,66 @@ function inspectorSliderEntityDomain() {
   }
   return normalizeSliderEntityDomain(selectedWidget()?.slider_entity_domain);
 }
+function setButtonCustomIconValue(iconName) {
+  if (!el.fButtonCustomIcon) {
+    return;
+  }
+
+  const value =
+    typeof iconName === "string"
+      ? iconName.trim()
+      : "";
+
+  const select = el.fButtonCustomIcon;
+
+  /*
+   * Remove a previously-added compatibility option.
+   */
+  const previous =
+    select.querySelector(
+      'option[data-legacy-button-icon="true"]'
+    );
+
+  if (previous) {
+    previous.remove();
+  }
+
+  if (!value) {
+    select.value = "";
+    return;
+  }
+
+  /*
+   * Use the normal picker option when the configured
+   * icon is part of BETTA's supported icon list.
+   */
+  const known = Array.from(select.options).some(
+    (option) => option.value === value
+  );
+
+  if (known) {
+    select.value = value;
+    return;
+  }
+
+  /*
+   * Preserve icons from older layouts even when they
+   * are not currently offered by the picker.
+   */
+  const option = document.createElement("option");
+
+  option.value = value;
+  option.textContent =
+    `${value} (existing)`;
+
+  option.dataset.legacyButtonIcon = "true";
+
+  select.appendChild(option);
+  select.value = value;
+}
+
+
+function updateButtonIconControls() {
 function updateButtonIconControls() {
   if (
     !el.fButtonAppearance ||
@@ -5259,14 +5319,13 @@ if (isButton) {
   }
 
   if (el.fButtonCustomIcon) {
-    el.fButtonCustomIcon.value = configuredIcon;
+    setButtonCustomIconValue(configuredIcon);
   }
 
   updateButtonIconControls();
 } else {
   if (el.fButtonAppearance) {
-    el.fButtonAppearance.value =
-      DEFAULT_BUTTON_APPEARANCE;
+   setButtonCustomIconValue("");
   }
 
   if (el.fButtonAccentColor) {
