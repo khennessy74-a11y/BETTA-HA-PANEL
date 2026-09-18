@@ -4677,16 +4677,26 @@ function movePage(draggedPageId, targetPageId, placeAfter = false) {
    * Dropping immediately before or after Home means inserting
    * at the boundary between the left and right page groups.
    */
-  if (targetPageId === home.id) {
-    const leftCount = Math.ceil((pages.length - 1) / 2);
+ if (targetPageId === home.id) {
+  const totalMovable = pages.length - 1;
+  const leftCount = Math.ceil(totalMovable / 2);
 
-    const insertIndex = Math.min(
-      leftCount,
-      movable.length
-    );
+  /*
+   * Home is the fixed divider:
+   *
+   * drop before Home -> last slot on the left
+   * drop after Home  -> first slot on the right
+   *
+   * Both positions meet at the same boundary in the movable
+   * left-to-right sequence.
+   */
+  const insertIndex = Math.min(
+    leftCount,
+    movable.length
+  );
 
-    movable.splice(insertIndex, 0, draggedPage);
-  } else {
+  movable.splice(insertIndex, 0, draggedPage);
+} else {
     const targetIndex = movable.findIndex(
       (page) => page.id === targetPageId
     );
