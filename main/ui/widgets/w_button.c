@@ -954,7 +954,7 @@ ctx->card = card;
          * rule so a one-shot entity is never driven via switch-toggle. */
         ctx->mode = W_BUTTON_MODE_RUN;
     }
-    cctx->show_status =
+    ctx->show_status =
     def->show_state &&
     !is_media_player &&
     !(is_runnable &&
