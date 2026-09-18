@@ -1591,6 +1591,7 @@ const el = {
   fSecondaryEntityLabel: document.getElementById("fSecondaryEntityLabel"),
   fSecondaryEntity: document.getElementById("fSecondaryEntity"),
   buttonOptions: document.getElementById("buttonOptions"),
+  fButtonAppearance: document.getElementById("fButtonAppearance"),
   fButtonMode: document.getElementById("fButtonMode"),
   fSliderEntityDomain: document.getElementById("fSliderEntityDomain"),
   fButtonAccentColor: document.getElementById("fButtonAccentColor"),
