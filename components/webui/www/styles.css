@@ -295,6 +295,13 @@ h2 {
 .list-item.dragging .page-drag-handle {
   cursor: grabbing;
 }
+.list-item.drag-over-before {
+  box-shadow: 0 -3px 0 var(--accent);
+}
+
+.list-item.drag-over-after {
+  box-shadow: 0 3px 0 var(--accent);
+}
 
 .list-item.active {
   border-color: var(--accent);
