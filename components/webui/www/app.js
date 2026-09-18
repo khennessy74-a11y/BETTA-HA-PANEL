@@ -4640,16 +4640,6 @@ function renderPages() {
     li.draggable = false;
 li.dataset.pageId = page.id;
 
-li.addEventListener("dragstart", (ev) => {
-  ev.dataTransfer.effectAllowed = "move";
-  ev.dataTransfer.setData("text/plain", page.id);
-  li.classList.add("dragging");
-});
-
-li.addEventListener("dragend", () => {
-  li.classList.remove("dragging");
-});
-
 li.addEventListener("dragover", (ev) => {
   ev.preventDefault();
   ev.dataTransfer.dropEffect = "move";
@@ -4664,17 +4654,16 @@ li.addEventListener("drop", (ev) => {
 
   movePageBefore(draggedPageId, page.id);
 });
-    const dragHandle = document.createElement("span");
-    dragHandle.className = "page-drag-handle";
-    dragHandle.textContent = "☰";
-    dragHandle.title = "Drag to reorder page";
-    dragHandle.setAttribute("aria-label", "Drag to reorder page");
-    dragHandle.draggable = true;
+
+const dragHandle = document.createElement("span");
+dragHandle.className = "page-drag-handle";
+dragHandle.textContent = "☰";
+dragHandle.title = "Drag to reorder page";
+dragHandle.setAttribute("aria-label", "Drag to reorder page");
+dragHandle.draggable = true;
 
 dragHandle.addEventListener("dragstart", (ev) => {
   ev.stopPropagation();
-
-  li.draggable = true;
 
   ev.dataTransfer.effectAllowed = "move";
   ev.dataTransfer.setData("text/plain", page.id);
@@ -4684,11 +4673,10 @@ dragHandle.addEventListener("dragstart", (ev) => {
 
 dragHandle.addEventListener("dragend", (ev) => {
   ev.stopPropagation();
-
-  li.draggable = false;
   li.classList.remove("dragging");
 });
-    li.appendChild(dragHandle);
+
+li.appendChild(dragHandle);
 
     const label = document.createElement("span");
     const badge = isEnergyPage(page) ? " ⚡" : "";
