@@ -286,6 +286,14 @@ h2 {
 .page-drag-handle:hover {
   color: var(--text);
 }
+.page-drag-handle.fixed {
+  cursor: default;
+  opacity: 0.65;
+}
+
+.page-drag-handle.fixed:hover {
+  color: var(--muted);
+}
 
 .list-item.dragging {
   opacity: 0.45;
