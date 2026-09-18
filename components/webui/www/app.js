@@ -5348,8 +5348,7 @@ if (isButton) {
   updateButtonIconControls();
 }
 
-  if (isSlider) {
- 
+  
   if (isSlider) {
     const sliderEntityDomain = normalizeSliderEntityDomain(widget.slider_entity_domain);
     const direction = normalizeSliderDirection(widget.slider_direction);
