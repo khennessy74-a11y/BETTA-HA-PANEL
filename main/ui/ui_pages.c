@@ -370,19 +370,19 @@ static void ui_pages_create_topbar(lv_obj_t *screen)
     lv_label_set_text(s_time_label, "--:--");
 
     s_api_icon = lv_label_create(s_topbar);
-    lv_obj_set_width(s_api_icon, 86);
-    lv_obj_align(s_api_icon, LV_ALIGN_RIGHT_MID, -114, 0);
+    lv_obj_set_width(s_api_icon, 76);
+    lv_obj_align(s_api_icon, LV_ALIGN_RIGHT_MID, -72, 0);
     ui_pages_style_topbar_chip(s_api_icon);
-    char api_text[32] = {0};
+        char api_text[32] = {0};
     snprintf(api_text, sizeof(api_text), "%s %s", ui_i18n_get("topbar.ha", "HA"), LV_SYMBOL_CLOSE);
     lv_label_set_text(s_api_icon, api_text);
 
-    s_wifi_icon = lv_label_create(s_topbar);
-    lv_obj_set_width(s_wifi_icon, 96);
+        s_wifi_icon = lv_label_create(s_topbar);
+    lv_obj_set_width(s_wifi_icon, 48);
     lv_obj_align(s_wifi_icon, LV_ALIGN_RIGHT_MID, -12, 0);
     ui_pages_style_topbar_chip(s_wifi_icon);
     lv_label_set_text(s_wifi_icon, LV_SYMBOL_CLOSE);
-}
+    }
 
 static void ui_pages_create_nav(lv_obj_t *screen)
 {
