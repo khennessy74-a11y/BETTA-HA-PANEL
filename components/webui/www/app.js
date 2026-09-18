@@ -5749,6 +5749,11 @@ function applyInspector(options = {}) {
     el.fButtonAccentColor?.value,
     DEFAULT_BUTTON_ACCENT_COLOR
   );
+  widget.show_title =
+    el.fButtonShowTitle?.value !== "false";
+
+  widget.show_state =
+    el.fButtonShowState?.value !== "false";
 
   const iconMode =
     el.fButtonIconMode?.value === "custom"
@@ -6224,6 +6229,18 @@ bindInspectorAutoApply(
   el.fButtonCustomIcon,
   ["input", "change"],
   { softEntityValidation: true }
+);
+
+  bindInspectorAutoApply(
+  el.fButtonShowTitle,
+  ["change"],
+  { refreshInspector: true, softEntityValidation: true }
+);
+
+  bindInspectorAutoApply(
+  el.fButtonShowState,
+  ["change"],
+  { refreshInspector: true, softEntityValidation: true }
 );
 
   bindInspectorAutoApply(el.fButtonAccentColor, ["input", "change"], { softEntityValidation: true });
