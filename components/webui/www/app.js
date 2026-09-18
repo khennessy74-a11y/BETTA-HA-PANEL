@@ -5217,9 +5217,26 @@ function renderInspector() {
   
  
 if (isButton) {
-  const appearance = normalizeButtonAppearance(widget.button_appearance);
-  const accent = normalizeHexColor(widget.button_accent_color, DEFAULT_BUTTON_ACCENT_COLOR);
-  const buttonMode = normalizeButtonMode(widget.button_mode);
+  const appearance = normalizeButtonAppearance(
+    widget.button_appearance
+  );
+  const accent = normalizeHexColor(
+    widget.button_accent_color,
+    DEFAULT_BUTTON_ACCENT_COLOR
+  );
+  const buttonMode = normalizeButtonMode(
+    widget.button_mode
+  );
+
+  const configuredIcon =
+    typeof widget.icon === "string"
+      ? widget.icon.trim()
+      : "";
+
+  const iconMode =
+    configuredIcon.length > 0
+      ? "custom"
+      : "automatic";
 
   widget.button_appearance = appearance;
   widget.button_accent_color = accent;
@@ -5228,13 +5245,50 @@ if (isButton) {
   if (el.fButtonAppearance) {
     el.fButtonAppearance.value = appearance;
   }
+
   if (el.fButtonAccentColor) {
     el.fButtonAccentColor.value = accent;
   }
+
   if (el.fButtonMode) {
     el.fButtonMode.value = buttonMode;
   }
+
+  if (el.fButtonIconMode) {
+    el.fButtonIconMode.value = iconMode;
+  }
+
+  if (el.fButtonCustomIcon) {
+    el.fButtonCustomIcon.value = configuredIcon;
+  }
+
+  updateButtonIconControls();
 } else {
+  if (el.fButtonAppearance) {
+    el.fButtonAppearance.value =
+      DEFAULT_BUTTON_APPEARANCE;
+  }
+
+  if (el.fButtonAccentColor) {
+    el.fButtonAccentColor.value =
+      DEFAULT_BUTTON_ACCENT_COLOR;
+  }
+
+  if (el.fButtonMode) {
+    el.fButtonMode.value =
+      DEFAULT_BUTTON_MODE;
+  }
+
+  if (el.fButtonIconMode) {
+    el.fButtonIconMode.value = "automatic";
+  }
+
+  if (el.fButtonCustomIcon) {
+    el.fButtonCustomIcon.value = "";
+  }
+
+  updateButtonIconControls();
+}
   if (el.fButtonAppearance) {
     el.fButtonAppearance.value = DEFAULT_BUTTON_APPEARANCE;
   }
