@@ -5653,11 +5653,27 @@ function applyInspector(options = {}) {
   widget.button_appearance = normalizeButtonAppearance(
     el.fButtonAppearance?.value
   );
+
   widget.button_mode = buttonMode;
+
   widget.button_accent_color = normalizeHexColor(
     el.fButtonAccentColor?.value,
     DEFAULT_BUTTON_ACCENT_COLOR
   );
+
+  const iconMode =
+    el.fButtonIconMode?.value === "custom"
+      ? "custom"
+      : "automatic";
+
+  if (iconMode === "custom") {
+    widget.icon =
+      typeof el.fButtonCustomIcon?.value === "string"
+        ? el.fButtonCustomIcon.value.trim()
+        : "";
+  } else {
+    widget.icon = "";
+  }
 } else {
   delete widget.button_appearance;
   delete widget.button_mode;
