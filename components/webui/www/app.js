@@ -6609,7 +6609,6 @@ if (el.fSliderShowState) {
     }
   });
 }
-  }
   if (el.fSecondaryEntity) {
     el.fSecondaryEntity.oninput = () => scheduleEntityAutocomplete("secondary");
     el.fSecondaryEntity.onfocus = () => scheduleEntityAutocomplete("secondary", true);
