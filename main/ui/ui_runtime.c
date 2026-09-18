@@ -674,7 +674,12 @@ static bool ui_runtime_widget_from_json(
         cJSON_GetObjectItemCaseSensitive(
             widget_json,
             "button_mode");
-
+    
+    cJSON *button_appearance =
+    cJSON_GetObjectItemCaseSensitive(
+        widget_json,
+        "button_appearance");
+    
     cJSON *graph_line_color =
         cJSON_GetObjectItemCaseSensitive(
             widget_json,
@@ -876,6 +881,27 @@ static bool ui_runtime_widget_from_json(
             sizeof(out->button_mode),
             "%s",
             button_mode->valuestring);
+    }
+    
+    /*
+     * Existing layouts do not contain button_appearance,
+     * so default them to the original switch control.
+     */
+        snprintf(
+            out->button_appearance,
+            sizeof(out->button_appearance),
+            "%s",
+            "switch");
+
+    if (cJSON_IsString(button_appearance) &&
+        button_appearance->valuestring != NULL &&
+        strcmp(button_appearance->valuestring, "icon") == 0) {
+
+        snprintf(
+            out->button_appearance,
+            sizeof(out->button_appearance),
+            "%s",
+            "icon");
     }
 
     if (cJSON_IsString(graph_line_color) &&
