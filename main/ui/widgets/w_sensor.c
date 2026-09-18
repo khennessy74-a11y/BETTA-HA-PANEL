@@ -12,6 +12,7 @@
 #include "esp_timer.h"
 
 #include "ui/fonts/app_text_fonts.h"
+#include "ui/fonts/mdi_font_registry.h"
 #include "ui/ui_i18n.h"
 #include "ui/ui_memory.h"
 #include "ui/theme/theme_default.h"
@@ -73,13 +74,76 @@
 typedef struct {
     lv_obj_t *card;
     lv_obj_t *title_label;
+    lv_obj_t *icon_label;
     lv_obj_t *value_label;
     lv_obj_t *age_label;
     int64_t last_update_ms;
     bool has_timestamp;
     bool unavailable;
+    bool show_title;
+    bool show_icon;
+    bool show_state;
     lv_timer_t *age_timer;
 } w_sensor_ctx_t;
+
+static bool sensor_apply_icon(w_sensor_ctx_t *ctx, const char *icon_name)
+{
+    if (ctx == NULL || ctx->icon_label == NULL) {
+        return false;
+    }
+
+    const char *name =
+        (icon_name != NULL && icon_name[0] != '\0')
+            ? icon_name
+            : "mdi:gauge";
+
+    uint32_t codepoint = 0;
+
+    if (!mdi_icon_lookup(name, &codepoint)) {
+        /*
+         * Automatic/default Sensor icon.
+         * mdi:gauge is part of the embedded MDI registry.
+         */
+        if (!mdi_icon_lookup("mdi:gauge", &codepoint)) {
+            return false;
+        }
+    }
+
+    const lv_font_t *font = mdi_font_icon_56();
+    if (font == NULL) {
+        font = mdi_font_large();
+    }
+
+    if (font == NULL) {
+        return false;
+    }
+
+    lv_font_glyph_dsc_t glyph_dsc = {0};
+
+    if (!lv_font_get_glyph_dsc(
+            font,
+            &glyph_dsc,
+            codepoint,
+            0)) {
+        return false;
+    }
+
+    char utf8[5] = {0};
+
+    if (!mdi_icon_codepoint_to_utf8(codepoint, utf8)) {
+        return false;
+    }
+
+    lv_obj_set_style_text_font(
+        ctx->icon_label,
+        font,
+        LV_PART_MAIN);
+
+    lv_label_set_text(ctx->icon_label, utf8);
+
+    return true;
+}
+
 
 static bool sensor_state_is_unavailable(const char *state_text)
 {
@@ -130,7 +194,9 @@ static void sensor_update_age_label(w_sensor_ctx_t *ctx)
         return;
     }
 
-    if (ctx->unavailable || !ctx->has_timestamp) {
+    if (!ctx->show_state ||
+    ctx->unavailable ||
+    !ctx->has_timestamp) {
         lv_obj_add_flag(ctx->age_label, LV_OBJ_FLAG_HIDDEN);
         return;
     }
@@ -171,9 +237,14 @@ static void sensor_update_age_label(w_sensor_ctx_t *ctx)
 
 static void sensor_apply_layout(w_sensor_ctx_t *ctx)
 {
-    if (ctx == NULL || ctx->card == NULL || ctx->title_label == NULL || ctx->value_label == NULL || ctx->age_label == NULL) {
-        return;
-    }
+    if (ctx == NULL ||
+    ctx->card == NULL ||
+    ctx->title_label == NULL ||
+    ctx->icon_label == NULL ||
+    ctx->value_label == NULL ||
+    ctx->age_label == NULL) {
+    return;
+}
 
     lv_obj_t *card = ctx->card;
     lv_obj_update_layout(card);
@@ -193,15 +264,37 @@ static void sensor_apply_layout(w_sensor_ctx_t *ctx)
     lv_obj_set_style_text_font(ctx->age_label, SENSOR_META_FONT, LV_PART_MAIN);
 
     lv_obj_set_width(ctx->title_label, content_w);
+    lv_obj_set_width(ctx->icon_label, content_w);
     lv_obj_set_width(ctx->value_label, content_w);
     lv_obj_set_width(ctx->age_label, content_w);
     lv_obj_set_style_text_align(ctx->title_label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+    lv_obj_set_style_text_align(ctx->icon_label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     lv_obj_set_style_text_align(ctx->value_label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     lv_obj_set_style_text_align(ctx->age_label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
 
-    lv_obj_align(ctx->title_label, LV_ALIGN_TOP_MID, 0, APP_UI_TILE_LAYOUT_TUNED ? 2 : 0);
+   if (ctx->show_title) {
+    lv_obj_align(
+        ctx->title_label,
+        LV_ALIGN_TOP_MID,
+        0,
+        APP_UI_TILE_LAYOUT_TUNED ? 2 : 0);
+}
 
-    const bool show_age = !lv_obj_has_flag(ctx->age_label, LV_OBJ_FLAG_HIDDEN);
+const bool show_icon =
+    ctx->show_icon &&
+    !lv_obj_has_flag(ctx->icon_label, LV_OBJ_FLAG_HIDDEN);
+
+const bool show_age =
+    ctx->show_state &&
+    !lv_obj_has_flag(ctx->age_label, LV_OBJ_FLAG_HIDDEN);
+
+if (show_icon) {
+    lv_obj_align(
+        ctx->icon_label,
+        LV_ALIGN_CENTER,
+        0,
+        ctx->show_state ? -38 : 0);
+}
     lv_coord_t min_dim = (content_w < content_h) ? content_w : content_h;
     lv_coord_t value_y = 0;
     if (show_age) {
@@ -213,7 +306,17 @@ static void sensor_apply_layout(w_sensor_ctx_t *ctx)
             value_y = -10;
         }
     }
-    lv_obj_align(ctx->value_label, LV_ALIGN_CENTER, 0, value_y);
+    if (ctx->show_state) {
+    if (show_icon) {
+        value_y += 30;
+    }
+
+    lv_obj_align(
+        ctx->value_label,
+        LV_ALIGN_CENTER,
+        0,
+        value_y);
+}
 
     if (show_age) {
         lv_obj_align_to(ctx->age_label, ctx->value_label, LV_ALIGN_OUT_BOTTOM_MID, 0, 4);
@@ -296,7 +399,12 @@ esp_err_t w_sensor_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widge
     lv_label_set_text(title, def->title[0] ? def->title : def->id);
     lv_obj_set_style_text_color(title, theme_default_color_text_muted(), LV_PART_MAIN);
     lv_obj_set_style_text_font(title, APP_FONT_TEXT_20, LV_PART_MAIN);
-
+    lv_obj_t *icon = lv_label_create(card);
+        lv_label_set_text(icon, "");
+        lv_obj_set_style_text_color(
+        icon,
+        theme_default_color_text_primary(),
+        LV_PART_MAIN);
     lv_obj_t *value = lv_label_create(card);
     lv_label_set_text(value, "--");
     lv_obj_set_style_text_color(value, theme_default_color_text_primary(), LV_PART_MAIN);
@@ -316,11 +424,34 @@ esp_err_t w_sensor_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widge
 
     ctx->card = card;
     ctx->title_label = title;
+    ctx->icon_label = icon;
     ctx->value_label = value;
     ctx->age_label = age;
+
+    ctx->show_title = def->show_title;
+    ctx->show_icon = def->show_icon;
+    ctx->show_state = def->show_state;
+
     ctx->last_update_ms = 0;
     ctx->has_timestamp = false;
     ctx->unavailable = false;
+    if (!ctx->show_title) {
+    lv_obj_add_flag(title, LV_OBJ_FLAG_HIDDEN);
+}
+
+if (!ctx->show_state) {
+    lv_obj_add_flag(value, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(age, LV_OBJ_FLAG_HIDDEN);
+}
+
+if (ctx->show_icon) {
+    if (!sensor_apply_icon(ctx, def->icon)) {
+        lv_obj_add_flag(icon, LV_OBJ_FLAG_HIDDEN);
+    }
+} else {
+    lv_obj_add_flag(icon, LV_OBJ_FLAG_HIDDEN);
+}
+    
     ctx->age_timer = lv_timer_create(sensor_age_timer_cb, 30000, ctx);
 
     lv_obj_add_event_cb(card, w_sensor_event_cb, LV_EVENT_DELETE, ctx);
