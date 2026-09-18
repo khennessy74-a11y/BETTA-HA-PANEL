@@ -3498,6 +3498,36 @@ function inspectorSliderEntityDomain() {
   }
   return normalizeSliderEntityDomain(selectedWidget()?.slider_entity_domain);
 }
+function updateButtonIconControls() {
+  if (
+    !el.fButtonAppearance ||
+    !el.fButtonIconMode ||
+    !el.fButtonIconModeWrap ||
+    !el.fButtonCustomIconWrap
+  ) {
+    return;
+  }
+
+  const appearance = normalizeButtonAppearance(
+    el.fButtonAppearance.value
+  );
+
+  const usesIcon = appearance === "icon";
+
+  el.fButtonIconModeWrap.classList.toggle(
+    "hidden",
+    !usesIcon
+  );
+
+  const customIcon =
+    usesIcon &&
+    el.fButtonIconMode.value === "custom";
+
+  el.fButtonCustomIconWrap.classList.toggle(
+    "hidden",
+    !customIcon
+  );
+}
 function inspectorButtonAppearance() {
   if (el.fButtonAppearance) {
     return normalizeButtonAppearance(el.fButtonAppearance.value);
