@@ -1796,6 +1796,7 @@ function normalizeLayoutWidgets(layout) {
     for (const widget of page.widgets) {
       if (!widget || typeof widget !== "object") continue;
       if (widget.type === "button") {
+        widget.button_appearance = normalizeButtonAppearance(widget.button_appearance);
         widget.button_accent_color = normalizeHexColor(widget.button_accent_color, DEFAULT_BUTTON_ACCENT_COLOR);
         const entityId = String(widget.entity_id || "");
         const isRunnableEntity = entityId.startsWith("script.") || entityId.startsWith("scene.");
