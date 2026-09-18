@@ -4637,6 +4637,33 @@ function renderPages() {
   for (const page of editor.layout.pages) {
     const li = document.createElement("li");
     li.className = `list-item ${page.id === editor.selectedPageId ? "active selected" : ""}`;
+    li.draggable = true;
+li.dataset.pageId = page.id;
+
+li.addEventListener("dragstart", (ev) => {
+  ev.dataTransfer.effectAllowed = "move";
+  ev.dataTransfer.setData("text/plain", page.id);
+  li.classList.add("dragging");
+});
+
+li.addEventListener("dragend", () => {
+  li.classList.remove("dragging");
+});
+
+li.addEventListener("dragover", (ev) => {
+  ev.preventDefault();
+  ev.dataTransfer.dropEffect = "move";
+});
+
+li.addEventListener("drop", (ev) => {
+  ev.preventDefault();
+  ev.stopPropagation();
+
+  const draggedPageId =
+    ev.dataTransfer.getData("text/plain");
+
+  movePageBefore(draggedPageId, page.id);
+});
 
     const label = document.createElement("span");
     const badge = isEnergyPage(page) ? " ⚡" : "";
