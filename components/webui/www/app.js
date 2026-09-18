@@ -6046,10 +6046,17 @@ function bindUi() {
   }
   bindInspectorAutoApply(el.fTitle, ["input"], { softEntityValidation: true });
   bindInspectorAutoApply(
+ bindInspectorAutoApply(
   el.fButtonAppearance,
   ["change"],
   { refreshInspector: true, softEntityValidation: true }
-  );
+);
+
+if (el.fButtonAppearance) {
+  el.fButtonAppearance.addEventListener("change", () => {
+    updateButtonIconControls();
+  });
+}
   bindInspectorAutoApply(el.fButtonAccentColor, ["input", "change"], { softEntityValidation: true });
   bindInspectorAutoApply(el.fSliderDirection, ["change"], { softEntityValidation: true });
   bindInspectorAutoApply(el.fSliderAccentColor, ["input", "change"], { softEntityValidation: true });
