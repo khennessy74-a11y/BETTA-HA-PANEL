@@ -6120,10 +6120,36 @@ if (widgetType === "timer") {
   }
 }
 
-if (widgetType === "slider") {
+  if (widgetType === "slider") {
     widget.slider_entity_domain = sliderDomain;
-    widget.slider_direction = normalizeSliderDirection(el.fSliderDirection?.value);
-    widget.slider_accent_color = normalizeHexColor(el.fSliderAccentColor?.value, DEFAULT_SLIDER_ACCENT_COLOR);
+    widget.slider_direction =
+      normalizeSliderDirection(el.fSliderDirection?.value);
+    widget.slider_accent_color =
+      normalizeHexColor(
+        el.fSliderAccentColor?.value,
+        DEFAULT_SLIDER_ACCENT_COLOR
+      );
+
+    widget.show_title =
+      el.fSliderShowTitle?.value !== "false";
+
+    widget.show_icon =
+      el.fSliderShowIcon?.value !== "false";
+
+    widget.show_state =
+      el.fSliderShowState?.value !== "false";
+
+    const sliderIconMode =
+      el.fSliderIconMode?.value === "custom"
+        ? "custom"
+        : "automatic";
+
+    if (sliderIconMode === "custom") {
+      widget.icon =
+        el.fSliderCustomIcon?.value?.trim() || "";
+    } else {
+      widget.icon = "";
+    }
   } else {
     delete widget.slider_entity_domain;
     delete widget.slider_direction;
