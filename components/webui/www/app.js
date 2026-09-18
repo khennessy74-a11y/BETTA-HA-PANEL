@@ -5325,7 +5325,8 @@ if (isButton) {
   updateButtonIconControls();
 } else {
   if (el.fButtonAppearance) {
-   setButtonCustomIconValue("");
+    el.fButtonAppearance.value =
+      DEFAULT_BUTTON_APPEARANCE;
   }
 
   if (el.fButtonAccentColor) {
@@ -5342,9 +5343,10 @@ if (isButton) {
     el.fButtonIconMode.value = "automatic";
   }
 
-  if (el.fButtonCustomIcon) {
-    el.fButtonCustomIcon.value = "";
-  }
+  setButtonCustomIconValue("");
+
+  updateButtonIconControls();
+}
 
   updateButtonIconControls();
 }
