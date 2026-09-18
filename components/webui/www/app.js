@@ -5127,6 +5127,16 @@ function renderInspector() {
   if (el.heatingOptions) {
     el.heatingOptions.classList.toggle("hidden", !isHeating);
   }
+  const timerOptions =
+    document.getElementById("timerOptions");
+
+  if (timerOptions) {
+    timerOptions.classList.toggle(
+      "hidden",
+      widget.type !== "timer"
+    );
+  }
+ 
   if (isButton) {
     const accent = normalizeHexColor(widget.button_accent_color, DEFAULT_BUTTON_ACCENT_COLOR);
     const buttonMode = normalizeButtonMode(widget.button_mode);
