@@ -4636,55 +4636,91 @@ function movePage(draggedPageId, targetPageId, placeAfter = false) {
 
   if (pages.length <= 1) return;
 
-  // Page 0 is always Home/Main and must remain page 0 internally.
+  // Page 0 is permanently Home/Main.
   const home = pages[0];
 
-  // Home is a fixed centre anchor, so it cannot be dragged.
+  // Home itself can never be moved.
   if (draggedPageId === home.id) return;
 
-  // Work in the same left-to-right order shown by the physical panel.
+  /*
+   * Get the pages exactly as they appear physically from
+   * left to right on the panel.
+   */
   const physical = pagesInPhysicalNavOrder();
 
-  const fromIndex = physical.findIndex(
+  /*
+   * Remove Home from the movable sequence.
+   *
+   * Example with five pages:
+   *
+   *   C | A | HOME | B | D
+   *
+   * becomes:
+   *
+   *   C | A | B | D
+   */
+  const movable = physical.filter(
+    (page) => page.id !== home.id
+  );
+
+  const fromIndex = movable.findIndex(
     (page) => page.id === draggedPageId
   );
 
-  const targetIndex = physical.findIndex(
-    (page) => page.id === targetPageId
-  );
+  if (fromIndex < 0) return;
 
-  if (fromIndex < 0 || targetIndex < 0) return;
-
-  const [draggedPage] = physical.splice(fromIndex, 1);
-
-  const adjustedTargetIndex = physical.findIndex(
-    (page) => page.id === targetPageId
-  );
-
-  if (adjustedTargetIndex < 0) return;
-
-  const insertIndex = placeAfter
-    ? adjustedTargetIndex + 1
-    : adjustedTargetIndex;
-
-  physical.splice(insertIndex, 0, draggedPage);
+  const [draggedPage] = movable.splice(fromIndex, 1);
 
   /*
-   * Home must remain the fixed centre anchor.
+   * Home is a fixed divider.
    *
-   * Remove it from the physical sequence, then convert the remaining
-   * left/right physical positions back into the alternating internal
-   * order expected by ui_pages_apply_tab_style().
+   * Dropping immediately before or after Home means inserting
+   * at the boundary between the left and right page groups.
    */
-  const homeIndex = physical.findIndex(
-    (page) => page.id === home.id
-  );
+  if (targetPageId === home.id) {
+    const leftCount = Math.ceil((pages.length - 1) / 2);
 
-  if (homeIndex < 0) return;
+    const insertIndex = Math.min(
+      leftCount,
+      movable.length
+    );
 
-  const left = physical.slice(0, homeIndex);
-  const right = physical.slice(homeIndex + 1);
+    movable.splice(insertIndex, 0, draggedPage);
+  } else {
+    const targetIndex = movable.findIndex(
+      (page) => page.id === targetPageId
+    );
 
+    if (targetIndex < 0) return;
+
+    const insertIndex = placeAfter
+      ? targetIndex + 1
+      : targetIndex;
+
+    movable.splice(insertIndex, 0, draggedPage);
+  }
+
+  /*
+   * The number of physical slots on each side of Home is fixed
+   * by the total page count.
+   */
+  const leftCount = Math.ceil(movable.length / 2);
+
+  const left = movable.slice(0, leftCount);
+  const right = movable.slice(leftCount);
+
+  /*
+   * Convert physical left-to-right order back into the internal
+   * alternating order expected by ui_pages_apply_tab_style().
+   *
+   * Physical:
+   *
+   *   C | A | HOME | B | D
+   *
+   * Internal:
+   *
+   *   HOME, A, B, C, D
+   */
   const extras = [];
   const maxSideCount = Math.max(left.length, right.length);
 
@@ -4707,7 +4743,6 @@ function movePage(draggedPageId, targetPageId, placeAfter = false) {
 
   renderAll();
 }
-
 function renderPages() {
   el.pagesList.innerHTML = "";
   for (const page of pagesInPhysicalNavOrder()) {
