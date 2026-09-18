@@ -6000,6 +6000,11 @@ function bindUi() {
     el.fSecondaryEntity.onblur = () => autoApplyInspector();
   }
   bindInspectorAutoApply(el.fTitle, ["input"], { softEntityValidation: true });
+  bindInspectorAutoApply(
+  el.fButtonAppearance,
+  ["change"],
+  { refreshInspector: true, softEntityValidation: true }
+  );
   bindInspectorAutoApply(el.fButtonAccentColor, ["input", "change"], { softEntityValidation: true });
   bindInspectorAutoApply(el.fSliderDirection, ["change"], { softEntityValidation: true });
   bindInspectorAutoApply(el.fSliderAccentColor, ["input", "change"], { softEntityValidation: true });
