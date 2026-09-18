@@ -4637,7 +4637,7 @@ function renderPages() {
   for (const page of editor.layout.pages) {
     const li = document.createElement("li");
     li.className = `list-item ${page.id === editor.selectedPageId ? "active selected" : ""}`;
-    li.draggable = true;
+    li.draggable = false;
 li.dataset.pageId = page.id;
 
 li.addEventListener("dragstart", (ev) => {
@@ -4669,6 +4669,25 @@ li.addEventListener("drop", (ev) => {
     dragHandle.textContent = "☰";
     dragHandle.title = "Drag to reorder page";
     dragHandle.setAttribute("aria-label", "Drag to reorder page");
+    dragHandle.draggable = true;
+
+dragHandle.addEventListener("dragstart", (ev) => {
+  ev.stopPropagation();
+
+  li.draggable = true;
+
+  ev.dataTransfer.effectAllowed = "move";
+  ev.dataTransfer.setData("text/plain", page.id);
+
+  li.classList.add("dragging");
+});
+
+dragHandle.addEventListener("dragend", (ev) => {
+  ev.stopPropagation();
+
+  li.draggable = false;
+  li.classList.remove("dragging");
+});
     li.appendChild(dragHandle);
 
     const label = document.createElement("span");
