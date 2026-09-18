@@ -1717,6 +1717,16 @@ function normalizeButtonAppearance(value) {
     ? appearance
     : DEFAULT_BUTTON_APPEARANCE;
 }
+function normalizeButtonAppearance(value) {
+  const appearance =
+    typeof value === "string"
+      ? value.trim().toLowerCase()
+      : "";
+
+  return BUTTON_APPEARANCES.has(appearance)
+    ? appearance
+    : DEFAULT_BUTTON_APPEARANCE;
+}
 function normalizeButtonMode(value) {
   return BUTTON_MODES.has(value) ? value : DEFAULT_BUTTON_MODE;
 }
