@@ -604,10 +604,15 @@ static void slider_apply_layout(lv_obj_t *card, w_slider_ctx_t *ctx)
 
 static void slider_apply_visual(w_slider_ctx_t *ctx)
 {
-    if (ctx == NULL || ctx->card == NULL || ctx->title_label == NULL || ctx->state_label == NULL ||
-        ctx->value_label == NULL || ctx->slider == NULL) {
-        return;
-    }
+    if (ctx == NULL ||
+    ctx->card == NULL ||
+    ctx->title_label == NULL ||
+    ctx->icon_label == NULL ||
+    ctx->state_label == NULL ||
+    ctx->value_label == NULL ||
+    ctx->slider == NULL) {
+    return;
+}
 
     lv_obj_t *card = ctx->card;
 
@@ -625,6 +630,7 @@ static void slider_apply_visual(w_slider_ctx_t *ctx)
     lv_obj_set_style_bg_color(card, card_bg, LV_PART_MAIN);
     lv_obj_set_style_bg_opa(card, LV_OPA_COVER, LV_PART_MAIN);
     lv_obj_set_style_text_color(ctx->title_label, lv_color_hex(APP_UI_COLOR_TEXT_PRIMARY), LV_PART_MAIN);
+    lv_obj_set_style_text_color(ctx->icon_label, lv_color_hex(APP_UI_COLOR_TEXT_PRIMARY), LV_PART_MAIN);
     lv_obj_set_style_text_color(ctx->state_label, state_color, LV_PART_MAIN);
     lv_obj_set_style_text_color(ctx->value_label, value_color, LV_PART_MAIN);
 
