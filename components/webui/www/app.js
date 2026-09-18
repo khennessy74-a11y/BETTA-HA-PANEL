@@ -4983,6 +4983,16 @@ function renderCanvas() {
     box.style.zIndex = isEmptyTile ? "1" : "10";
     const previewState = isEmptyTile ? "design" : (editor.states.get(widget.entity_id) || "unavailable");
     let extraHint = "";
+    if (widget.type === "button") {
+  const appearance = normalizeButtonAppearance(
+    widget.button_appearance
+  );
+
+  extraHint =
+    appearance === "icon"
+      ? `<div class="w-hint">● Icon button</div>`
+      : `<div class="w-hint">◯━━ Switch</div>`;
+}
     if (widget.type === "timer") {
   const showTitle = widget.show_title !== false;
   const showIcon = widget.show_icon !== false;
