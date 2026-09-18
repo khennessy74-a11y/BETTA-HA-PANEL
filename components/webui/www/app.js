@@ -5343,13 +5343,12 @@ if (isButton) {
     el.fButtonIconMode.value = "automatic";
   }
 
-  setButtonCustomIconValue("");
+   setButtonCustomIconValue("");
 
   updateButtonIconControls();
 }
 
-  updateButtonIconControls();
-}
+  if (isSlider) {
  
   if (isSlider) {
     const sliderEntityDomain = normalizeSliderEntityDomain(widget.slider_entity_domain);
