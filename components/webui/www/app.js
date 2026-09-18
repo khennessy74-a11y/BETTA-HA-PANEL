@@ -4644,6 +4644,16 @@ li.dataset.pageId = page.id;
 li.addEventListener("dragover", (ev) => {
   ev.preventDefault();
   ev.dataTransfer.dropEffect = "move";
+
+  const rect = li.getBoundingClientRect();
+  const placeAfter = ev.clientY > rect.top + rect.height / 2;
+
+  li.classList.toggle("drag-over-before", !placeAfter);
+  li.classList.toggle("drag-over-after", placeAfter);
+});
+
+li.addEventListener("dragleave", () => {
+  li.classList.remove("drag-over-before", "drag-over-after");
 });
 
 li.addEventListener("drop", (ev) => {
@@ -4653,9 +4663,13 @@ li.addEventListener("drop", (ev) => {
   const draggedPageId =
     ev.dataTransfer.getData("text/plain");
 
-  movePageBefore(draggedPageId, page.id);
-});
+  const rect = li.getBoundingClientRect();
+  const placeAfter = ev.clientY > rect.top + rect.height / 2;
 
+  li.classList.remove("drag-over-before", "drag-over-after");
+
+  movePage(draggedPageId, page.id, placeAfter);
+});
 const dragHandle = document.createElement("span");
 dragHandle.className = "page-drag-handle";
 dragHandle.textContent = "☰";
