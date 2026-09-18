@@ -13,6 +13,7 @@
 #include "ui/ui_i18n.h"
 #include "ui/ui_bindings.h"
 #include "ui/ui_memory.h"
+#include "ui/fonts/mdi_font_registry.h"
 
 typedef enum {
     W_BUTTON_MODE_AUTO = 0,
