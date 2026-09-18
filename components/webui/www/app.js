@@ -5567,6 +5567,47 @@ if (isButton) {
 
   
   if (isSlider) {
+        const showTitle =
+      widget.show_title !== false;
+
+    const showIcon =
+      widget.show_icon !== false;
+
+    const showState =
+      widget.show_state !== false;
+
+    const configuredIcon =
+      typeof widget.icon === "string"
+        ? widget.icon.trim()
+        : "";
+
+    if (el.fSliderShowTitle) {
+      el.fSliderShowTitle.value =
+        showTitle ? "true" : "false";
+    }
+
+    if (el.fSliderShowIcon) {
+      el.fSliderShowIcon.value =
+        showIcon ? "true" : "false";
+    }
+
+    if (el.fSliderShowState) {
+      el.fSliderShowState.value =
+        showState ? "true" : "false";
+    }
+
+    if (el.fSliderIconMode) {
+      el.fSliderIconMode.value =
+        configuredIcon
+          ? "custom"
+          : "automatic";
+    }
+
+    setSliderCustomIconValue(
+      configuredIcon || "mdi:swap-vertical"
+    );
+
+    updateSliderIconControls();
     const sliderEntityDomain = normalizeSliderEntityDomain(widget.slider_entity_domain);
     const direction = normalizeSliderDirection(widget.slider_direction);
     const accent = normalizeHexColor(widget.slider_accent_color, DEFAULT_SLIDER_ACCENT_COLOR);
