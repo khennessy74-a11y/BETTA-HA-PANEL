@@ -4781,11 +4781,26 @@ li.addEventListener("drop", (ev) => {
   movePage(draggedPageId, page.id, placeAfter);
 });
 const dragHandle = document.createElement("span");
-dragHandle.className = "page-drag-handle";
-dragHandle.textContent = "☰";
-dragHandle.title = "Drag to reorder page";
-dragHandle.setAttribute("aria-label", "Drag to reorder page");
-dragHandle.draggable = true;
+const isHomePage = page === editor.layout.pages[0];
+
+dragHandle.className = isHomePage
+  ? "page-drag-handle fixed"
+  : "page-drag-handle";
+
+dragHandle.textContent = isHomePage ? "⌂" : "☰";
+
+dragHandle.title = isHomePage
+  ? "Home page — fixed centre position"
+  : "Drag to reorder page";
+
+dragHandle.setAttribute(
+  "aria-label",
+  isHomePage
+    ? "Home page — fixed centre position"
+    : "Drag to reorder page"
+);
+
+dragHandle.draggable = !isHomePage;
 
 dragHandle.addEventListener("dragstart", (ev) => {
   ev.stopPropagation();
