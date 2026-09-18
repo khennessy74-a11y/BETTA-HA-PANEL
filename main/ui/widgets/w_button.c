@@ -32,6 +32,7 @@ typedef struct {
     lv_obj_t *action_icon;
     lv_color_t accent_color;
     w_button_mode_t mode;
+    bool use_icon_appearance;
     bool show_title;
     bool show_status;
     bool suppress_event;
@@ -761,6 +762,8 @@ esp_err_t w_button_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widge
     ctx->action_icon = action_icon;
     ctx->accent_color = lv_color_hex(W_BUTTON_SWITCH_ACCENT_DEFAULT_HEX);
     ctx->mode = button_mode_from_text(def->button_mode);
+    ctx->use_icon_appearance =
+        strcmp(def->button_appearance, "icon") == 0;
     ctx->show_title = title_text[0] != '\0';
     if (ctx->mode == W_BUTTON_MODE_RUN && !is_runnable) {
         /* run mode only makes sense for one-shot entities; fall back rather
