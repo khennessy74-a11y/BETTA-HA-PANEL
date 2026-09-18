@@ -4599,6 +4599,38 @@ function renderEntityOptions() {
     }
   }
 }
+function movePageBefore(draggedPageId, targetPageId) {
+  if (!editor.layout || !Array.isArray(editor.layout.pages)) return;
+  if (!draggedPageId || !targetPageId) return;
+  if (draggedPageId === targetPageId) return;
+
+  const fromIndex = editor.layout.pages.findIndex(
+    (page) => page.id === draggedPageId
+  );
+
+  const targetIndex = editor.layout.pages.findIndex(
+    (page) => page.id === targetPageId
+  );
+
+  if (fromIndex < 0 || targetIndex < 0) return;
+
+  const [draggedPage] = editor.layout.pages.splice(fromIndex, 1);
+
+  const insertIndex = editor.layout.pages.findIndex(
+    (page) => page.id === targetPageId
+  );
+
+  if (insertIndex < 0) {
+    editor.layout.pages.push(draggedPage);
+  } else {
+    editor.layout.pages.splice(insertIndex, 0, draggedPage);
+  }
+
+  editor.selectedPageId = draggedPageId;
+  editor.selectedWidgetId = null;
+
+  renderAll();
+}
 
 function renderPages() {
   el.pagesList.innerHTML = "";
