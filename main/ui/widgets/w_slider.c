@@ -626,6 +626,11 @@ esp_err_t w_slider_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widge
     lv_obj_set_style_text_align(title, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     lv_obj_align(title, LV_ALIGN_BOTTOM_MID, 0, APP_UI_TILE_LAYOUT_TUNED ? -12 : -10);
 
+    lv_obj_t *icon = lv_label_create(card);
+    lv_label_set_text(icon, "");
+    lv_obj_set_style_text_align(icon, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+    lv_obj_align(icon, LV_ALIGN_CENTER, 0, 0);
+
     lv_obj_t *state = lv_label_create(card);
     lv_label_set_text(state, ui_i18n_get("common.off", "OFF"));
     lv_obj_set_style_text_font(state, APP_FONT_TEXT_20, LV_PART_MAIN);
@@ -650,9 +655,28 @@ esp_err_t w_slider_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widge
     snprintf(ctx->entity_id, sizeof(ctx->entity_id), "%s", def->entity_id);
     ctx->card = card;
     ctx->title_label = title;
+    ctx->icon_label = icon;
     ctx->state_label = state;
     ctx->value_label = value;
     ctx->slider = slider;
+    if (!ctx->show_title) {
+    lv_obj_add_flag(title, LV_OBJ_FLAG_HIDDEN);
+}
+
+if (!ctx->show_state) {
+    lv_obj_add_flag(state, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(value, LV_OBJ_FLAG_HIDDEN);
+}
+
+if (ctx->show_icon) {
+    slider_apply_icon(ctx, def->icon);
+} else {
+    lv_obj_add_flag(icon, LV_OBJ_FLAG_HIDDEN);
+}
+
+    ctx->show_title = def->show_title;
+    ctx->show_icon = def->show_icon;
+    ctx->show_state = def->show_state;
     ctx->direction_cfg = slider_direction_from_text(def->slider_direction);
     ctx->direction_effective = slider_effective_direction(ctx, card);
     ctx->accent_color = lv_color_hex(APP_UI_COLOR_NAV_TAB_ACTIVE);
