@@ -3494,6 +3494,14 @@ function inspectorSliderEntityDomain() {
   }
   return normalizeSliderEntityDomain(selectedWidget()?.slider_entity_domain);
 }
+function inspectorButtonAppearance() {
+  if (el.fButtonAppearance) {
+    return normalizeButtonAppearance(el.fButtonAppearance.value);
+  }
+  return normalizeButtonAppearance(
+    selectedWidget()?.button_appearance
+  );
+}
 
 function inspectorButtonMode() {
   if (el.fButtonMode) {
