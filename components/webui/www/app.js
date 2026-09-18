@@ -3572,6 +3572,72 @@ function setButtonCustomIconValue(iconName) {
   select.appendChild(option);
   select.value = value;
 }
+function setSliderCustomIconValue(iconName) {
+  if (!el.fSliderCustomIcon) {
+    return;
+  }
+
+  const normalized =
+    typeof iconName === "string"
+      ? iconName.trim()
+      : "";
+
+  const existingLegacy =
+    el.fSliderCustomIcon.querySelector(
+      'option[data-legacy-slider-icon="true"]'
+    );
+
+  if (existingLegacy) {
+    existingLegacy.remove();
+  }
+
+  if (!normalized) {
+    if (el.fSliderCustomIcon.options.length > 0) {
+      el.fSliderCustomIcon.selectedIndex = 0;
+    }
+    return;
+  }
+
+  const supported =
+    Array.from(el.fSliderCustomIcon.options).some(
+      option => option.value === normalized
+    );
+
+  if (!supported) {
+    const option = document.createElement("option");
+    option.value = normalized;
+    option.textContent = normalized;
+    option.dataset.legacySliderIcon = "true";
+    el.fSliderCustomIcon.appendChild(option);
+  }
+
+  el.fSliderCustomIcon.value = normalized;
+}
+
+function updateSliderIconControls() {
+  const showIcon =
+    !el.fSliderShowIcon ||
+    el.fSliderShowIcon.value !== "false";
+
+  if (el.fSliderIconModeWrap) {
+    el.fSliderIconModeWrap.classList.toggle(
+      "hidden",
+      !showIcon
+    );
+  }
+
+  const custom =
+    showIcon &&
+    el.fSliderIconMode &&
+    el.fSliderIconMode.value === "custom";
+
+  if (el.fSliderCustomIconWrap) {
+    el.fSliderCustomIconWrap.classList.toggle(
+      "hidden",
+      !custom
+    );
+  }
+}
 function setSensorCustomIconValue(iconName) {
   if (!el.fSensorCustomIcon) {
     return;
