@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: LicenseRef-FNCL-1.1
 # Copyright (c) 2026 Cpt_Kirk
+
 idf_component_register(
     SRCS "webui_dummy.c"
     INCLUDE_DIRS "."
@@ -7,4 +8,5 @@ idf_component_register(
         "www/index.html"
         "www/app.js"
         "www/styles.css"
+        "www/timer_stage1.js"
 )
