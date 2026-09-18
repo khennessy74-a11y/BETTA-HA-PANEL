@@ -5300,9 +5300,27 @@ if (isButton) {
       ? "custom"
       : "automatic";
 
+   const showTitle =
+    widget.show_title !== false;
+
+  const showState =
+    widget.show_state !== false;
+
   widget.button_appearance = appearance;
   widget.button_accent_color = accent;
   widget.button_mode = buttonMode;
+  widget.show_title = showTitle;
+  widget.show_state = showState;
+
+  if (el.fButtonShowTitle) {
+    el.fButtonShowTitle.value =
+      showTitle ? "true" : "false";
+  }
+
+  if (el.fButtonShowState) {
+    el.fButtonShowState.value =
+      showState ? "true" : "false";
+  }
 
   if (el.fButtonAppearance) {
     el.fButtonAppearance.value = appearance;
@@ -5326,6 +5344,13 @@ if (isButton) {
 
   updateButtonIconControls();
 } else {
+    if (el.fButtonShowTitle) {
+    el.fButtonShowTitle.value = "true";
+  }
+
+  if (el.fButtonShowState) {
+    el.fButtonShowState.value = "true";
+  }
   if (el.fButtonAppearance) {
     el.fButtonAppearance.value =
       DEFAULT_BUTTON_APPEARANCE;
