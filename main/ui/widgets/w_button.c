@@ -201,8 +201,9 @@ static const char *button_icon_symbol(w_button_mode_t mode, bool is_on)
         return LV_SYMBOL_NEXT;
     case W_BUTTON_MODE_PREVIOUS:
         return LV_SYMBOL_PREV;
-    case W_BUTTON_MODE_AUTO:
-    default:
+   case W_BUTTON_MODE_AUTO:
+    return LV_SYMBOL_POWER;
+        default:
         return "";
     }
 }
