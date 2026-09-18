@@ -625,50 +625,7 @@ static void button_layout_icon(
         0,
         y);
 }
-    lv_obj_update_layout(card);
-
-        const bool compact = button_card_is_compact(card);
-    const lv_coord_t top_gap_base =
-#if APP_UI_TILE_LAYOUT_TUNED
-        compact ? 10 : 14;
-#else
-        12;
-#endif
-    const lv_coord_t bottom_gap_base =
-#if APP_UI_TILE_LAYOUT_TUNED
-        compact ? 12 : 16;
-#else
-        14;
-#endif
-        const lv_coord_t min_height = compact ? 26 : 30;
-
-    lv_coord_t top_gap = button_label_visible(ctx->state_label) ? top_gap_base : 4;
-    lv_coord_t bottom_gap = button_label_visible(ctx->title_label) ? bottom_gap_base : 4;
-    lv_coord_t content_w = 24;
-    lv_coord_t top = 0;
-    lv_coord_t area_h = 20;
-    button_calc_action_area(card, ctx, top_gap, bottom_gap, min_height, &content_w, &top, &area_h);
-
-    lv_coord_t target_icon_h = (area_h * 9) / 10;
-    if (target_icon_h < 20) {
-        target_icon_h = 20;
-    }
-    lv_obj_set_style_text_font(ctx->action_icon, button_pick_icon_font(target_icon_h), LV_PART_MAIN);
-    lv_obj_set_width(ctx->action_icon, content_w);
-    lv_obj_update_layout(ctx->action_icon);
-
-    lv_coord_t icon_h = lv_obj_get_height(ctx->action_icon);
-    if (icon_h < 20) {
-        icon_h = 20;
-    }
-    lv_coord_t y = top + (area_h - icon_h) / 2;
-    if (y < 0) {
-        y = 0;
-    }
-
-    lv_obj_set_pos(ctx->action_icon, 0, y);
-}
-
+    
 static void button_apply_visual(lv_obj_t *card, w_button_ctx_t *ctx, bool is_on, bool unavailable, const char *status_text)
 {
     if (card == NULL || ctx == NULL || ctx->title_label == NULL || ctx->state_label == NULL) {
