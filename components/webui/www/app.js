@@ -5289,16 +5289,7 @@ if (isButton) {
 
   updateButtonIconControls();
 }
-  if (el.fButtonAppearance) {
-    el.fButtonAppearance.value = DEFAULT_BUTTON_APPEARANCE;
-  }
-  if (el.fButtonAccentColor) {
-    el.fButtonAccentColor.value = DEFAULT_BUTTON_ACCENT_COLOR;
-  }
-  if (el.fButtonMode) {
-    el.fButtonMode.value = DEFAULT_BUTTON_MODE;
-  }
-}
+ 
   if (isSlider) {
     const sliderEntityDomain = normalizeSliderEntityDomain(widget.slider_entity_domain);
     const direction = normalizeSliderDirection(widget.slider_direction);
