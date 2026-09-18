@@ -1707,16 +1707,7 @@ function normalizeSliderDirection(value) {
 function normalizeSliderEntityDomain(value) {
   return SLIDER_ENTITY_DOMAINS.has(value) ? value : DEFAULT_SLIDER_ENTITY_DOMAIN;
 }
-function normalizeButtonAppearance(value) {
-  const appearance =
-    typeof value === "string"
-      ? value.trim().toLowerCase()
-      : "";
 
-  return BUTTON_APPEARANCES.has(appearance)
-    ? appearance
-    : DEFAULT_BUTTON_APPEARANCE;
-}
 function normalizeButtonAppearance(value) {
   const appearance =
     typeof value === "string"
