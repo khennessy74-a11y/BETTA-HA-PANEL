@@ -4,8 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - all-tile-ui-options
-      - popup-controls
+      - development
 
 jobs:
   build:
