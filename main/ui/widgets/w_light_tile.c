@@ -59,6 +59,7 @@ typedef struct {
     bool show_title;
     bool show_icon;
     bool show_state;
+    bool suppress_next_click;
 } w_light_tile_ctx_t;
 
 #define ICON_CP_MDI_LIGHTBULB_ON 0xF06E8U
@@ -1463,11 +1464,16 @@ static void w_light_tile_card_event_cb(lv_event_t *event)
     }
 
     if (code == LV_EVENT_LONG_PRESSED) {
+        ctx->suppress_next_click = true;
         w_light_tile_open_color_popup(ctx);
         return;
     }
 
     if (code == LV_EVENT_CLICKED) {
+        if (ctx->suppress_next_click) {
+            ctx->suppress_next_click = false;
+            return;
+        }
         if (ctx->unavailable) {
             return;
         }
