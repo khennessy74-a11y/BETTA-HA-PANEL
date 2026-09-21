@@ -122,6 +122,7 @@ static bool is_supported_widget_type(const char *type)
 
     return
         (strcmp(type, "sensor") == 0) ||
+        (strcmp(type, "binary_sensor") == 0) ||
         (strcmp(type, "button") == 0) ||
         (strcmp(type, "slider") == 0) ||
         (strcmp(type, "graph") == 0) ||
@@ -167,7 +168,7 @@ static widget_size_limits_t widget_size_limits_for_type(
         return limits;
     }
 
-    if (strcmp(type, "sensor") == 0) {
+    if (strcmp(type, "sensor") == 0 || strcmp(type, "binary_sensor") == 0) {
 
 #if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
 
@@ -404,6 +405,10 @@ static const char *required_domain_for_widget_type(
 
     if (strcmp(type, "sensor") == 0) {
         return "sensor";
+    }
+
+    if (strcmp(type, "binary_sensor") == 0) {
+        return "binary_sensor";
     }
 
     if (strcmp(type, "light_tile") == 0) {
