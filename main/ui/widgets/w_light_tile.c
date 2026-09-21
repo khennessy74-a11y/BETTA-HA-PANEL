@@ -1462,6 +1462,11 @@ static void w_light_tile_card_event_cb(lv_event_t *event)
         return;
     }
 
+    if (code == LV_EVENT_LONG_PRESSED) {
+        w_light_tile_open_color_popup(ctx);
+        return;
+    }
+
     if (code == LV_EVENT_CLICKED) {
         if (ctx->unavailable) {
             return;
@@ -1665,6 +1670,7 @@ esp_err_t w_light_tile_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_w
     snprintf(ctx->custom_icon, sizeof(ctx->custom_icon), "%s", def->icon);
 
     lv_obj_add_event_cb(card, w_light_tile_card_event_cb, LV_EVENT_CLICKED, ctx);
+    lv_obj_add_event_cb(card, w_light_tile_card_event_cb, LV_EVENT_LONG_PRESSED, ctx);
     lv_obj_add_event_cb(card, w_light_tile_card_event_cb, LV_EVENT_SIZE_CHANGED, ctx);
     lv_obj_add_event_cb(card, w_light_tile_card_event_cb, LV_EVENT_DELETE, ctx);
     lv_obj_add_event_cb(color_button, w_light_tile_color_button_event_cb, LV_EVENT_CLICKED, ctx);
