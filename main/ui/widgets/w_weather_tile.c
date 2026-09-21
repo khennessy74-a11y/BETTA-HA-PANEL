@@ -22,6 +22,7 @@
 #include "ui/fonts/mdi_font_registry.h"
 #include "ui/ui_i18n.h"
 #include "ui/theme/theme_default.h"
+#include "ui/widgets/widget_display_options.h"
 
 #ifndef APP_UI_WEATHER_ICON_DEBUG
 #define APP_UI_WEATHER_ICON_DEBUG 0
@@ -2803,6 +2804,11 @@ esp_err_t w_weather_tile_create(const ui_widget_def_t *def, lv_obj_t *parent, ui
 #else
     lv_obj_align(meta, LV_ALIGN_TOP_MID, 0, 124);
 #endif
+
+    widget_display_set_visible(title, def->show_title);
+    widget_display_set_visible(condition, def->show_state);
+    widget_display_set_visible(temp, def->show_state);
+    widget_display_set_visible(meta, def->show_state);
 
     w_weather_tile_ctx_t *ctx = weather_calloc(1, sizeof(w_weather_tile_ctx_t));
     if (ctx == NULL) {
