@@ -22,6 +22,7 @@
 #include "ui/theme/theme_default.h"
 #include "ui/ui_i18n.h"
 #include "ui/ui_bindings.h"
+#include "ui/widgets/widget_display_options.h"
 #include "ha/ha_cover_fetcher.h"
 
 #define W_MP_TAG "w_media_player"
@@ -931,6 +932,12 @@ esp_err_t w_media_player_create(const ui_widget_def_t *def, lv_obj_t *parent, ui
     }
 
     mp_apply_visual(ctx);
+    widget_display_set_visible(ctx->title_label, def->show_title);
+    widget_display_set_visible(ctx->now_title, def->show_state);
+    widget_display_set_visible(ctx->now_artist, def->show_state);
+    widget_display_set_visible(ctx->progress_bar, def->show_state);
+    widget_display_set_visible(ctx->pos_label, def->show_state);
+    widget_display_set_visible(ctx->dur_label, def->show_state);
 
     out_instance->obj = card;
     out_instance->ctx = ctx;
