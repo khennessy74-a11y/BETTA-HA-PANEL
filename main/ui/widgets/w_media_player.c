@@ -68,6 +68,10 @@ typedef struct {
     uint8_t cover_fail_count;
     int64_t cover_retry_after_ms;
     uint32_t cover_dominant_rgb;     /* 0 when no cover tint is applied */
+    lv_obj_t *popup_overlay;
+    lv_obj_t *popup_volume_slider;
+    lv_obj_t *popup_play_label;
+    lv_obj_t *popup_volume_label;
 } w_mp_ctx_t;
 
 static int clampi(int v, int lo, int hi)
@@ -460,6 +464,12 @@ static void mp_apply_visual(w_mp_ctx_t *ctx)
     if (ctx->btn_prev) lv_obj_set_style_opa(ctx->btn_prev, control_opa, LV_PART_MAIN);
     if (ctx->btn_play) lv_obj_set_style_opa(ctx->btn_play, control_opa, LV_PART_MAIN);
     if (ctx->btn_next) lv_obj_set_style_opa(ctx->btn_next, control_opa, LV_PART_MAIN);
+    if (ctx->popup_play_label) {
+        lv_label_set_text(ctx->popup_play_label, ctx->is_playing ? LV_SYMBOL_PAUSE : LV_SYMBOL_PLAY);
+    }
+    if (ctx->popup_volume_slider && !ctx->volume_dragging) {
+        lv_slider_set_value(ctx->popup_volume_slider, ctx->volume_value, LV_ANIM_OFF);
+    }
     if (ctx->volume_slider) {
         lv_obj_set_style_opa(ctx->volume_slider, control_opa, LV_PART_MAIN);
         lv_obj_set_style_opa(ctx->volume_slider, control_opa, LV_PART_INDICATOR);
@@ -495,6 +505,148 @@ static void mp_play_clicked(lv_event_t *event)
         ctx->resume_guard_until_ms = mp_now_ms() + 15000;
         mp_apply_visual(ctx);
     }
+}
+
+static void mp_popup_close_cb(lv_event_t *event)
+{
+    w_mp_ctx_t *ctx = (w_mp_ctx_t *)lv_event_get_user_data(event);
+    lv_obj_t *overlay = lv_event_get_target(event);
+    if (ctx != NULL && ctx->popup_overlay == overlay) {
+        ctx->popup_overlay = NULL;
+        ctx->popup_volume_slider = NULL;
+        ctx->popup_play_label = NULL;
+        ctx->popup_volume_label = NULL;
+    }
+    lv_obj_del_async(overlay);
+}
+
+static void mp_popup_play_clicked(lv_event_t *event)
+{
+    w_mp_ctx_t *ctx = (w_mp_ctx_t *)lv_event_get_user_data(event);
+    if (ctx == NULL || ctx->unavailable) return;
+    if (ui_bindings_media_player_action(ctx->entity_id, UI_BINDINGS_MEDIA_ACTION_PLAY_PAUSE) == ESP_OK) {
+        ctx->is_playing = !ctx->is_playing;
+        if (ctx->popup_play_label != NULL) {
+            lv_label_set_text(ctx->popup_play_label, ctx->is_playing ? LV_SYMBOL_PAUSE : LV_SYMBOL_PLAY);
+        }
+        mp_apply_visual(ctx);
+    }
+}
+
+static void mp_popup_prev_clicked(lv_event_t *event)
+{
+    w_mp_ctx_t *ctx = (w_mp_ctx_t *)lv_event_get_user_data(event);
+    if (ctx != NULL && !ctx->unavailable)
+        (void)ui_bindings_media_player_action(ctx->entity_id, UI_BINDINGS_MEDIA_ACTION_PREVIOUS);
+}
+
+static void mp_popup_next_clicked(lv_event_t *event)
+{
+    w_mp_ctx_t *ctx = (w_mp_ctx_t *)lv_event_get_user_data(event);
+    if (ctx != NULL && !ctx->unavailable)
+        (void)ui_bindings_media_player_action(ctx->entity_id, UI_BINDINGS_MEDIA_ACTION_NEXT);
+}
+
+static void mp_popup_volume_cb(lv_event_t *event)
+{
+    w_mp_ctx_t *ctx = (w_mp_ctx_t *)lv_event_get_user_data(event);
+    if (ctx == NULL || ctx->unavailable) return;
+    lv_obj_t *slider = lv_event_get_target(event);
+    int value = clampi(lv_slider_get_value(slider), 0, 100);
+    if (ctx->popup_volume_label != NULL) {
+        char text[16] = {0};
+        snprintf(text, sizeof(text), "%d %%", value);
+        lv_label_set_text(ctx->popup_volume_label, text);
+    }
+    if (lv_event_get_code(event) == LV_EVENT_RELEASED) {
+        if (ui_bindings_set_slider_value(ctx->entity_id, value) == ESP_OK) {
+            ctx->volume_value = value;
+            ctx->volume_last_sent = value;
+            if (ctx->volume_slider != NULL) {
+                ctx->volume_suppress = true;
+                lv_slider_set_value(ctx->volume_slider, value, LV_ANIM_OFF);
+                ctx->volume_suppress = false;
+            }
+        }
+    }
+}
+
+static void mp_open_popup(w_mp_ctx_t *ctx)
+{
+    if (ctx == NULL || ctx->popup_overlay != NULL) return;
+    lv_obj_t *overlay = lv_obj_create(lv_layer_top());
+    ctx->popup_overlay = overlay;
+    lv_obj_set_size(overlay, LV_PCT(100), LV_PCT(100));
+    lv_obj_set_style_bg_color(overlay, lv_color_hex(0x000000), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(overlay, LV_OPA_60, LV_PART_MAIN);
+    lv_obj_set_style_border_width(overlay, 0, LV_PART_MAIN);
+    lv_obj_set_style_pad_all(overlay, 0, LV_PART_MAIN);
+    lv_obj_clear_flag(overlay, LV_OBJ_FLAG_SCROLLABLE);
+
+    lv_obj_t *panel = lv_obj_create(overlay);
+    lv_obj_set_size(panel, 390, 320);
+    lv_obj_center(panel);
+    lv_obj_set_style_radius(panel, APP_UI_CARD_RADIUS, LV_PART_MAIN);
+    lv_obj_set_style_bg_color(panel, lv_color_hex(APP_UI_COLOR_CARD_BG_OFF), LV_PART_MAIN);
+    lv_obj_clear_flag(panel, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_clear_flag(panel, LV_OBJ_FLAG_EVENT_BUBBLE);
+
+    lv_obj_t *title = lv_label_create(panel);
+    const char *media_title = (ctx->now_title != NULL) ? lv_label_get_text(ctx->now_title) : "";
+    lv_label_set_text(title, (media_title != NULL && media_title[0] != '\0') ? media_title : "Media Player");
+    lv_obj_set_width(title, 330);
+    lv_label_set_long_mode(title, LV_LABEL_LONG_DOT);
+    lv_obj_set_style_text_font(title, APP_FONT_TEXT_20, LV_PART_MAIN);
+    lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 10);
+
+    lv_obj_t *artist = lv_label_create(panel);
+    const char *artist_text = (ctx->now_artist != NULL) ? lv_label_get_text(ctx->now_artist) : "";
+    lv_label_set_text(artist, artist_text != NULL ? artist_text : "");
+    lv_obj_set_width(artist, 330);
+    lv_obj_set_style_text_align(artist, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+    lv_label_set_long_mode(artist, LV_LABEL_LONG_DOT);
+    lv_obj_align(artist, LV_ALIGN_TOP_MID, 0, 42);
+
+    lv_obj_t *prev = mp_create_icon_button(panel, LV_SYMBOL_PREV, ctx, mp_popup_prev_clicked, NULL);
+    lv_obj_t *play = mp_create_icon_button(panel, ctx->is_playing ? LV_SYMBOL_PAUSE : LV_SYMBOL_PLAY,
+                                            ctx, mp_popup_play_clicked, &ctx->popup_play_label);
+    lv_obj_t *next = mp_create_icon_button(panel, LV_SYMBOL_NEXT, ctx, mp_popup_next_clicked, NULL);
+    lv_obj_align(prev, LV_ALIGN_CENTER, -90, -20);
+    lv_obj_align(play, LV_ALIGN_CENTER, 0, -20);
+    lv_obj_align(next, LV_ALIGN_CENTER, 90, -20);
+
+    lv_obj_t *volume_label = lv_label_create(panel);
+    ctx->popup_volume_label = volume_label;
+    char volume_text[16] = {0};
+    snprintf(volume_text, sizeof(volume_text), "%d %%", ctx->volume_value);
+    lv_label_set_text(volume_label, volume_text);
+    lv_obj_align(volume_label, LV_ALIGN_CENTER, 0, 50);
+
+    lv_obj_t *volume = lv_slider_create(panel);
+    ctx->popup_volume_slider = volume;
+    lv_slider_set_range(volume, 0, 100);
+    lv_slider_set_value(volume, ctx->volume_value, LV_ANIM_OFF);
+    lv_obj_set_size(volume, 280, 18);
+    lv_obj_align(volume, LV_ALIGN_CENTER, 0, 82);
+    lv_obj_clear_flag(volume, LV_OBJ_FLAG_EVENT_BUBBLE);
+    lv_obj_add_event_cb(volume, mp_popup_volume_cb, LV_EVENT_VALUE_CHANGED, ctx);
+    lv_obj_add_event_cb(volume, mp_popup_volume_cb, LV_EVENT_RELEASED, ctx);
+
+    lv_obj_t *close = lv_btn_create(panel);
+    lv_obj_set_size(close, 100, 44);
+    lv_obj_align(close, LV_ALIGN_BOTTOM_MID, 0, -8);
+    lv_obj_clear_flag(close, LV_OBJ_FLAG_EVENT_BUBBLE);
+    lv_obj_t *close_label = lv_label_create(close);
+    lv_label_set_text(close_label, "Close");
+    lv_obj_center(close_label);
+    lv_obj_add_event_cb(close, mp_popup_close_cb, LV_EVENT_CLICKED, ctx);
+}
+
+static void mp_card_event_cb(lv_event_t *event)
+{
+    w_mp_ctx_t *ctx = (w_mp_ctx_t *)lv_event_get_user_data(event);
+    if (ctx == NULL) return;
+    if (lv_event_get_code(event) == LV_EVENT_LONG_PRESSED) mp_open_popup(ctx);
 }
 
 static void mp_prev_clicked(lv_event_t *event)
@@ -925,6 +1077,8 @@ esp_err_t w_media_player_create(const ui_widget_def_t *def, lv_obj_t *parent, ui
     lv_obj_align(vol_icon, LV_ALIGN_TOP_LEFT, col_x, vol_y + 2);
     lv_obj_set_pos(vol_slider, col_x + 28, vol_y + 7);
     lv_obj_set_size(vol_slider, col_w > 44 ? col_w - 28 : 16, 12);
+
+    lv_obj_add_event_cb(card, mp_card_event_cb, LV_EVENT_LONG_PRESSED, ctx);
 
     ctx->tick_timer = lv_timer_create(mp_tick_cb, 1000, ctx);
     if (ctx->tick_timer) {
