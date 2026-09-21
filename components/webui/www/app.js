@@ -1621,6 +1621,14 @@ fSliderCustomIcon: document.getElementById("fSliderCustomIcon"),
 fSliderShowState: document.getElementById("fSliderShowState"),
 fSliderDirection: document.getElementById("fSliderDirection"),
 fSliderAccentColor: document.getElementById("fSliderAccentColor"),
+  commonDisplayOptions: document.getElementById("commonDisplayOptions"),
+  fCommonShowTitle: document.getElementById("fCommonShowTitle"),
+  fCommonShowIcon: document.getElementById("fCommonShowIcon"),
+  fCommonShowState: document.getElementById("fCommonShowState"),
+  fCommonIconModeWrap: document.getElementById("fCommonIconModeWrap"),
+  fCommonIconMode: document.getElementById("fCommonIconMode"),
+  fCommonCustomIconWrap: document.getElementById("fCommonCustomIconWrap"),
+  fCommonCustomIcon: document.getElementById("fCommonCustomIcon"),
   graphOptions: document.getElementById("graphOptions"),
   fGraphLineColor: document.getElementById("fGraphLineColor"),
   fGraphTimeWindowMin: document.getElementById("fGraphTimeWindowMin"),
@@ -1835,6 +1843,12 @@ function normalizeLayoutWidgets(layout) {
         widget.slider_direction = normalizeSliderDirection(widget.slider_direction);
         widget.slider_accent_color = normalizeHexColor(widget.slider_accent_color, DEFAULT_SLIDER_ACCENT_COLOR);
         widget.slider_entity_domain = normalizeSliderEntityDomain(widget.slider_entity_domain);
+      }
+      if (COMMON_DISPLAY_WIDGET_TYPES.has(widget.type)) {
+        widget.icon = typeof widget.icon === "string" ? widget.icon.trim() : "";
+        widget.show_title = typeof widget.show_title === "boolean" ? widget.show_title : true;
+        widget.show_icon = typeof widget.show_icon === "boolean" ? widget.show_icon : true;
+        widget.show_state = typeof widget.show_state === "boolean" ? widget.show_state : true;
       }
       if (widget.type === "timer") {
         /*
@@ -3742,6 +3756,42 @@ function updateSensorIconControls() {
   );
 }
 
+const COMMON_DISPLAY_WIDGET_TYPES = new Set([
+  "graph", "heating_tile", "light_tile", "media_player",
+  "roborock", "todo", "weather_3day"
+]);
+
+function setCommonCustomIconValue(value) {
+  const select = el.fCommonCustomIcon;
+  if (!select) return;
+  const wanted = String(value || "").trim();
+  select.innerHTML = "";
+  const source = (typeof SENSOR_MDI_ICONS !== "undefined" && Array.isArray(SENSOR_MDI_ICONS))
+    ? SENSOR_MDI_ICONS : [];
+  for (const entry of source) {
+    const option = document.createElement("option");
+    option.value = entry.value;
+    option.textContent = entry.label;
+    select.appendChild(option);
+  }
+  if (!wanted) return;
+  const known = Array.from(select.options).some((option) => option.value === wanted);
+  if (!known) {
+    const option = document.createElement("option");
+    option.value = wanted;
+    option.textContent = `${wanted} (existing)`;
+    select.appendChild(option);
+  }
+  select.value = wanted;
+}
+
+function updateCommonIconControls() {
+  if (!el.fCommonShowIcon || !el.fCommonIconModeWrap || !el.fCommonIconMode || !el.fCommonCustomIconWrap) return;
+  const showIcon = el.fCommonShowIcon.value !== "false";
+  el.fCommonIconModeWrap.classList.toggle("hidden", !showIcon);
+  el.fCommonCustomIconWrap.classList.toggle("hidden", !showIcon || el.fCommonIconMode.value !== "custom");
+}
+
 function updateButtonIconControls() {
   if (
     !el.fButtonAppearance ||
@@ -5555,6 +5605,7 @@ function renderInspector() {
     if (el.sliderOptions) {
       el.sliderOptions.classList.add("hidden");
     }
+    if (el.commonDisplayOptions) el.commonDisplayOptions.classList.add("hidden");
     if (el.graphOptions) {
       el.graphOptions.classList.add("hidden");
     }
@@ -5629,6 +5680,17 @@ function renderInspector() {
   const isSlider = widget.type === "slider";
   const isGraph = widget.type === "graph";
   const isHeating = widget.type === "heating_tile";
+  const usesCommonDisplay = COMMON_DISPLAY_WIDGET_TYPES.has(widget.type);
+  if (el.commonDisplayOptions) el.commonDisplayOptions.classList.toggle("hidden", !usesCommonDisplay);
+  if (usesCommonDisplay) {
+    const configuredIcon = typeof widget.icon === "string" ? widget.icon.trim() : "";
+    if (el.fCommonShowTitle) el.fCommonShowTitle.value = widget.show_title !== false ? "true" : "false";
+    if (el.fCommonShowIcon) el.fCommonShowIcon.value = widget.show_icon !== false ? "true" : "false";
+    if (el.fCommonShowState) el.fCommonShowState.value = widget.show_state !== false ? "true" : "false";
+    if (el.fCommonIconMode) el.fCommonIconMode.value = configuredIcon ? "custom" : "automatic";
+    setCommonCustomIconValue(configuredIcon);
+    updateCommonIconControls();
+  }
   
   if (el.buttonOptions) {
     el.buttonOptions.classList.toggle("hidden", !isButton);
@@ -5672,7 +5734,17 @@ function renderInspector() {
       widget.show_title !== false ? "true" : "false";
   }
 
-  if (el.fSensorShowIcon) {
+  if (el.fCommonShowIcon) {
+  el.fCommonShowIcon.addEventListener("change", () => { updateCommonIconControls(); autoApplyInspector(); });
+}
+if (el.fCommonIconMode) {
+  el.fCommonIconMode.addEventListener("change", () => { updateCommonIconControls(); autoApplyInspector(); });
+}
+if (el.fCommonShowTitle) el.fCommonShowTitle.addEventListener("change", () => autoApplyInspector());
+if (el.fCommonShowState) el.fCommonShowState.addEventListener("change", () => autoApplyInspector());
+if (el.fCommonCustomIcon) el.fCommonCustomIcon.addEventListener("change", () => autoApplyInspector());
+
+if (el.fSensorShowIcon) {
     el.fSensorShowIcon.value =
       widget.show_icon !== false ? "true" : "false";
   }
@@ -6104,6 +6176,12 @@ function addWidget(type, options = {}) {
     secondary_entity_id: secondaryEntityId,
     rect,
   };
+  if (COMMON_DISPLAY_WIDGET_TYPES.has(type)) {
+    widget.icon = "";
+    widget.show_title = true;
+    widget.show_icon = true;
+    widget.show_state = true;
+  }
   if (type === "sensor") {
   // Empty icon means Automatic.
   widget.icon = "";
@@ -6227,6 +6305,14 @@ function applyInspector(options = {}) {
     }
   } else {
     widget.secondary_entity_id = "";
+  }
+  if (COMMON_DISPLAY_WIDGET_TYPES.has(widgetType)) {
+    widget.show_title = el.fCommonShowTitle?.value !== "false";
+    widget.show_icon = el.fCommonShowIcon?.value !== "false";
+    widget.show_state = el.fCommonShowState?.value !== "false";
+    widget.icon = el.fCommonIconMode?.value === "custom"
+      ? (el.fCommonCustomIcon?.value?.trim() || "")
+      : "";
   }
   if (widgetType === "sensor") {
   widget.show_title =
