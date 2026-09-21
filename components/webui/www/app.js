@@ -86,6 +86,19 @@ const ENTITY_PICKER_CONFIGS = {
     minSearch: 2,
     liveSearch: false,
   },
+  cover: {
+    widgetType: "slider",
+    sliderDomain: "cover",
+    domain: "cover",
+    titleKey: "entity_picker.title_cover",
+    blankKey: "entity_picker.blank_cover",
+    widgetKey: "entity_picker.widget_cover",
+    itemsKey: "entity_picker.items_cover",
+    titleFallback: "Choose Cover",
+    blankFallback: "Blank Cover Control",
+    widgetFallback: "Cover control",
+    itemsFallback: "covers",
+  },
   light_tile: {
     domain: "light",
     titleKey: "entity_picker.title_light",
@@ -318,6 +331,7 @@ const WEB_I18N_BUILTIN = {
     "layout.widgets.add_script": "+ Script",
     "layout.widgets.add_scene": "+ Scene",
     "layout.widgets.add_slider": "+ Slider",
+    "layout.widgets.add_cover": "+ Cover",
     "layout.widgets.add_graph": "+ Graph",
     "layout.widgets.add_empty_tile": "+ Empty Tile",
     "layout.widgets.add_light_tile": "+ Light Tile",
@@ -334,6 +348,7 @@ const WEB_I18N_BUILTIN = {
     "entity_picker.title_sensor": "Choose Sensor",
     "entity_picker.title_binary_sensor": "Choose Binary Sensor",
     "entity_picker.title_light": "Choose Light",
+    "entity_picker.title_cover": "Choose Cover",
     "entity_picker.title_switch": "Choose Switch",
     "entity_picker.title_script": "Choose Script",
     "entity_picker.title_scene": "Choose Scene",
@@ -354,6 +369,7 @@ const WEB_I18N_BUILTIN = {
     "entity_picker.blank_sensor": "Blank Sensor Tile",
     "entity_picker.blank_binary_sensor": "Blank Binary Sensor Tile",
     "entity_picker.blank_light": "Blank Light Tile",
+    "entity_picker.blank_cover": "Blank Cover Control",
     "entity_picker.blank_button": "Blank Button Tile",
     "entity_picker.blank_script": "Blank Script Button",
     "entity_picker.blank_scene": "Blank Scene Button",
@@ -379,6 +395,7 @@ const WEB_I18N_BUILTIN = {
     "entity_picker.progress": "{loaded} / {target}",
     "entity_picker.progress_total": "{loaded} / {target} of {total}",
     "entity_picker.items_light": "lights",
+    "entity_picker.items_cover": "covers",
     "entity_picker.items_sensor": "sensors",
     "entity_picker.items_binary_sensor": "binary sensors",
     "entity_picker.items_switch": "switches",
@@ -388,6 +405,7 @@ const WEB_I18N_BUILTIN = {
     "entity_picker.items_climate": "climate entities",
     "entity_picker.items_vacuum": "vacuum robots",
     "entity_picker.widget_light": "Light tile",
+    "entity_picker.widget_cover": "Cover control",
     "entity_picker.widget_sensor": "Sensor tile",
     "entity_picker.widget_binary_sensor": "Binary Sensor tile",
     "entity_picker.widget_button": "Button tile",
@@ -1575,6 +1593,7 @@ const el = {
   addScriptBtn: document.getElementById("addScriptBtn"),
   addSceneBtn: document.getElementById("addSceneBtn"),
   addSliderBtn: document.getElementById("addSliderBtn"),
+  addCoverBtn: document.getElementById("addCoverBtn"),
   addGraphBtn: document.getElementById("addGraphBtn"),
   addEmptyTileBtn: document.getElementById("addEmptyTileBtn"),
   addLightTileBtn: document.getElementById("addLightTileBtn"),
@@ -4438,6 +4457,7 @@ function renderLightEntityPicker(data = {}) {
           entityId: item.id,
           title: item.name || item.id,
           buttonMode: config.buttonMode,
+          sliderDomain: config.sliderDomain,
         });
         closeLightEntityPicker();
         setStatus(t("entity_picker.added_widget", { widget: widgetLabel, entity: item.id }));
@@ -6152,7 +6172,9 @@ function addWidget(type, options = {}) {
     setStatus(t("layout.status.energy_page_only"), true);
     return null;
   }
-  const sliderDomain = DEFAULT_SLIDER_ENTITY_DOMAIN;
+  const sliderDomain = type === "slider" && SLIDER_ENTITY_DOMAINS.has(options.sliderDomain)
+    ? options.sliderDomain
+    : DEFAULT_SLIDER_ENTITY_DOMAIN;
   const resolvedButtonMode = type === "button" && BUTTON_MODES.has(options.buttonMode)
     ? options.buttonMode
     : DEFAULT_BUTTON_MODE;
@@ -6218,7 +6240,7 @@ function addWidget(type, options = {}) {
 }
 
     if (type === "slider") {
-    widget.slider_entity_domain = DEFAULT_SLIDER_ENTITY_DOMAIN;
+    widget.slider_entity_domain = sliderDomain;
     widget.slider_direction = DEFAULT_SLIDER_DIRECTION;
     widget.slider_accent_color = DEFAULT_SLIDER_ACCENT_COLOR;
 
@@ -6654,6 +6676,9 @@ function bindUi() {
     el.addSceneBtn.onclick = () => openLightEntityPicker("button_scene");
   }
   el.addSliderBtn.onclick = () => addWidget("slider");
+  if (el.addCoverBtn) {
+    el.addCoverBtn.onclick = () => openLightEntityPicker("cover");
+  }
   el.addGraphBtn.onclick = () => openLightEntityPicker("graph");
   el.addEmptyTileBtn.onclick = () => addWidget("empty_tile");
   el.addLightTileBtn.onclick = () => openLightEntityPicker("light_tile");
