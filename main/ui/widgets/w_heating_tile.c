@@ -49,6 +49,7 @@ typedef struct {
     lv_obj_t *plus_btn;
     lv_obj_t *min_label;
     lv_obj_t *max_label;
+    lv_obj_t *popup_overlay;
 } w_heating_tile_ctx_t;
 
 typedef struct {
@@ -478,11 +479,146 @@ static void heating_apply_from_ctx(lv_obj_t *card, const w_heating_tile_ctx_t *c
     heating_apply_visual(card, (w_heating_tile_ctx_t *)ctx, allow_status_fallback);
 }
 
+static void heating_popup_close_cb(lv_event_t *event)
+{
+    lv_obj_t *overlay = lv_event_get_target(event);
+    w_heating_tile_ctx_t *ctx = (w_heating_tile_ctx_t *)lv_event_get_user_data(event);
+    if (ctx != NULL && ctx->popup_overlay == overlay) ctx->popup_overlay = NULL;
+    lv_obj_del_async(overlay);
+}
+
+static void heating_popup_power_cb(lv_event_t *event)
+{
+    w_heating_tile_ctx_t *ctx = (w_heating_tile_ctx_t *)lv_event_get_user_data(event);
+    if (ctx == NULL) return;
+    if (ui_bindings_toggle_entity(ctx->climate_entity_id) == ESP_OK) {
+        ctx->is_on = !ctx->is_on;
+        heating_copy_text(ctx->status_text, sizeof(ctx->status_text), ctx->is_on ? "on" : "off");
+        heating_apply_from_ctx(lv_obj_get_parent(ctx->arc), ctx);
+    }
+}
+
+static void heating_popup_step_cb(lv_event_t *event)
+{
+    w_heating_tile_ctx_t *ctx = (w_heating_tile_ctx_t *)lv_event_get_user_data(event);
+    if (ctx == NULL) return;
+    intptr_t delta = (intptr_t)lv_event_get_param(event);
+    float next = snap_half_deg(clamp_temp(ctx->target_temp) + (float)delta * 0.5f);
+    ctx->target_temp = next;
+    if (ctx->arc != NULL) lv_arc_set_value(ctx->arc, (int)(next * 2.0f + 0.5f));
+    heating_set_target_label(ctx->target_label, next);
+    (void)ui_bindings_set_climate_target_c(ctx->climate_entity_id, next);
+}
+
+static void heating_popup_minus_cb(lv_event_t *event)
+{
+    w_heating_tile_ctx_t *ctx = (w_heating_tile_ctx_t *)lv_event_get_user_data(event);
+    if (ctx == NULL) return;
+    float next = snap_half_deg(clamp_temp(ctx->target_temp - 0.5f));
+    ctx->target_temp = next;
+    if (ctx->arc != NULL) lv_arc_set_value(ctx->arc, (int)(next * 2.0f + 0.5f));
+    heating_set_target_label(ctx->target_label, next);
+    (void)ui_bindings_set_climate_target_c(ctx->climate_entity_id, next);
+}
+
+static void heating_popup_plus_cb(lv_event_t *event)
+{
+    w_heating_tile_ctx_t *ctx = (w_heating_tile_ctx_t *)lv_event_get_user_data(event);
+    if (ctx == NULL) return;
+    float next = snap_half_deg(clamp_temp(ctx->target_temp + 0.5f));
+    ctx->target_temp = next;
+    if (ctx->arc != NULL) lv_arc_set_value(ctx->arc, (int)(next * 2.0f + 0.5f));
+    heating_set_target_label(ctx->target_label, next);
+    (void)ui_bindings_set_climate_target_c(ctx->climate_entity_id, next);
+}
+
+static void heating_open_popup(w_heating_tile_ctx_t *ctx)
+{
+    if (ctx == NULL || ctx->popup_overlay != NULL) return;
+    lv_obj_t *overlay = lv_obj_create(lv_layer_top());
+    ctx->popup_overlay = overlay;
+    lv_obj_set_size(overlay, LV_PCT(100), LV_PCT(100));
+    lv_obj_set_style_bg_color(overlay, lv_color_hex(0x000000), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(overlay, LV_OPA_60, LV_PART_MAIN);
+    lv_obj_set_style_border_width(overlay, 0, LV_PART_MAIN);
+    lv_obj_set_style_pad_all(overlay, 0, LV_PART_MAIN);
+    lv_obj_clear_flag(overlay, LV_OBJ_FLAG_SCROLLABLE);
+
+    lv_obj_t *panel = lv_obj_create(overlay);
+    lv_obj_set_size(panel, 360, 300);
+    lv_obj_center(panel);
+    lv_obj_set_style_radius(panel, APP_UI_CARD_RADIUS, LV_PART_MAIN);
+    lv_obj_set_style_bg_color(panel, lv_color_hex(APP_UI_COLOR_CARD_BG), LV_PART_MAIN);
+    lv_obj_clear_flag(panel, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_clear_flag(panel, LV_OBJ_FLAG_EVENT_BUBBLE);
+
+    lv_obj_t *title = lv_label_create(panel);
+    lv_label_set_text(title, "Heating");
+    lv_obj_set_style_text_font(title, APP_FONT_TEXT_20, LV_PART_MAIN);
+    lv_obj_align(title, LV_ALIGN_TOP_LEFT, 8, 8);
+
+    lv_obj_t *current = lv_label_create(panel);
+    char current_text[32] = {0};
+    if (ctx->has_current_temp) snprintf(current_text, sizeof(current_text), "Current %.1f C", (double)ctx->current_temp);
+    else snprintf(current_text, sizeof(current_text), "Current --.- C");
+    lv_label_set_text(current, current_text);
+    lv_obj_set_style_text_font(current, APP_FONT_TEXT_16, LV_PART_MAIN);
+    lv_obj_align(current, LV_ALIGN_TOP_MID, 0, 62);
+
+    lv_obj_t *target = lv_label_create(panel);
+    char target_text[24] = {0};
+    snprintf(target_text, sizeof(target_text), "%.1f C", (double)ctx->target_temp);
+    lv_label_set_text(target, target_text);
+    lv_obj_set_style_text_font(target, HEATING_ACTUAL_FONT, LV_PART_MAIN);
+    lv_obj_align(target, LV_ALIGN_CENTER, 0, -12);
+
+    lv_obj_t *minus = lv_btn_create(panel);
+    lv_obj_set_size(minus, 62, 62);
+    lv_obj_align(minus, LV_ALIGN_CENTER, -92, -6);
+    lv_obj_clear_flag(minus, LV_OBJ_FLAG_EVENT_BUBBLE);
+    lv_obj_t *minus_label = lv_label_create(minus);
+    lv_label_set_text(minus_label, "-");
+    lv_obj_center(minus_label);
+    lv_obj_add_event_cb(minus, heating_popup_minus_cb, LV_EVENT_CLICKED, ctx);
+
+    lv_obj_t *plus = lv_btn_create(panel);
+    lv_obj_set_size(plus, 62, 62);
+    lv_obj_align(plus, LV_ALIGN_CENTER, 92, -6);
+    lv_obj_clear_flag(plus, LV_OBJ_FLAG_EVENT_BUBBLE);
+    lv_obj_t *plus_label = lv_label_create(plus);
+    lv_label_set_text(plus_label, "+");
+    lv_obj_center(plus_label);
+    lv_obj_add_event_cb(plus, heating_popup_plus_cb, LV_EVENT_CLICKED, ctx);
+
+    lv_obj_t *power = lv_btn_create(panel);
+    lv_obj_set_size(power, 120, 48);
+    lv_obj_align(power, LV_ALIGN_BOTTOM_LEFT, 8, -8);
+    lv_obj_clear_flag(power, LV_OBJ_FLAG_EVENT_BUBBLE);
+    lv_obj_t *power_label = lv_label_create(power);
+    lv_label_set_text(power_label, ctx->is_on ? "Turn off" : "Turn on");
+    lv_obj_center(power_label);
+    lv_obj_add_event_cb(power, heating_popup_power_cb, LV_EVENT_CLICKED, ctx);
+
+    lv_obj_t *close = lv_btn_create(panel);
+    lv_obj_set_size(close, 100, 48);
+    lv_obj_align(close, LV_ALIGN_BOTTOM_RIGHT, -8, -8);
+    lv_obj_clear_flag(close, LV_OBJ_FLAG_EVENT_BUBBLE);
+    lv_obj_t *close_label = lv_label_create(close);
+    lv_label_set_text(close_label, "Close");
+    lv_obj_center(close_label);
+    lv_obj_add_event_cb(close, heating_popup_close_cb, LV_EVENT_CLICKED, ctx);
+}
+
 static void w_heating_tile_card_event_cb(lv_event_t *event)
 {
     lv_event_code_t code = lv_event_get_code(event);
     w_heating_tile_ctx_t *ctx = (w_heating_tile_ctx_t *)lv_event_get_user_data(event);
     if (ctx == NULL) {
+        return;
+    }
+
+    if (code == LV_EVENT_LONG_PRESSED) {
+        heating_open_popup(ctx);
         return;
     }
 
@@ -504,6 +640,11 @@ static void w_heating_tile_card_event_cb(lv_event_t *event)
             heating_apply_from_ctx(card, ctx);
         }
     } else if (code == LV_EVENT_DELETE) {
+        if (ctx->popup_overlay != NULL) {
+            lv_obj_t *overlay = ctx->popup_overlay;
+            ctx->popup_overlay = NULL;
+            lv_obj_del(overlay);
+        }
         free(ctx);
     }
 }
@@ -709,6 +850,7 @@ esp_err_t w_heating_tile_create(const ui_widget_def_t *def, lv_obj_t *parent, ui
     }
 
     lv_obj_add_event_cb(card, w_heating_tile_card_event_cb, LV_EVENT_CLICKED, ctx);
+    lv_obj_add_event_cb(card, w_heating_tile_card_event_cb, LV_EVENT_LONG_PRESSED, ctx);
     lv_obj_add_event_cb(card, w_heating_tile_card_event_cb, LV_EVENT_DELETE, ctx);
     lv_obj_add_event_cb(arc, w_heating_tile_arc_event_cb, LV_EVENT_VALUE_CHANGED, ctx);
     lv_obj_add_event_cb(arc, w_heating_tile_arc_event_cb, LV_EVENT_RELEASED, ctx);
