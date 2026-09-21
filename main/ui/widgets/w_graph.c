@@ -24,6 +24,7 @@
 #include "ui/fonts/app_text_fonts.h"
 #include "ui/ui_i18n.h"
 #include "ui/ui_memory.h"
+#include "ui/widgets/widget_display_options.h"
 #include "ui/theme/theme_default.h"
 
 #define GRAPH_POINTS_MIN 16
@@ -1447,6 +1448,9 @@ esp_err_t w_graph_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widget
     ctx->value_label = value;
     ctx->meta_label = meta;
     ctx->chart = chart;
+    widget_display_set_visible(title, def->show_title);
+    widget_display_set_visible(value, def->show_state);
+    widget_display_set_visible(meta, def->show_state);
     ctx->history_count = 0;
     ctx->history_dirty = false;
     ctx->last_persist_bucket_ts = 0U;
