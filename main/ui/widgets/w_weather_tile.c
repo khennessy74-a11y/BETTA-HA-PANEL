@@ -196,6 +196,7 @@ typedef struct {
 
 typedef struct {
     bool show_forecast;
+    bool show_state;
     lv_obj_t *condition_label;
     lv_obj_t *temp_label;
     lv_obj_t *meta_label;
@@ -2546,6 +2547,8 @@ static void weather_render(lv_obj_t *card, w_weather_tile_ctx_t *ctx, const weat
 
     if (ctx->show_forecast) {
         weather_render_3day(card, ctx, values, available);
+        widget_display_set_visible(ctx->temp_label, ctx->show_state);
+        widget_display_set_visible(ctx->meta_label, ctx->show_state);
         return;
     }
 
@@ -2724,6 +2727,8 @@ static void weather_render(lv_obj_t *card, w_weather_tile_ctx_t *ctx, const weat
             weather_hide_lottie(ctx);
         }
     }
+    widget_display_set_visible(ctx->temp_label, ctx->show_state);
+    widget_display_set_visible(ctx->meta_label, ctx->show_state);
 
 }
 
@@ -2817,6 +2822,7 @@ esp_err_t w_weather_tile_create(const ui_widget_def_t *def, lv_obj_t *parent, ui
     }
 
     ctx->show_forecast = (strcmp(def->type, "weather_3day") == 0);
+    ctx->show_state = def->show_state;
     ctx->condition_label = condition;
     ctx->temp_label = temp;
     ctx->meta_label = meta;
