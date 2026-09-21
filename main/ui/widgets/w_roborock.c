@@ -28,6 +28,7 @@
 #include "ui/fonts/app_text_fonts.h"
 #include "ui/theme/theme_default.h"
 #include "ui/ui_i18n.h"
+#include "ui/widgets/widget_display_options.h"
 
 #define W_RR_TAG "w_roborock"
 #define W_RR_MAX_ROOMS 32
@@ -2773,12 +2774,14 @@ esp_err_t w_roborock_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_wid
     lv_obj_set_width(title, def->w - 120);
     lv_obj_align(title, LV_ALIGN_TOP_LEFT, 0, 0);
     ctx->title_label = title;
+    widget_display_set_visible(title, def->show_title);
 
     lv_obj_t *battery_chip = lv_obj_create(card);
     lv_obj_set_size(battery_chip, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
     lv_obj_clear_flag(battery_chip, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_align(battery_chip, LV_ALIGN_TOP_RIGHT, 0, 0);
     ctx->battery_chip = battery_chip;
+    widget_display_set_visible(battery_chip, def->show_state);
 
     lv_obj_t *battery_label = lv_label_create(battery_chip);
     lv_label_set_text(battery_label, "--");
@@ -2793,6 +2796,7 @@ esp_err_t w_roborock_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_wid
     lv_obj_set_width(state_label, def->w - 28);
     lv_obj_align(state_label, LV_ALIGN_TOP_LEFT, 0, 40);
     ctx->state_label = state_label;
+    widget_display_set_visible(state_label, def->show_state);
 
     lv_obj_t *detail_label = lv_label_create(card);
     lv_label_set_text(detail_label, "");
@@ -2801,6 +2805,7 @@ esp_err_t w_roborock_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_wid
     lv_obj_set_width(detail_label, def->w - 28);
     lv_obj_align(detail_label, LV_ALIGN_TOP_LEFT, 0, 82);
     ctx->detail_label = detail_label;
+    widget_display_set_visible(detail_label, def->show_state);
 
     ctx->popup_map_panel = lv_obj_create(card);
     lv_obj_clear_flag(ctx->popup_map_panel, LV_OBJ_FLAG_SCROLLABLE);
