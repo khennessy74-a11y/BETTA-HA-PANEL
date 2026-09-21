@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - all-tile-ui-options
+      - popup-controls
 
 jobs:
   build:
