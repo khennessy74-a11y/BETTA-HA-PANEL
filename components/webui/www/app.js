@@ -60,6 +60,19 @@ const SETUP_WIZARD_PENDING_STORAGE_KEY = "betta.setupWizard.pending";
 const SETUP_WIZARD_DISMISSED_STORAGE_KEY = "betta.setupWizard.dismissed";
 const OTA_RELEASE_REPO = "cptkirki/BETTA-HA-PANEL";
 const ENTITY_PICKER_CONFIGS = {
+  binary_sensor: {
+    domain: "binary_sensor",
+    titleKey: "entity_picker.title_binary_sensor",
+    blankKey: "entity_picker.blank_binary_sensor",
+    widgetKey: "entity_picker.widget_binary_sensor",
+    itemsKey: "entity_picker.items_binary_sensor",
+    titleFallback: "Choose Binary Sensor",
+    blankFallback: "Blank Binary Sensor Tile",
+    widgetFallback: "Binary Sensor tile",
+    itemsFallback: "binary sensors",
+    minSearch: 2,
+    liveSearch: false,
+  },
   sensor: {
     domain: "sensor",
     titleKey: "entity_picker.title_sensor",
@@ -300,6 +313,7 @@ const WEB_I18N_BUILTIN = {
     "layout.status.energy_page_only": "Energy pages do not accept widgets.",
     "layout.widgets.heading": "Widgets",
     "layout.widgets.add_sensor": "+ Sensor",
+    "layout.widgets.add_binary_sensor": "+ Binary Sensor",
     "layout.widgets.add_button": "+ Button",
     "layout.widgets.add_script": "+ Script",
     "layout.widgets.add_scene": "+ Scene",
@@ -318,6 +332,7 @@ const WEB_I18N_BUILTIN = {
     "layout.widgets.confirm_delete": "Delete widget \"{name}\"?",
     "entity_picker.title": "Choose Light",
     "entity_picker.title_sensor": "Choose Sensor",
+    "entity_picker.title_binary_sensor": "Choose Binary Sensor",
     "entity_picker.title_light": "Choose Light",
     "entity_picker.title_switch": "Choose Switch",
     "entity_picker.title_script": "Choose Script",
@@ -337,6 +352,7 @@ const WEB_I18N_BUILTIN = {
     "entity_picker.search_ready": "Press Enter or Search to query {items}.",
     "entity_picker.blank": "Blank Light Tile",
     "entity_picker.blank_sensor": "Blank Sensor Tile",
+    "entity_picker.blank_binary_sensor": "Blank Binary Sensor Tile",
     "entity_picker.blank_light": "Blank Light Tile",
     "entity_picker.blank_button": "Blank Button Tile",
     "entity_picker.blank_script": "Blank Script Button",
@@ -364,6 +380,7 @@ const WEB_I18N_BUILTIN = {
     "entity_picker.progress_total": "{loaded} / {target} of {total}",
     "entity_picker.items_light": "lights",
     "entity_picker.items_sensor": "sensors",
+    "entity_picker.items_binary_sensor": "binary sensors",
     "entity_picker.items_switch": "switches",
     "entity_picker.items_script": "scripts",
     "entity_picker.items_scene": "scenes",
@@ -372,6 +389,7 @@ const WEB_I18N_BUILTIN = {
     "entity_picker.items_vacuum": "vacuum robots",
     "entity_picker.widget_light": "Light tile",
     "entity_picker.widget_sensor": "Sensor tile",
+    "entity_picker.widget_binary_sensor": "Binary Sensor tile",
     "entity_picker.widget_button": "Button tile",
     "entity_picker.widget_script": "Script button",
     "entity_picker.widget_scene": "Scene button",
@@ -1552,6 +1570,7 @@ const el = {
   energyBatterySoc: document.getElementById("energyBatterySoc"),
   applyEnergyPageBtn: document.getElementById("applyEnergyPageBtn"),
   addSensorBtn: document.getElementById("addSensorBtn"),
+  addBinarySensorBtn: document.getElementById("addBinarySensorBtn"),
   addButtonBtn: document.getElementById("addButtonBtn"),
   addScriptBtn: document.getElementById("addScriptBtn"),
   addSceneBtn: document.getElementById("addSceneBtn"),
@@ -3851,6 +3870,7 @@ function allowedEntityDomainsForWidgetType(
 ) {
   if (type === "empty_tile") return [];
   if (type === "sensor" || type === "graph") return ["sensor"];
+  if (type === "binary_sensor") return ["binary_sensor"];
   if (type === "button") {
     const normalizedMode = normalizeButtonMode(buttonMode);
     if (buttonModeRequiresMediaPlayer(normalizedMode)) return ["media_player"];
@@ -6623,6 +6643,9 @@ function bindUi() {
     input.onblur = () => applyEnergyPageConfig();
   }
   el.addSensorBtn.onclick = () => openLightEntityPicker("sensor");
+  if (el.addBinarySensorBtn) {
+    el.addBinarySensorBtn.onclick = () => openLightEntityPicker("binary_sensor");
+  }
   el.addButtonBtn.onclick = () => openLightEntityPicker("button");
   if (el.addScriptBtn) {
     el.addScriptBtn.onclick = () => openLightEntityPicker("button_script");
