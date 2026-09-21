@@ -31,6 +31,7 @@
 #include "ui/fonts/app_text_fonts.h"
 #include "ui/theme/theme_default.h"
 #include "ui/ui_i18n.h"
+#include "ui/widgets/widget_display_options.h"
 
 #define W_TODO_TAG "w_todo"
 /* Focus is on showing all *open* items; completed ones are appended at the
@@ -1141,6 +1142,8 @@ esp_err_t w_todo_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widget_
     ctx->card = card;
     ctx->title_label = title;
     ctx->status_label = status;
+    widget_display_set_visible(title, def->show_title);
+    widget_display_set_visible(status, def->show_state);
     ctx->list_container = list;
     snprintf(ctx->entity_id, sizeof(ctx->entity_id), "%s", def->entity_id);
     ctx->staging_mutex = xSemaphoreCreateMutex();
