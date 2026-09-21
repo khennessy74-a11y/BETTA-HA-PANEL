@@ -3761,7 +3761,7 @@ const COMMON_DISPLAY_WIDGET_TYPES = new Set([
   "roborock", "todo", "weather_3day"
 ]);
 const COMMON_ICON_WIDGET_TYPES = new Set([
-  "heating_tile", "light_tile", "weather_3day"
+  "heating_tile", "light_tile"
 ]);
 
 function setCommonCustomIconValue(value) {
