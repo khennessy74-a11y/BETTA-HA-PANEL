@@ -50,6 +50,10 @@ typedef struct {
     lv_obj_t *min_label;
     lv_obj_t *max_label;
     lv_obj_t *popup_overlay;
+    lv_obj_t *popup_target_label;
+    lv_obj_t *popup_current_label;
+    lv_obj_t *popup_power_label;
+    bool suppress_next_click;
 } w_heating_tile_ctx_t;
 
 typedef struct {
@@ -483,7 +487,12 @@ static void heating_popup_close_cb(lv_event_t *event)
 {
     lv_obj_t *overlay = lv_event_get_target(event);
     w_heating_tile_ctx_t *ctx = (w_heating_tile_ctx_t *)lv_event_get_user_data(event);
-    if (ctx != NULL && ctx->popup_overlay == overlay) ctx->popup_overlay = NULL;
+    if (ctx != NULL && ctx->popup_overlay == overlay) {
+        ctx->popup_overlay = NULL;
+        ctx->popup_target_label = NULL;
+        ctx->popup_current_label = NULL;
+        ctx->popup_power_label = NULL;
+    }
     lv_obj_del_async(overlay);
 }
 
@@ -495,19 +504,10 @@ static void heating_popup_power_cb(lv_event_t *event)
         ctx->is_on = !ctx->is_on;
         heating_copy_text(ctx->status_text, sizeof(ctx->status_text), ctx->is_on ? "on" : "off");
         heating_apply_from_ctx(lv_obj_get_parent(ctx->arc), ctx);
+        if (ctx->popup_power_label != NULL) {
+            lv_label_set_text(ctx->popup_power_label, ctx->is_on ? "Turn off" : "Turn on");
+        }
     }
-}
-
-static void heating_popup_step_cb(lv_event_t *event)
-{
-    w_heating_tile_ctx_t *ctx = (w_heating_tile_ctx_t *)lv_event_get_user_data(event);
-    if (ctx == NULL) return;
-    intptr_t delta = (intptr_t)lv_event_get_param(event);
-    float next = snap_half_deg(clamp_temp(ctx->target_temp) + (float)delta * 0.5f);
-    ctx->target_temp = next;
-    if (ctx->arc != NULL) lv_arc_set_value(ctx->arc, (int)(next * 2.0f + 0.5f));
-    heating_set_target_label(ctx->target_label, next);
-    (void)ui_bindings_set_climate_target_c(ctx->climate_entity_id, next);
 }
 
 static void heating_popup_minus_cb(lv_event_t *event)
@@ -518,6 +518,11 @@ static void heating_popup_minus_cb(lv_event_t *event)
     ctx->target_temp = next;
     if (ctx->arc != NULL) lv_arc_set_value(ctx->arc, (int)(next * 2.0f + 0.5f));
     heating_set_target_label(ctx->target_label, next);
+    if (ctx->popup_target_label != NULL) {
+        char text[24] = {0};
+        snprintf(text, sizeof(text), "%.1f C", (double)next);
+        lv_label_set_text(ctx->popup_target_label, text);
+    }
     (void)ui_bindings_set_climate_target_c(ctx->climate_entity_id, next);
 }
 
@@ -558,6 +563,7 @@ static void heating_open_popup(w_heating_tile_ctx_t *ctx)
     lv_obj_align(title, LV_ALIGN_TOP_LEFT, 8, 8);
 
     lv_obj_t *current = lv_label_create(panel);
+    ctx->popup_current_label = current;
     char current_text[32] = {0};
     if (ctx->has_current_temp) snprintf(current_text, sizeof(current_text), "Current %.1f C", (double)ctx->current_temp);
     else snprintf(current_text, sizeof(current_text), "Current --.- C");
@@ -566,6 +572,7 @@ static void heating_open_popup(w_heating_tile_ctx_t *ctx)
     lv_obj_align(current, LV_ALIGN_TOP_MID, 0, 62);
 
     lv_obj_t *target = lv_label_create(panel);
+    ctx->popup_target_label = target;
     char target_text[24] = {0};
     snprintf(target_text, sizeof(target_text), "%.1f C", (double)ctx->target_temp);
     lv_label_set_text(target, target_text);
@@ -595,6 +602,7 @@ static void heating_open_popup(w_heating_tile_ctx_t *ctx)
     lv_obj_align(power, LV_ALIGN_BOTTOM_LEFT, 8, -8);
     lv_obj_clear_flag(power, LV_OBJ_FLAG_EVENT_BUBBLE);
     lv_obj_t *power_label = lv_label_create(power);
+    ctx->popup_power_label = power_label;
     lv_label_set_text(power_label, ctx->is_on ? "Turn off" : "Turn on");
     lv_obj_center(power_label);
     lv_obj_add_event_cb(power, heating_popup_power_cb, LV_EVENT_CLICKED, ctx);
@@ -618,11 +626,16 @@ static void w_heating_tile_card_event_cb(lv_event_t *event)
     }
 
     if (code == LV_EVENT_LONG_PRESSED) {
+        ctx->suppress_next_click = true;
         heating_open_popup(ctx);
         return;
     }
 
     if (code == LV_EVENT_CLICKED) {
+        if (ctx->suppress_next_click) {
+            ctx->suppress_next_click = false;
+            return;
+        }
         lv_obj_t *card = lv_event_get_target(event);
         bool prev_is_on = ctx->is_on;
         char prev_status[sizeof(ctx->status_text)] = {0};
