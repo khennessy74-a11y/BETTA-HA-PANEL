@@ -684,6 +684,19 @@ esp_err_t ui_bindings_set_slider_value(
             (float)value / 100.0f);
 
     } else if (
+        strcmp(domain, "cover") == 0) {
+
+        service = "set_cover_position";
+
+        snprintf(
+            payload,
+            sizeof(payload),
+            "{\"entity_id\":\"%s\","
+            "\"position\":%d}",
+            entity_id,
+            value);
+
+    } else if (
         strcmp(domain, HA_DOMAIN_CLIMATE) == 0) {
 
         service = "set_temperature";
