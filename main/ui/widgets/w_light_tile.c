@@ -18,6 +18,7 @@
 #include "ui/fonts/mdi_font_registry.h"
 #include "ui/ui_i18n.h"
 #include "ui/ui_memory.h"
+#include "ui/widgets/widget_display_options.h"
 #include "ui/theme/theme_default.h"
 
 #ifndef APP_HAVE_LIGHT_COLOR_BUTTON_IMAGES
@@ -54,6 +55,10 @@ typedef struct {
     int min_color_temp_kelvin;
     int max_color_temp_kelvin;
     lv_coord_t configured_min_dim;
+    char custom_icon[APP_MAX_ICON_LEN];
+    bool show_title;
+    bool show_icon;
+    bool show_state;
 } w_light_tile_ctx_t;
 
 #define ICON_CP_MDI_LIGHTBULB_ON 0xF06E8U
@@ -618,7 +623,16 @@ static void light_apply_visual(lv_obj_t *card, const w_light_tile_ctx_t *ctx, bo
     lv_slider_set_value(w.slider, can_dim ? clamp_percent(brightness) : (is_on ? 100 : 0), LV_ANIM_OFF);
     light_set_value_label(w.value_label, brightness);
     lv_label_set_text(w.icon, light_icon_text_for_font(icon_font));
+    if (ctx != NULL && ctx->custom_icon[0] != '\0') {
+        (void)widget_display_apply_mdi(w.icon, ctx->custom_icon);
+    }
     lv_label_set_text(w.state_label, light_translate_status(status_text != NULL ? status_text : (is_on ? "ON" : "OFF")));
+    if (ctx != NULL) {
+        widget_display_set_visible(w.title, ctx->show_title);
+        widget_display_set_visible(w.icon, ctx->show_icon);
+        widget_display_set_visible(w.state_label, ctx->show_state);
+        widget_display_set_visible(w.value_label, ctx->show_state && can_dim);
+    }
     light_position_icon_between_state_and_title(
         card, layout->icon_gap, layout->icon_bias_y,
         can_adjust_color ? light_icon_bias_x_for_button_size(color_button_size) : 0);
@@ -1645,6 +1659,10 @@ esp_err_t w_light_tile_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_w
     ctx->min_color_temp_kelvin = 2000;
     ctx->max_color_temp_kelvin = 6500;
     ctx->configured_min_dim = configured_min_dim;
+    ctx->show_title = def->show_title;
+    ctx->show_icon = def->show_icon;
+    ctx->show_state = def->show_state;
+    snprintf(ctx->custom_icon, sizeof(ctx->custom_icon), "%s", def->icon);
 
     lv_obj_add_event_cb(card, w_light_tile_card_event_cb, LV_EVENT_CLICKED, ctx);
     lv_obj_add_event_cb(card, w_light_tile_card_event_cb, LV_EVENT_SIZE_CHANGED, ctx);
