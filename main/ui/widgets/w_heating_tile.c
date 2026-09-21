@@ -548,7 +548,7 @@ static void heating_open_popup(w_heating_tile_ctx_t *ctx)
     lv_obj_set_size(panel, 360, 300);
     lv_obj_center(panel);
     lv_obj_set_style_radius(panel, APP_UI_CARD_RADIUS, LV_PART_MAIN);
-    lv_obj_set_style_bg_color(panel, lv_color_hex(APP_UI_COLOR_CARD_BG), LV_PART_MAIN);
+    lv_obj_set_style_bg_color(panel, lv_color_hex(APP_UI_COLOR_CARD_BG_OFF), LV_PART_MAIN);
     lv_obj_clear_flag(panel, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_clear_flag(panel, LV_OBJ_FLAG_EVENT_BUBBLE);
 
