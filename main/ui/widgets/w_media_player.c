@@ -507,6 +507,9 @@ static void mp_play_clicked(lv_event_t *event)
     }
 }
 
+static lv_obj_t *mp_create_icon_button(lv_obj_t *parent, const char *symbol, w_mp_ctx_t *ctx,
+                                        lv_event_cb_t cb, lv_obj_t **out_label);
+
 static void mp_popup_close_cb(lv_event_t *event)
 {
     w_mp_ctx_t *ctx = (w_mp_ctx_t *)lv_event_get_user_data(event);
