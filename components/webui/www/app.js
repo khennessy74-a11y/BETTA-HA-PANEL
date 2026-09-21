@@ -3760,6 +3760,9 @@ const COMMON_DISPLAY_WIDGET_TYPES = new Set([
   "graph", "heating_tile", "light_tile", "media_player",
   "roborock", "todo", "weather_3day"
 ]);
+const COMMON_ICON_WIDGET_TYPES = new Set([
+  "heating_tile", "light_tile", "weather_3day"
+]);
 
 function setCommonCustomIconValue(value) {
   const select = el.fCommonCustomIcon;
@@ -3787,7 +3790,10 @@ function setCommonCustomIconValue(value) {
 
 function updateCommonIconControls() {
   if (!el.fCommonShowIcon || !el.fCommonIconModeWrap || !el.fCommonIconMode || !el.fCommonCustomIconWrap) return;
-  const showIcon = el.fCommonShowIcon.value !== "false";
+  const widget = selectedWidget();
+  const iconCapable = widget && COMMON_ICON_WIDGET_TYPES.has(widget.type);
+  const showIcon = iconCapable && el.fCommonShowIcon.value !== "false";
+  el.fCommonShowIcon.closest("label")?.classList.toggle("hidden", !iconCapable);
   el.fCommonIconModeWrap.classList.toggle("hidden", !showIcon);
   el.fCommonCustomIconWrap.classList.toggle("hidden", !showIcon || el.fCommonIconMode.value !== "custom");
 }
