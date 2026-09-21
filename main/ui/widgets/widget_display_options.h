@@ -15,7 +15,8 @@ static inline bool widget_display_apply_mdi(lv_obj_t *label, const char *name)
     if (label == NULL || name == NULL || name[0] == '\0') return false;
     uint32_t cp = 0;
     if (!mdi_icon_lookup(name, &cp)) return false;
-    const lv_font_t *font = mdi_font_icon_56();
+    const lv_font_t *font = mdi_font_icon_42();
+    if (font == NULL) font = mdi_font_icon_56();
     if (font == NULL) font = mdi_font_large();
     if (font == NULL) return false;
     lv_font_glyph_dsc_t dsc = {0};
