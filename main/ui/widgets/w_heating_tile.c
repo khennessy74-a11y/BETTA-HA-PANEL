@@ -14,6 +14,7 @@
 #include "ui/ui_bindings.h"
 #include "ui/ui_i18n.h"
 #include "ui/ui_memory.h"
+#include "ui/widgets/widget_display_options.h"
 #include "ui/theme/theme_default.h"
 
 #define HEATING_ACTUAL_FONT APP_FONT_DISPLAY_38
@@ -644,6 +645,15 @@ esp_err_t w_heating_tile_create(const ui_widget_def_t *def, lv_obj_t *parent, ui
     ctx->target_label = target_label;
     ctx->actual_label = actual_label;
     ctx->status_label = status_label;
+
+    widget_display_set_visible(title, def->show_title);
+    widget_display_set_visible(icon, def->show_icon);
+    widget_display_set_visible(target_label, def->show_state);
+    widget_display_set_visible(actual_label, def->show_state);
+    widget_display_set_visible(status_label, def->show_state);
+    if (def->show_icon && def->icon[0] != '\0') {
+        (void)widget_display_apply_mdi(icon, def->icon);
+    }
 
     ctx->arc_semi = (def->style_variant[0] != '\0' && strcmp(def->style_variant, "arc_semi") == 0);
     const char *opening = (def->arc_opening[0] != '\0') ? def->arc_opening : "left";
