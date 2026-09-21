@@ -103,7 +103,7 @@ out_instance->timer_show_finish = def->timer_show_finish;
     snprintf(out_instance->arc_opening, sizeof(out_instance->arc_opening), "%s", def->arc_opening);
     out_instance->ctx = NULL;
 
-    if (strcmp(def->type, "sensor") == 0) {
+    if (strcmp(def->type, "sensor") == 0 || strcmp(def->type, "binary_sensor") == 0) {
         return w_sensor_create(def, parent, out_instance);
     }
     if (strcmp(def->type, "button") == 0) {
