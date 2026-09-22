@@ -259,6 +259,11 @@ void display_configure_night_mode(int day_percent, int night_percent, bool auto_
     (void)display_set_brightness_percent(s_active_brightness);
 }
 
+bool display_is_screen_off(void)
+{
+    return s_display_ready && s_display_brightness == 0;
+}
+
 void display_note_activity(void)
 {
     if (!s_display_ready) return;
