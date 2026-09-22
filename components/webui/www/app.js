@@ -86,6 +86,18 @@ const ENTITY_PICKER_CONFIGS = {
     minSearch: 2,
     liveSearch: false,
   },
+  automation: {
+    widgetType: "button",
+    domain: "automation",
+    titleKey: "entity_picker.title_automation",
+    blankKey: "entity_picker.blank_automation",
+    widgetKey: "entity_picker.widget_automation",
+    itemsKey: "entity_picker.items_automation",
+    titleFallback: "Choose Automation",
+    blankFallback: "Blank Automation Control",
+    widgetFallback: "Automation control",
+    itemsFallback: "automations",
+  },
   input_boolean: {
     widgetType: "button",
     domain: "input_boolean",
@@ -1603,6 +1615,7 @@ const el = {
   addBinarySensorBtn: document.getElementById("addBinarySensorBtn"),
   addButtonBtn: document.getElementById("addButtonBtn"),
   addInputBooleanBtn: document.getElementById("addInputBooleanBtn"),
+  addAutomationBtn: document.getElementById("addAutomationBtn"),
   addScriptBtn: document.getElementById("addScriptBtn"),
   addSceneBtn: document.getElementById("addSceneBtn"),
   addSliderBtn: document.getElementById("addSliderBtn"),
@@ -3907,7 +3920,7 @@ function allowedEntityDomainsForWidgetType(
     const normalizedMode = normalizeButtonMode(buttonMode);
     if (buttonModeRequiresMediaPlayer(normalizedMode)) return ["media_player"];
     if (buttonModeRequiresRunnable(normalizedMode)) return ["script", "scene"];
-    return ["switch", "input_boolean", "media_player"];
+    return ["switch", "input_boolean", "automation", "media_player"];
   }
   if (type === "light_tile") return ["light"];
   if (type === "heating_tile") return ["climate"];
@@ -6684,6 +6697,9 @@ function bindUi() {
   el.addButtonBtn.onclick = () => openLightEntityPicker("button");
   if (el.addInputBooleanBtn) {
     el.addInputBooleanBtn.onclick = () => openLightEntityPicker("input_boolean");
+  }
+  if (el.addAutomationBtn) {
+    el.addAutomationBtn.onclick = () => openLightEntityPicker("automation");
   }
   if (el.addScriptBtn) {
     el.addScriptBtn.onclick = () => openLightEntityPicker("button_script");
