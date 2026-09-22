@@ -31,6 +31,7 @@
 
 #include <stdbool.h>
 #include <inttypes.h>
+#include <time.h>
 
 #include "driver/ledc.h"
 #include "esp_check.h"
