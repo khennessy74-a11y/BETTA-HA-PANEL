@@ -14,6 +14,9 @@ esp_err_t w_button_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widge
 void w_button_apply_state(ui_widget_instance_t *instance, const ha_state_t *state);
 void w_button_mark_unavailable(ui_widget_instance_t *instance);
 
+esp_err_t w_input_number_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widget_instance_t *out_instance);
+void w_input_number_apply_state(ui_widget_instance_t *instance, const ha_state_t *state);
+void w_input_number_mark_unavailable(ui_widget_instance_t *instance);
 esp_err_t w_slider_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widget_instance_t *out_instance);
 void w_slider_apply_state(ui_widget_instance_t *instance, const ha_state_t *state);
 void w_slider_mark_unavailable(ui_widget_instance_t *instance);
@@ -116,6 +119,9 @@ out_instance->timer_show_finish = def->timer_show_finish;
     if (strcmp(def->type, "slider") == 0) {
         return w_slider_create(def, parent, out_instance);
     }
+    if (strcmp(def->type, "input_number") == 0) {
+        return w_input_number_create(def, parent, out_instance);
+    }
     if (strcmp(def->type, "graph") == 0) {
         return w_graph_create(def, parent, out_instance);
     }
@@ -160,6 +166,8 @@ void ui_widget_factory_apply_state(ui_widget_instance_t *instance, const ha_stat
         w_button_apply_state(instance, state);
     } else if (strcmp(instance->type, "slider") == 0) {
         w_slider_apply_state(instance, state);
+    } else if (strcmp(instance->type, "input_number") == 0) {
+        w_input_number_apply_state(instance, state);
     } else if (strcmp(instance->type, "graph") == 0) {
         w_graph_apply_state(instance, state);
     } else if (strcmp(instance->type, "empty_tile") == 0) {
@@ -195,6 +203,8 @@ void ui_widget_factory_mark_unavailable(ui_widget_instance_t *instance)
         w_button_mark_unavailable(instance);
     } else if (strcmp(instance->type, "slider") == 0) {
         w_slider_mark_unavailable(instance);
+    } else if (strcmp(instance->type, "input_number") == 0) {
+        w_input_number_mark_unavailable(instance);
     } else if (strcmp(instance->type, "graph") == 0) {
         w_graph_mark_unavailable(instance);
     } else if (strcmp(instance->type, "empty_tile") == 0) {
