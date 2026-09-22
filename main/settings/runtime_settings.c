@@ -129,6 +129,10 @@ static esp_err_t write_public_settings_file(const runtime_settings_t *settings)
 
     cJSON_AddStringToObject(ui, "language", settings->ui_language);
     cJSON_AddNumberToObject(ui, "brightness_percent", settings->display_brightness_percent);
+    cJSON_AddNumberToObject(ui, "night_brightness_percent", settings->display_night_brightness_percent);
+    cJSON_AddBoolToObject(ui, "night_mode_auto", settings->display_night_mode_auto);
+    cJSON_AddNumberToObject(ui, "night_start_hour", settings->display_night_start_hour);
+    cJSON_AddNumberToObject(ui, "day_start_hour", settings->display_day_start_hour);
     cJSON_AddItemToObject(root, "ui", ui);
 
     char *payload = cJSON_PrintUnformatted(root);
@@ -258,6 +262,17 @@ static esp_err_t parse_settings_json(
             int value = brightness->valueint;
             out->display_brightness_percent = value < 0 ? 0 : (value > 100 ? 100 : value);
         }
+        cJSON *night_brightness = cJSON_GetObjectItemCaseSensitive(ui, "night_brightness_percent");
+        if (cJSON_IsNumber(night_brightness)) {
+            int value = night_brightness->valueint;
+            out->display_night_brightness_percent = value < 0 ? 0 : (value > 100 ? 100 : value);
+        }
+        cJSON *night_auto = cJSON_GetObjectItemCaseSensitive(ui, "night_mode_auto");
+        if (cJSON_IsBool(night_auto)) out->display_night_mode_auto = cJSON_IsTrue(night_auto);
+        cJSON *night_hour = cJSON_GetObjectItemCaseSensitive(ui, "night_start_hour");
+        if (cJSON_IsNumber(night_hour) && night_hour->valueint >= 0 && night_hour->valueint <= 23) out->display_night_start_hour = night_hour->valueint;
+        cJSON *day_hour = cJSON_GetObjectItemCaseSensitive(ui, "day_start_hour");
+        if (cJSON_IsNumber(day_hour) && day_hour->valueint >= 0 && day_hour->valueint <= 23) out->display_day_start_hour = day_hour->valueint;
     } else {
         json_copy_string(root, "language", out->ui_language, sizeof(out->ui_language));
     }
@@ -413,6 +428,10 @@ void runtime_settings_set_defaults(runtime_settings_t *out)
     strlcpy(out->time_tz, APP_TIME_TZ, sizeof(out->time_tz));
     strlcpy(out->ui_language, APP_UI_DEFAULT_LANGUAGE, sizeof(out->ui_language));
     out->display_brightness_percent = APP_DISPLAY_ACTIVE_BRIGHTNESS_PERCENT;
+    out->display_night_brightness_percent = 20;
+    out->display_night_mode_auto = false;
+    out->display_night_start_hour = 22;
+    out->display_day_start_hour = 7;
 }
 
 esp_err_t runtime_settings_load(runtime_settings_t *out)
