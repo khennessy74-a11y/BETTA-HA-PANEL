@@ -253,6 +253,7 @@ esp_err_t api_settings_get_handler(httpd_req_t *req)
     cJSON_AddItemToObject(root, "time", time_cfg);
 
     cJSON_AddStringToObject(ui, "language", settings->ui_language);
+    cJSON_AddNumberToObject(ui, "brightness_percent", settings->display_brightness_percent);
     cJSON_AddItemToObject(root, "ui", ui);
 
     cJSON_AddBoolToObject(root, "ok", true);
@@ -320,6 +321,25 @@ static bool update_bool_setting(cJSON *obj, const char *key, bool *dst, bool *ou
         *out_invalid_type = true;
     }
     return false;
+}
+
+static bool update_int_setting(cJSON *obj, const char *key, int *dst, int min_value, int max_value, bool *out_invalid_type)
+{
+    cJSON *item = cJSON_GetObjectItemCaseSensitive(obj, key);
+    if (item == NULL) {
+        return false;
+    }
+    if (!cJSON_IsNumber(item)) {
+        if (out_invalid_type != NULL) *out_invalid_type = true;
+        return false;
+    }
+    int value = item->valueint;
+    if (value < min_value || value > max_value) {
+        if (out_invalid_type != NULL) *out_invalid_type = true;
+        return false;
+    }
+    *dst = value;
+    return true;
 }
 
 esp_err_t api_settings_put_handler(httpd_req_t *req)
@@ -414,6 +434,8 @@ esp_err_t api_settings_put_handler(httpd_req_t *req)
     if (cJSON_IsObject(ui)) {
         (void)update_string_setting(
             ui, "language", settings->ui_language, sizeof(settings->ui_language), &invalid_type, &too_long);
+        (void)update_int_setting(
+            ui, "brightness_percent", &settings->display_brightness_percent, 0, 100, &invalid_type);
     }
 
     (void)update_string_setting(
