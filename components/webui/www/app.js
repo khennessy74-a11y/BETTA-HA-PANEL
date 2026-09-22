@@ -1777,6 +1777,9 @@ fSliderAccentColor: document.getElementById("fSliderAccentColor"),
   settingsNightModeAuto: document.getElementById("settingsNightModeAuto"),
   settingsNightStartHour: document.getElementById("settingsNightStartHour"),
   settingsDayStartHour: document.getElementById("settingsDayStartHour"),
+  settingsIdleTimeout: document.getElementById("settingsIdleTimeout"),
+  settingsIdleBrightness: document.getElementById("settingsIdleBrightness"),
+  settingsIdleBrightnessValue: document.getElementById("settingsIdleBrightnessValue"),
   reloadLanguagesBtn: document.getElementById("reloadLanguagesBtn"),
   downloadLanguageBtn: document.getElementById("downloadLanguageBtn"),
   uploadLanguageCode: document.getElementById("uploadLanguageCode"),
@@ -2933,6 +2936,12 @@ function renderSettings() {
   if (el.settingsNightModeAuto) el.settingsNightModeAuto.checked = ui.night_mode_auto === true;
   if (el.settingsNightStartHour) el.settingsNightStartHour.value = String(clamp(Math.round(Number(ui.night_start_hour ?? 22)), 0, 23));
   if (el.settingsDayStartHour) el.settingsDayStartHour.value = String(clamp(Math.round(Number(ui.day_start_hour ?? 7)), 0, 23));
+  if (el.settingsIdleTimeout) el.settingsIdleTimeout.value = String(clamp(Math.round(Number(ui.idle_timeout_seconds ?? 60)), 0, 86400));
+  if (el.settingsIdleBrightness) {
+    const idleBrightness = clamp(Math.round(Number(ui.idle_brightness_percent ?? 10)), 0, 100);
+    el.settingsIdleBrightness.value = String(idleBrightness);
+    if (el.settingsIdleBrightnessValue) el.settingsIdleBrightnessValue.textContent = `${idleBrightness}%`;
+  }
   renderLanguageOptions();
 
   const connectedRssiText = Number.isFinite(Number(wifi.rssi_dbm))
@@ -3529,6 +3538,8 @@ async function saveSettings() {
   const nightModeAuto = Boolean(el.settingsNightModeAuto?.checked);
   const nightStartHour = clamp(Math.round(Number(el.settingsNightStartHour?.value ?? 22)), 0, 23);
   const dayStartHour = clamp(Math.round(Number(el.settingsDayStartHour?.value ?? 7)), 0, 23);
+  const idleTimeoutSeconds = clamp(Math.round(Number(el.settingsIdleTimeout?.value ?? 60)), 0, 86400);
+  const idleBrightnessPercent = clamp(Math.round(Number(el.settingsIdleBrightness?.value ?? 10)), 0, 100);
 
   if (!wifiCountryCode) {
     setStatus(t("settings.language.invalid_country"), true);
@@ -3564,6 +3575,8 @@ async function saveSettings() {
       night_mode_auto: nightModeAuto,
       night_start_hour: nightStartHour,
       day_start_hour: dayStartHour,
+      idle_timeout_seconds: idleTimeoutSeconds,
+      idle_brightness_percent: idleBrightnessPercent,
     },
     reboot: true,
   };
