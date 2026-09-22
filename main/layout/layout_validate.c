@@ -125,6 +125,7 @@ static bool is_supported_widget_type(const char *type)
         (strcmp(type, "binary_sensor") == 0) ||
         (strcmp(type, "button") == 0) ||
         (strcmp(type, "slider") == 0) ||
+        (strcmp(type, "input_number") == 0) ||
         (strcmp(type, "graph") == 0) ||
         (strcmp(type, "empty_tile") == 0) ||
         (strcmp(type, "light_tile") == 0) ||
@@ -201,7 +202,7 @@ static widget_size_limits_t widget_size_limits_for_type(
 
 #endif
 
-    } else if (strcmp(type, "slider") == 0) {
+    } else if (strcmp(type, "slider") == 0 || strcmp(type, "input_number") == 0) {
 
         limits.min_w = 100;
 
@@ -410,6 +411,10 @@ static const char *required_domain_for_widget_type(
 
     if (strcmp(type, "binary_sensor") == 0) {
         return "binary_sensor";
+    }
+
+    if (strcmp(type, "input_number") == 0) {
+        return "input_number";
     }
 
     if (strcmp(type, "light_tile") == 0) {
