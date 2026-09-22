@@ -34,6 +34,11 @@ typedef struct {
     lv_obj_t *state_label;
     lv_obj_t *value_label;
     lv_obj_t *slider;
+    lv_obj_t *cover_open_btn;
+    lv_obj_t *cover_stop_btn;
+    lv_obj_t *cover_close_btn;
+    bool is_cover;
+    uint32_t cover_supported_features;
     bool show_title;
     bool show_icon;
     bool show_state;
@@ -689,6 +694,25 @@ static void slider_apply_visual(w_slider_ctx_t *ctx)
         slider_translate_status_text(ctx->unavailable ? "unavailable" : (ctx->is_on ? "ON" : "OFF")));
 }
 
+static void cover_action_event(lv_event_t *event)
+{
+    if (lv_event_get_code(event) != LV_EVENT_CLICKED) {
+        return;
+    }
+    w_slider_ctx_t *ctx = (w_slider_ctx_t *)lv_event_get_user_data(event);
+    if (ctx == NULL || ctx->unavailable || !ctx->is_cover) {
+        return;
+    }
+    lv_obj_t *target = lv_event_get_target(event);
+    if (target == ctx->cover_open_btn) {
+        (void)ui_bindings_cover_action(ctx->entity_id, UI_BINDINGS_COVER_OPEN);
+    } else if (target == ctx->cover_stop_btn) {
+        (void)ui_bindings_cover_action(ctx->entity_id, UI_BINDINGS_COVER_STOP);
+    } else if (target == ctx->cover_close_btn) {
+        (void)ui_bindings_cover_action(ctx->entity_id, UI_BINDINGS_COVER_CLOSE);
+    }
+}
+
 static void w_slider_event_cb(lv_event_t *event)
 {
     lv_event_code_t code = lv_event_get_code(event);
@@ -807,6 +831,30 @@ esp_err_t w_slider_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widge
     ctx->state_label = state;
     ctx->value_label = value;
     ctx->slider = slider;
+    ctx->is_cover = strncmp(def->entity_id, "cover.", 6) == 0;
+    if (ctx->is_cover) {
+        ctx->cover_open_btn = lv_btn_create(card);
+        ctx->cover_stop_btn = lv_btn_create(card);
+        ctx->cover_close_btn = lv_btn_create(card);
+        lv_obj_set_size(ctx->cover_open_btn, 46, 36);
+        lv_obj_set_size(ctx->cover_stop_btn, 46, 36);
+        lv_obj_set_size(ctx->cover_close_btn, 46, 36);
+        lv_obj_align(ctx->cover_open_btn, LV_ALIGN_BOTTOM_LEFT, 0, -42);
+        lv_obj_align(ctx->cover_stop_btn, LV_ALIGN_BOTTOM_MID, 0, -42);
+        lv_obj_align(ctx->cover_close_btn, LV_ALIGN_BOTTOM_RIGHT, 0, -42);
+        lv_obj_t *open_label = lv_label_create(ctx->cover_open_btn);
+        lv_obj_t *stop_label = lv_label_create(ctx->cover_stop_btn);
+        lv_obj_t *close_label = lv_label_create(ctx->cover_close_btn);
+        lv_label_set_text(open_label, LV_SYMBOL_UP);
+        lv_label_set_text(stop_label, LV_SYMBOL_STOP);
+        lv_label_set_text(close_label, LV_SYMBOL_DOWN);
+        lv_obj_center(open_label);
+        lv_obj_center(stop_label);
+        lv_obj_center(close_label);
+        lv_obj_add_event_cb(ctx->cover_open_btn, cover_action_event, LV_EVENT_CLICKED, ctx);
+        lv_obj_add_event_cb(ctx->cover_stop_btn, cover_action_event, LV_EVENT_CLICKED, ctx);
+        lv_obj_add_event_cb(ctx->cover_close_btn, cover_action_event, LV_EVENT_CLICKED, ctx);
+    }
 
     ctx->show_title = def->show_title;
     ctx->show_icon = def->show_icon;
@@ -872,6 +920,32 @@ void w_slider_apply_state(ui_widget_instance_t *instance, const ha_state_t *stat
         ctx->dragging = false;
         slider_apply_visual(ctx);
         return;
+    }
+
+    if (ctx->is_cover) {
+        cJSON *attrs = cJSON_Parse(state->attributes_json);
+        if (attrs != NULL) {
+            cJSON *features = cJSON_GetObjectItemCaseSensitive(attrs, "supported_features");
+            ctx->cover_supported_features = cJSON_IsNumber(features) ? (uint32_t)features->valuedouble : 0U;
+            cJSON_Delete(attrs);
+        }
+        /* Home Assistant cover feature bits: open=1, close=2, set_position=4, stop=8. */
+        if (ctx->cover_open_btn != NULL) {
+            if (ctx->cover_supported_features & 1U) lv_obj_clear_flag(ctx->cover_open_btn, LV_OBJ_FLAG_HIDDEN);
+            else lv_obj_add_flag(ctx->cover_open_btn, LV_OBJ_FLAG_HIDDEN);
+        }
+        if (ctx->cover_close_btn != NULL) {
+            if (ctx->cover_supported_features & 2U) lv_obj_clear_flag(ctx->cover_close_btn, LV_OBJ_FLAG_HIDDEN);
+            else lv_obj_add_flag(ctx->cover_close_btn, LV_OBJ_FLAG_HIDDEN);
+        }
+        if (ctx->cover_stop_btn != NULL) {
+            if (ctx->cover_supported_features & 8U) lv_obj_clear_flag(ctx->cover_stop_btn, LV_OBJ_FLAG_HIDDEN);
+            else lv_obj_add_flag(ctx->cover_stop_btn, LV_OBJ_FLAG_HIDDEN);
+        }
+        if (ctx->slider != NULL) {
+            if (ctx->cover_supported_features & 4U) lv_obj_clear_flag(ctx->slider, LV_OBJ_FLAG_HIDDEN);
+            else lv_obj_add_flag(ctx->slider, LV_OBJ_FLAG_HIDDEN);
+        }
     }
 
     bool has_numeric = false;
