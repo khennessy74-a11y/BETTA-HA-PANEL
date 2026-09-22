@@ -489,6 +489,36 @@ esp_err_t ui_bindings_press_button(const char *entity_id)
     return err;
 }
 
+esp_err_t ui_bindings_set_lock_state(const char *entity_id, bool locked)
+{
+    if (entity_id == NULL || entity_id[0] == '\0') {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    char domain[32] = {0};
+    if (!split_entity_id(entity_id, domain, sizeof(domain)) ||
+        strcmp(domain, "lock") != 0) {
+        return ESP_ERR_NOT_SUPPORTED;
+    }
+
+    if (!ui_bindings_allow_power_command_now(entity_id, true, locked)) {
+        return ESP_OK;
+    }
+
+    char payload[192] = {0};
+    snprintf(payload, sizeof(payload), "{\"entity_id\":\"%s\"}", entity_id);
+
+    const char *service = locked ? "lock" : "unlock";
+    esp_err_t err = ha_client_call_service(domain, service, payload);
+    if (err == ESP_OK) {
+        ui_bindings_apply_optimistic_state_text(entity_id, locked ? "locked" : "unlocked");
+    } else {
+        ESP_LOGW(TAG, "lock action failed entity=%s service=%s err=%s",
+            entity_id, service, esp_err_to_name(err));
+    }
+    return err;
+}
+
 esp_err_t ui_bindings_cancel_entity(const char *entity_id)
 {
     if (entity_id == NULL || entity_id[0] == '\0') {
