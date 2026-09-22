@@ -330,6 +330,12 @@ static const char *button_translate_status_text(const char *status_text)
     if (strcmp(status_text, "paused") == 0) {
         return ui_i18n_get("common.paused", "paused");
     }
+    if (strcmp(status_text, "locked") == 0 || strcmp(status_text, "locking") == 0) {
+        return "LOCKED";
+    }
+    if (strcmp(status_text, "unlocked") == 0 || strcmp(status_text, "unlocking") == 0) {
+        return "UNLOCKED";
+    }
     return status_text;
 }
 
@@ -784,6 +790,12 @@ static const char *button_status_text_for_state(const w_button_ctx_t *ctx, const
     if (unavailable) {
         return "unavailable";
     }
+    if (button_entity_is_lock(ctx->entity_id)) {
+        if (state != NULL && state->state[0] != '\0') {
+            return state->state;
+        }
+        return is_on ? "locked" : "unlocked";
+    }
     if (ctx->mode == W_BUTTON_MODE_AUTO) {
         return is_on ? "ON" : "OFF";
     }
@@ -930,6 +942,7 @@ esp_err_t w_button_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widge
     const bool is_media_player = button_entity_is_media_player(def->entity_id);
     const bool is_runnable = button_entity_is_runnable(def->entity_id);
     const bool is_ha_button = button_entity_is_ha_button(def->entity_id);
+    const bool is_lock = button_entity_is_lock(def->entity_id);
     const char *title_text = def->title;
     if (!is_media_player && (title_text == NULL || title_text[0] == '\0')) {
         title_text = def->id;
@@ -994,7 +1007,7 @@ ctx->card = card;
     ctx->accent_color = lv_color_hex(W_BUTTON_SWITCH_ACCENT_DEFAULT_HEX);
     ctx->mode = button_mode_from_text(def->button_mode);
     ctx->use_icon_appearance =
-        strcmp(def->button_appearance, "icon") == 0;
+        strcmp(def->button_appearance, "icon") == 0 || is_lock;
     ctx->show_title = def->show_title && title_text[0] != '\0';
     if (ctx->mode == W_BUTTON_MODE_RUN && !is_runnable) {
         /* run mode only makes sense for one-shot entities; fall back rather
