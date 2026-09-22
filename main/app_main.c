@@ -189,6 +189,12 @@ void app_main(void)
             wifi_ready = true;
             time_sync_start(s_runtime_settings.ntp_server);
             time_sync_wait_for_sync(8000);
+            display_configure_night_mode(
+                s_runtime_settings.display_brightness_percent,
+                s_runtime_settings.display_night_brightness_percent,
+                s_runtime_settings.display_night_mode_auto,
+                s_runtime_settings.display_night_start_hour,
+                s_runtime_settings.display_day_start_hour);
             ui_boot_splash_set_status(ui_i18n_get("boot.wifi_connected", "Wi-Fi connected"));
         }
     } else {
