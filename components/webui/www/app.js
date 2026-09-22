@@ -111,8 +111,7 @@ const ENTITY_PICKER_CONFIGS = {
     itemsFallback: "input booleans",
   },
   fan: {
-    widgetType: "slider",
-    sliderDomain: "fan",
+    widgetType: "fan_tile",
     domain: "fan",
     titleKey: "entity_picker.title_fan",
     blankKey: "entity_picker.blank_fan",
@@ -3938,6 +3937,7 @@ function allowedEntityDomainsForWidgetType(
     return ["switch", "input_boolean", "automation", "media_player"];
   }
   if (type === "light_tile") return ["light"];
+  if (type === "fan_tile") return ["fan"];
   if (type === "heating_tile") return ["climate"];
   if (type === "timer") return ["timer"];
   if (type === "weather_tile" || type === "weather_3day") return ["weather"];
@@ -6231,14 +6231,14 @@ function addWidget(type, options = {}) {
       : type === "media_player" ? 300
       : type === "roborock_tile" ? 460
       : type === "weather_tile" ? 220
-      : (type === "light_tile" || type === "empty_tile") ? 140
+      : (type === "light_tile" || type === "fan_tile" || type === "empty_tile") ? 140
       : type === "heating_tile" ? 150
       : 180
     : type === "weather_3day" ? 360
       : type === "todo_list" ? 360
       : type === "media_player" ? 360
       : type === "roborock_tile" ? 360
-      : (type === "light_tile" || type === "heating_tile" || type === "weather_tile" || type === "empty_tile") ? 300
+      : (type === "light_tile" || type === "fan_tile" || type === "heating_tile" || type === "weather_tile" || type === "empty_tile") ? 300
       : 220;
   const defaultH = compact
     ? type === "weather_3day" ? 240
@@ -6246,14 +6246,14 @@ function addWidget(type, options = {}) {
       : type === "media_player" ? 220
       : type === "roborock_tile" ? 300
       : type === "weather_tile" ? 180
-      : (type === "light_tile" || type === "empty_tile") ? 140
+      : (type === "light_tile" || type === "fan_tile" || type === "empty_tile") ? 140
       : type === "heating_tile" ? 150
       : 110
     : type === "weather_3day" ? 260
       : type === "todo_list" ? 360
       : type === "media_player" ? 280
       : type === "roborock_tile" ? 300
-      : (type === "light_tile" || type === "heating_tile" || type === "weather_tile" || type === "empty_tile") ? 260
+      : (type === "light_tile" || type === "fan_tile" || type === "heating_tile" || type === "weather_tile" || type === "empty_tile") ? 260
       : 120;
   const rect = clampRectToCanvas({ x: 20, y: 20, w: defaultW, h: defaultH }, type);
 
