@@ -165,6 +165,12 @@ static bool button_entity_is_ha_button(const char *entity_id)
     return strncmp(entity_id, "button.", strlen("button.")) == 0;
 }
 
+static bool button_entity_is_lock(const char *entity_id)
+{
+    return entity_id != NULL &&
+           strncmp(entity_id, "lock.", strlen("lock.")) == 0;
+}
+
 static bool button_entity_is_runnable(const char *entity_id)
 {
     return button_entity_is_script(entity_id) ||
@@ -855,7 +861,23 @@ static void w_button_card_event_cb(lv_event_t *event)
     }
 
     if (code == LV_EVENT_CLICKED) {
-        button_run_primary_action(ctx);
+        if (button_entity_is_lock(ctx->entity_id)) {
+            /* Locking is safe on a normal tap. Unlocking deliberately requires
+             * a long press so a stray touch cannot unlock an entry. */
+            if (!ctx->is_on) {
+                if (ui_bindings_set_lock_state(ctx->entity_id, true) == ESP_OK) {
+                    button_apply_visual(ctx->card, ctx, true, false, "locked");
+                }
+            }
+        } else {
+            button_run_primary_action(ctx);
+        }
+    } else if (code == LV_EVENT_LONG_PRESSED) {
+        if (button_entity_is_lock(ctx->entity_id) && ctx->is_on && !ctx->unavailable) {
+            if (ui_bindings_set_lock_state(ctx->entity_id, false) == ESP_OK) {
+                button_apply_visual(ctx->card, ctx, false, false, "unlocked");
+            }
+        }
     } else if (code == LV_EVENT_DELETE) {
         free(ctx);
     }
@@ -870,7 +892,7 @@ static void w_button_switch_event_cb(lv_event_t *event)
 
     w_button_ctx_t *ctx = (w_button_ctx_t *)lv_event_get_user_data(event);
     if (ctx == NULL || ctx->suppress_event || ctx->unavailable || !button_mode_uses_switch(ctx->mode) ||
-        button_entity_is_ha_button(ctx->entity_id)) {
+        button_entity_is_ha_button(ctx->entity_id) || button_entity_is_lock(ctx->entity_id)) {
         return;
     }
 
