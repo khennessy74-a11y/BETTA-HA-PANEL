@@ -814,6 +814,20 @@
               <input id="settingsBrightness" type="range" oninput="document.getElementById('settingsBrightnessValue').textContent=this.value+'%'" min="0" max="100" step="1" value="100" />
               <span id="settingsBrightnessValue">100%</span>
             </label>
+            <label><span>Night Brightness</span>
+              <input id="settingsNightBrightness" type="range" min="0" max="100" step="1" value="20" oninput="document.getElementById('settingsNightBrightnessValue').textContent=this.value+'%'" />
+              <span id="settingsNightBrightnessValue">20%</span>
+            </label>
+            <label class="row">
+              <input id="settingsNightModeAuto" type="checkbox" />
+              <span>Automatic Night Mode</span>
+            </label>
+            <label><span>Night starts</span>
+              <input id="settingsNightStartHour" type="number" min="0" max="23" step="1" value="22" />
+            </label>
+            <label><span>Day starts</span>
+              <input id="settingsDayStartHour" type="number" min="0" max="23" step="1" value="7" />
+            </label>
             <div id="settingsUiInfo" class="meta"></div>
             <div class="row">
               <button id="reloadLanguagesBtn" class="btn small" type="button">Reload Languages</button>
