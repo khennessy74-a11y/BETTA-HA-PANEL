@@ -654,6 +654,30 @@ esp_err_t ui_bindings_set_entity_power(
     return err;
 }
 
+esp_err_t ui_bindings_cover_action(const char *entity_id, ui_bindings_cover_action_t action)
+{
+    if (entity_id == NULL || strncmp(entity_id, "cover.", 6) != 0) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    const char *service = NULL;
+    switch (action) {
+        case UI_BINDINGS_COVER_OPEN: service = "open_cover"; break;
+        case UI_BINDINGS_COVER_STOP: service = "stop_cover"; break;
+        case UI_BINDINGS_COVER_CLOSE: service = "close_cover"; break;
+        default: return ESP_ERR_INVALID_ARG;
+    }
+
+    char payload[192] = {0};
+    snprintf(payload, sizeof(payload), "{\"entity_id\":\"%s\"}", entity_id);
+    esp_err_t err = ha_client_call_service("cover", service, payload);
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "cover action failed entity=%s service=%s err=%s",
+                 entity_id, service, esp_err_to_name(err));
+    }
+    return err;
+}
+
 esp_err_t ui_bindings_set_slider_value(
     const char *entity_id,
     int value)
