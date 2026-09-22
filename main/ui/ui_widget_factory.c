@@ -160,7 +160,7 @@ void ui_widget_factory_apply_state(ui_widget_instance_t *instance, const ha_stat
     if (instance == NULL || instance->obj == NULL || state == NULL) {
         return;
     }
-    if (strcmp(instance->type, "sensor") == 0) {
+    if (strcmp(instance->type, "sensor") == 0 || strcmp(instance->type, "binary_sensor") == 0) {
         w_sensor_apply_state(instance, state);
     } else if (strcmp(instance->type, "button") == 0) {
         w_button_apply_state(instance, state);
@@ -197,7 +197,7 @@ void ui_widget_factory_mark_unavailable(ui_widget_instance_t *instance)
     if (instance == NULL || instance->obj == NULL) {
         return;
     }
-    if (strcmp(instance->type, "sensor") == 0) {
+    if (strcmp(instance->type, "sensor") == 0 || strcmp(instance->type, "binary_sensor") == 0) {
         w_sensor_mark_unavailable(instance);
     } else if (strcmp(instance->type, "button") == 0) {
         w_button_mark_unavailable(instance);
