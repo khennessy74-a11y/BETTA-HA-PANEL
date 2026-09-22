@@ -110,6 +110,14 @@ const ENTITY_PICKER_CONFIGS = {
     widgetFallback: "Input Boolean control",
     itemsFallback: "input booleans",
   },
+  input_number: {
+    widgetType: "input_number",
+    domain: "input_number",
+    titleFallback: "Choose Input Number",
+    blankFallback: "Blank Input Number",
+    widgetFallback: "Input Number control",
+    itemsFallback: "input numbers",
+  },
   fan: {
     widgetType: "fan_tile",
     domain: "fan",
@@ -1634,6 +1642,7 @@ const el = {
   addSliderBtn: document.getElementById("addSliderBtn"),
   addCoverBtn: document.getElementById("addCoverBtn"),
   addFanBtn: document.getElementById("addFanBtn"),
+  addInputNumberBtn: document.getElementById("addInputNumberBtn"),
   addGraphBtn: document.getElementById("addGraphBtn"),
   addEmptyTileBtn: document.getElementById("addEmptyTileBtn"),
   addLightTileBtn: document.getElementById("addLightTileBtn"),
@@ -3930,6 +3939,7 @@ function allowedEntityDomainsForWidgetType(
   if (type === "empty_tile") return [];
   if (type === "sensor" || type === "graph") return ["sensor"];
   if (type === "binary_sensor") return ["binary_sensor"];
+  if (type === "input_number") return ["input_number"];
   if (type === "button") {
     const normalizedMode = normalizeButtonMode(buttonMode);
     if (buttonModeRequiresMediaPlayer(normalizedMode)) return ["media_player"];
@@ -6728,6 +6738,9 @@ function bindUi() {
   }
   if (el.addFanBtn) {
     el.addFanBtn.onclick = () => openLightEntityPicker("fan");
+  }
+  if (el.addInputNumberBtn) {
+    el.addInputNumberBtn.onclick = () => openLightEntityPicker("input_number");
   }
   el.addGraphBtn.onclick = () => openLightEntityPicker("graph");
   el.addEmptyTileBtn.onclick = () => addWidget("empty_tile");
