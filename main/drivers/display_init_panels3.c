@@ -123,6 +123,11 @@ static esp_lcd_panel_handle_t s_panel         = NULL;
 static esp_timer_handle_t     s_dim_timer      = NULL;
 static int                    s_display_brightness = -1;
 static int                    s_active_brightness = APP_DISPLAY_ACTIVE_BRIGHTNESS_PERCENT;
+static int                    s_day_brightness = APP_DISPLAY_ACTIVE_BRIGHTNESS_PERCENT;
+static int                    s_night_brightness = 20;
+static bool                   s_night_auto = false;
+static int                    s_night_start_hour = 22;
+static int                    s_day_start_hour = 7;
 
 /* â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 static lvgl_port_cfg_t display_port_cfg(void)
@@ -214,6 +219,33 @@ static void display_restart_dim_timer(void)
     if (esp_timer_is_active(s_dim_timer)) (void)esp_timer_stop(s_dim_timer);
     const uint64_t us = (uint64_t)APP_DISPLAY_DIM_TIMEOUT_MS * 1000ULL;
     (void)esp_timer_start_once(s_dim_timer, us);
+}
+
+static bool display_is_night_now(void)
+{
+    if (!s_night_auto) return false;
+    time_t now = time(NULL);
+    struct tm local = {0};
+    if (now < 100000 || localtime_r(&now, &local) == NULL) return false;
+    if (s_night_start_hour == s_day_start_hour) return false;
+    if (s_night_start_hour > s_day_start_hour) {
+        return local.tm_hour >= s_night_start_hour || local.tm_hour < s_day_start_hour;
+    }
+    return local.tm_hour >= s_night_start_hour && local.tm_hour < s_day_start_hour;
+}
+
+void display_configure_night_mode(int day_percent, int night_percent, bool auto_mode, int night_start_hour, int day_start_hour)
+{
+    s_day_brightness = display_clamp_brightness(day_percent);
+    s_night_brightness = display_clamp_brightness(night_percent);
+    s_night_auto = auto_mode;
+    s_night_start_hour = night_start_hour < 0 ? 0 : (night_start_hour > 23 ? 23 : night_start_hour);
+    s_day_start_hour = day_start_hour < 0 ? 0 : (day_start_hour > 23 ? 23 : day_start_hour);
+    s_active_brightness = display_is_night_now() ? s_night_brightness : s_day_brightness;
+    if (s_night_auto) {
+        s_active_brightness = display_is_night_now() ? s_night_brightness : s_day_brightness;
+    }
+    (void)display_set_brightness_percent(s_active_brightness);
 }
 
 void display_note_activity(void)
