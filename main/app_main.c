@@ -153,6 +153,7 @@ void app_main(void)
     (void)ui_i18n_init(s_runtime_settings.ui_language);
     (void)time_sync_set_timezone(s_runtime_settings.time_tz);
     ESP_ERROR_CHECK(display_init());
+    (void)display_set_brightness_percent(s_runtime_settings.display_brightness_percent);
     (void)ui_boot_splash_show();
 
     ui_boot_splash_set_status(ui_i18n_get("boot.initializing_wifi", "Initializing Wi-Fi"));
