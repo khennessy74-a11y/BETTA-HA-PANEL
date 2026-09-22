@@ -58,15 +58,20 @@ static void fan_apply_visual(w_fan_ctx_t *ctx)
     snprintf(value, sizeof(value), "%d%%", ctx->percentage);
     lv_label_set_text(ctx->value, value);
 
+    /* Rebuilding/selecting the dropdown can emit VALUE_CHANGED. Suppress
+     * those programmatic events so an HA state refresh never calls a service. */
+    ctx->suppress = true;
     if (ctx->preset_count > 0) {
         lv_obj_clear_flag(ctx->preset, LV_OBJ_FLAG_HIDDEN);
         lv_dropdown_clear_options(ctx->preset);
+        int selected = 0;
         for (int i = 0; i < ctx->preset_count; i++) {
             lv_dropdown_add_option(ctx->preset, ctx->preset_modes[i], LV_DROPDOWN_POS_LAST);
             if (strcmp(ctx->preset_modes[i], ctx->preset_mode) == 0) {
-                lv_dropdown_set_selected(ctx->preset, i);
+                selected = i;
             }
         }
+        lv_dropdown_set_selected(ctx->preset, selected);
     } else {
         lv_obj_add_flag(ctx->preset, LV_OBJ_FLAG_HIDDEN);
     }
