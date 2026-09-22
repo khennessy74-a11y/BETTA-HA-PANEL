@@ -34,6 +34,8 @@ esp_err_t ui_bindings_set_lock_state(const char *entity_id, bool locked);
 esp_err_t ui_bindings_cancel_entity(const char *entity_id);
 esp_err_t ui_bindings_set_entity_power(const char *entity_id, bool on);
 esp_err_t ui_bindings_set_slider_value(const char *entity_id, int value);
+/* Select a Home Assistant fan preset mode. */
+esp_err_t ui_bindings_set_fan_preset_mode(const char *entity_id, const char *preset_mode);
 typedef enum {
     UI_BINDINGS_COVER_OPEN = 0,
     UI_BINDINGS_COVER_STOP,
