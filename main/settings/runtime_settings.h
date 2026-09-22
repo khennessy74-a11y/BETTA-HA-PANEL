@@ -21,6 +21,10 @@ typedef struct {
     char time_tz[APP_TIME_TZ_MAX_LEN];
     char ui_language[APP_UI_LANGUAGE_MAX_LEN];
     int display_brightness_percent;
+    int display_night_brightness_percent;
+    bool display_night_mode_auto;
+    int display_night_start_hour;
+    int display_day_start_hour;
 } runtime_settings_t;
 
 void runtime_settings_set_defaults(runtime_settings_t *out);
