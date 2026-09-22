@@ -94,6 +94,15 @@ const ENTITY_PICKER_CONFIGS = {
     widgetFallback: "Home Assistant button",
     itemsFallback: "buttons",
   },
+  automation_trigger: {
+    widgetType: "button",
+    buttonMode: "run",
+    domain: "automation",
+    titleFallback: "Choose Automation to Trigger",
+    blankFallback: "Blank Automation Trigger",
+    widgetFallback: "Automation trigger",
+    itemsFallback: "automations",
+  },
   automation: {
     widgetType: "button",
     domain: "automation",
@@ -1646,6 +1655,7 @@ const el = {
   addHaButtonBtn: document.getElementById("addHaButtonBtn"),
   addInputBooleanBtn: document.getElementById("addInputBooleanBtn"),
   addAutomationBtn: document.getElementById("addAutomationBtn"),
+  addAutomationTriggerBtn: document.getElementById("addAutomationTriggerBtn"),
   addScriptBtn: document.getElementById("addScriptBtn"),
   addSceneBtn: document.getElementById("addSceneBtn"),
   addSliderBtn: document.getElementById("addSliderBtn"),
@@ -3952,7 +3962,7 @@ function allowedEntityDomainsForWidgetType(
   if (type === "button") {
     const normalizedMode = normalizeButtonMode(buttonMode);
     if (buttonModeRequiresMediaPlayer(normalizedMode)) return ["media_player"];
-    if (buttonModeRequiresRunnable(normalizedMode)) return ["script", "scene"];
+    if (buttonModeRequiresRunnable(normalizedMode)) return ["script", "scene", "automation"];
     return ["switch", "button", "input_boolean", "automation", "media_player"];
   }
   if (type === "light_tile") return ["light"];
@@ -6738,6 +6748,9 @@ function bindUi() {
 
 if (el.addAutomationBtn) {
     el.addAutomationBtn.onclick = () => openLightEntityPicker("automation");
+  }
+  if (el.addAutomationTriggerBtn) {
+    el.addAutomationTriggerBtn.onclick = () => openLightEntityPicker("automation_trigger");
   }
   if (el.addScriptBtn) {
     el.addScriptBtn.onclick = () => openLightEntityPicker("button_script");
