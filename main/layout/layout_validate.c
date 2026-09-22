@@ -128,6 +128,7 @@ static bool is_supported_widget_type(const char *type)
         (strcmp(type, "graph") == 0) ||
         (strcmp(type, "empty_tile") == 0) ||
         (strcmp(type, "light_tile") == 0) ||
+        (strcmp(type, "fan_tile") == 0) ||
         (strcmp(type, "heating_tile") == 0) ||
         (strcmp(type, "weather_tile") == 0) ||
         (strcmp(type, "weather_3day") == 0) ||
@@ -242,7 +243,7 @@ static widget_size_limits_t widget_size_limits_for_type(
 
 #endif
 
-    } else if (strcmp(type, "light_tile") == 0) {
+    } else if (strcmp(type, "light_tile") == 0 || strcmp(type, "fan_tile") == 0) {
 
 #if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
 
@@ -413,6 +414,10 @@ static const char *required_domain_for_widget_type(
 
     if (strcmp(type, "light_tile") == 0) {
         return "light";
+    }
+
+    if (strcmp(type, "fan_tile") == 0) {
+        return "fan";
     }
 
     if (strcmp(type, "heating_tile") == 0) {
