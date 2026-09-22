@@ -129,6 +129,8 @@ static int                    s_night_brightness = 20;
 static bool                   s_night_auto = false;
 static int                    s_night_start_hour = 22;
 static int                    s_day_start_hour = 7;
+static int                    s_idle_timeout_seconds = APP_DISPLAY_DIM_TIMEOUT_MS / 1000;
+static int                    s_idle_brightness = APP_DISPLAY_DIM_BRIGHTNESS_PERCENT;
 
 /* â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 static lvgl_port_cfg_t display_port_cfg(void)
@@ -198,7 +200,7 @@ static void display_dim_timer_cb(void *arg)
 {
     (void)arg;
     if (!s_display_ready) return;
-    (void)display_set_brightness_percent(APP_DISPLAY_DIM_BRIGHTNESS_PERCENT);
+    (void)display_set_brightness_percent(s_idle_brightness);
 }
 
 static esp_err_t display_dim_timer_init(void)
@@ -218,8 +220,16 @@ static void display_restart_dim_timer(void)
 {
     if (s_dim_timer == NULL) return;
     if (esp_timer_is_active(s_dim_timer)) (void)esp_timer_stop(s_dim_timer);
-    const uint64_t us = (uint64_t)APP_DISPLAY_DIM_TIMEOUT_MS * 1000ULL;
+    if (s_idle_timeout_seconds <= 0) return;
+    const uint64_t us = (uint64_t)s_idle_timeout_seconds * 1000000ULL;
     (void)esp_timer_start_once(s_dim_timer, us);
+}
+
+void display_configure_idle(int timeout_seconds, int brightness_percent)
+{
+    s_idle_timeout_seconds = timeout_seconds < 0 ? 0 : (timeout_seconds > 86400 ? 86400 : timeout_seconds);
+    s_idle_brightness = display_clamp_brightness(brightness_percent);
+    display_restart_dim_timer();
 }
 
 static bool display_is_night_now(void)
