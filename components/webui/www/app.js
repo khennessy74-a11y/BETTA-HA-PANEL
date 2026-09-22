@@ -110,6 +110,19 @@ const ENTITY_PICKER_CONFIGS = {
     widgetFallback: "Input Boolean control",
     itemsFallback: "input booleans",
   },
+  fan: {
+    widgetType: "slider",
+    sliderDomain: "fan",
+    domain: "fan",
+    titleKey: "entity_picker.title_fan",
+    blankKey: "entity_picker.blank_fan",
+    widgetKey: "entity_picker.widget_fan",
+    itemsKey: "entity_picker.items_fan",
+    titleFallback: "Choose Fan",
+    blankFallback: "Blank Fan Control",
+    widgetFallback: "Fan control",
+    itemsFallback: "fans",
+  },
   cover: {
     widgetType: "slider",
     sliderDomain: "cover",
@@ -287,6 +300,7 @@ const SLIDER_ENTITY_DOMAINS = new Set([
   "light",
   "media_player",
   "cover",
+  "fan",
 ]);
 const BUTTON_MODES = new Set([
   "auto",
@@ -1620,6 +1634,7 @@ const el = {
   addSceneBtn: document.getElementById("addSceneBtn"),
   addSliderBtn: document.getElementById("addSliderBtn"),
   addCoverBtn: document.getElementById("addCoverBtn"),
+  addFanBtn: document.getElementById("addFanBtn"),
   addGraphBtn: document.getElementById("addGraphBtn"),
   addEmptyTileBtn: document.getElementById("addEmptyTileBtn"),
   addLightTileBtn: document.getElementById("addLightTileBtn"),
@@ -3932,7 +3947,7 @@ function allowedEntityDomainsForWidgetType(
   if (type === "slider") {
     const normalized = normalizeSliderEntityDomain(sliderDomain);
     if (normalized === "auto") {
-      return ["light", "media_player", "cover"];
+      return ["light", "media_player", "cover", "fan"];
     }
     return [normalized];
   }
@@ -6710,6 +6725,9 @@ function bindUi() {
   el.addSliderBtn.onclick = () => addWidget("slider");
   if (el.addCoverBtn) {
     el.addCoverBtn.onclick = () => openLightEntityPicker("cover");
+  }
+  if (el.addFanBtn) {
+    el.addFanBtn.onclick = () => openLightEntityPicker("fan");
   }
   el.addGraphBtn.onclick = () => openLightEntityPicker("graph");
   el.addEmptyTileBtn.onclick = () => addWidget("empty_tile");
