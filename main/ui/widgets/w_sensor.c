@@ -145,6 +145,29 @@ static bool sensor_apply_icon(w_sensor_ctx_t *ctx, const char *icon_name)
 }
 
 
+static const char *binary_sensor_icon_name(const char *device_class)
+{
+    if (device_class == NULL) return "mdi:gauge";
+    if (strcmp(device_class, "battery") == 0) return "mdi:battery-90";
+    if (strcmp(device_class, "connectivity") == 0) return "mdi:access-point-network";
+    if (strcmp(device_class, "problem") == 0 ||
+        strcmp(device_class, "safety") == 0 ||
+        strcmp(device_class, "smoke") == 0 ||
+        strcmp(device_class, "gas") == 0 ||
+        strcmp(device_class, "carbon_monoxide") == 0 ||
+        strcmp(device_class, "moisture") == 0) return "mdi:alert-circle";
+    if (strcmp(device_class, "door") == 0 ||
+        strcmp(device_class, "garage_door") == 0 ||
+        strcmp(device_class, "opening") == 0) return "mdi:gate";
+    if (strcmp(device_class, "motion") == 0 ||
+        strcmp(device_class, "occupancy") == 0 ||
+        strcmp(device_class, "presence") == 0) return "mdi:hololens";
+    if (strcmp(device_class, "power") == 0 ||
+        strcmp(device_class, "plug") == 0 ||
+        strcmp(device_class, "running") == 0) return "mdi:gauge";
+    return "mdi:gauge";
+}
+
 static const char *binary_sensor_state_text(const char *device_class, bool is_on)
 {
     if (device_class == NULL) {
@@ -545,6 +568,11 @@ void w_sensor_apply_state(ui_widget_instance_t *instance, const ha_state_t *stat
         }
         snprintf(value_text, sizeof(value_text), "%s",
             binary_sensor_state_text(device_class, strcmp(state->state, "on") == 0));
+        if (ctx->show_icon && instance->icon[0] == '\0') {
+            if (sensor_apply_icon(ctx, binary_sensor_icon_name(device_class))) {
+                lv_obj_clear_flag(ctx->icon_label, LV_OBJ_FLAG_HIDDEN);
+            }
+        }
     } else if (unit != NULL && unit[0] != '\0') {
         snprintf(value_text, sizeof(value_text), "%s %s", state->state, unit);
     } else {
