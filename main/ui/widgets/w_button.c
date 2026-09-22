@@ -149,6 +149,14 @@ static bool button_entity_is_scene(const char *entity_id)
     return strncmp(entity_id, "scene.", strlen("scene.")) == 0;
 }
 
+static bool button_entity_is_ha_button(const char *entity_id)
+{
+    if (entity_id == NULL) {
+        return false;
+    }
+    return strncmp(entity_id, "button.", strlen("button.")) == 0;
+}
+
 static bool button_entity_is_runnable(const char *entity_id)
 {
     return button_entity_is_script(entity_id) || button_entity_is_scene(entity_id);
@@ -776,6 +784,13 @@ static void button_run_primary_action(w_button_ctx_t *ctx)
     }
 
     if (button_mode_uses_switch(ctx->mode)) {
+        if (button_entity_is_ha_button(ctx->entity_id)) {
+            if (ui_bindings_press_button(ctx->entity_id) == ESP_OK) {
+                button_apply_visual(ctx->card, ctx, false, false, "pressed");
+            }
+            return;
+        }
+
         bool next = !ctx->is_on;
         if (ui_bindings_toggle_entity(ctx->entity_id) == ESP_OK) {
             button_apply_visual(ctx->card, ctx, next, false, next ? "ON" : "OFF");
@@ -839,7 +854,8 @@ static void w_button_switch_event_cb(lv_event_t *event)
     }
 
     w_button_ctx_t *ctx = (w_button_ctx_t *)lv_event_get_user_data(event);
-    if (ctx == NULL || ctx->suppress_event || ctx->unavailable || !button_mode_uses_switch(ctx->mode)) {
+    if (ctx == NULL || ctx->suppress_event || ctx->unavailable || !button_mode_uses_switch(ctx->mode) ||
+        button_entity_is_ha_button(ctx->entity_id)) {
         return;
     }
 
@@ -876,6 +892,7 @@ esp_err_t w_button_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widge
 
     const bool is_media_player = button_entity_is_media_player(def->entity_id);
     const bool is_runnable = button_entity_is_runnable(def->entity_id);
+    const bool is_ha_button = button_entity_is_ha_button(def->entity_id);
     const char *title_text = def->title;
     if (!is_media_player && (title_text == NULL || title_text[0] == '\0')) {
         title_text = def->id;
@@ -957,6 +974,7 @@ ctx->card = card;
     ctx->show_status =
     def->show_state &&
     !is_media_player &&
+    !is_ha_button &&
     !(is_runnable &&
       ctx->mode == W_BUTTON_MODE_RUN);
     ctx->suppress_event = false;
