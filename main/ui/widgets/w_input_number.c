@@ -8,12 +8,14 @@
 #include "ui/theme/theme_default.h"
 #include "ui/ui_bindings.h"
 #include "ui/ui_memory.h"
+#include "ui/ui_i18n.h"
 
 typedef struct {
     char entity_id[APP_MAX_ENTITY_ID_LEN];
     lv_obj_t *card, *title, *value_label, *slider;
     double min, max, step, value;
     bool unavailable, suppress;
+    bool show_title, show_state;
 } w_input_number_ctx_t;
 
 static double clamp_value(w_input_number_ctx_t *c, double v) {
@@ -36,7 +38,7 @@ static int value_to_pos(w_input_number_ctx_t *c, double v) {
     return (int)round_nearest((clamp_value(c, v) - c->min) * 1000.0 / (c->max - c->min));
 }
 static void apply_visual(w_input_number_ctx_t *c) {
-    char b[32]; snprintf(b,sizeof(b),"%.6g",c->value); lv_label_set_text(c->value_label,c->unavailable?"unavailable":b);
+    char b[32]; snprintf(b,sizeof(b),"%.6g",c->value); lv_label_set_text(c->value_label,c->unavailable?ui_i18n_get("common.unavailable", "unavailable"):b);
     c->suppress=true; lv_slider_set_value(c->slider,value_to_pos(c,c->value),LV_ANIM_OFF); c->suppress=false;
     lv_obj_set_style_bg_color(c->card,lv_color_hex(APP_UI_COLOR_CARD_BG_OFF),LV_PART_MAIN);
 }
@@ -50,9 +52,9 @@ static void event_cb(lv_event_t *e) {
 esp_err_t w_input_number_create(const ui_widget_def_t *d,lv_obj_t *p,ui_widget_instance_t *o){
     if(!d||!p||!o)return ESP_ERR_INVALID_ARG;
     lv_obj_t *card=lv_obj_create(p);lv_obj_set_pos(card,d->x,d->y);lv_obj_set_size(card,d->w,d->h);lv_obj_clear_flag(card,LV_OBJ_FLAG_SCROLLABLE);lv_obj_set_style_radius(card,APP_UI_CARD_RADIUS,LV_PART_MAIN);lv_obj_set_style_pad_all(card,16,LV_PART_MAIN);
-    w_input_number_ctx_t *c=ui_calloc_prefer_psram(1,sizeof(*c));if(!c){lv_obj_del(card);return ESP_ERR_NO_MEM;} snprintf(c->entity_id,sizeof(c->entity_id),"%s",d->entity_id);c->card=card;c->min=0;c->max=100;c->step=1;
-    c->title=lv_label_create(card);lv_label_set_text(c->title,d->title[0]?d->title:d->id);lv_obj_set_style_text_font(c->title,APP_FONT_TEXT_20,LV_PART_MAIN);lv_obj_align(c->title,LV_ALIGN_BOTTOM_MID,0,-8);
-    c->value_label=lv_label_create(card);lv_obj_set_style_text_font(c->value_label,APP_FONT_TEXT_20,LV_PART_MAIN);lv_obj_align(c->value_label,LV_ALIGN_TOP_MID,0,2);
+    w_input_number_ctx_t *c=ui_calloc_prefer_psram(1,sizeof(*c));if(!c){lv_obj_del(card);return ESP_ERR_NO_MEM;} snprintf(c->entity_id,sizeof(c->entity_id),"%s",d->entity_id);c->card=card;c->min=0;c->max=100;c->step=1;c->show_title=d->show_title;c->show_state=d->show_state;
+    c->title=lv_label_create(card);lv_label_set_text(c->title,d->title[0]?d->title:d->id);lv_obj_set_style_text_font(c->title,APP_FONT_TEXT_20,LV_PART_MAIN);lv_obj_align(c->title,LV_ALIGN_BOTTOM_MID,0,-8);if(!c->show_title)lv_obj_add_flag(c->title,LV_OBJ_FLAG_HIDDEN);
+    c->value_label=lv_label_create(card);lv_obj_set_style_text_font(c->value_label,APP_FONT_TEXT_20,LV_PART_MAIN);lv_obj_align(c->value_label,LV_ALIGN_TOP_MID,0,2);if(!c->show_state)lv_obj_add_flag(c->value_label,LV_OBJ_FLAG_HIDDEN);
     c->slider=lv_slider_create(card);lv_slider_set_range(c->slider,0,1000);lv_obj_set_size(c->slider,d->w-44,20);lv_obj_align(c->slider,LV_ALIGN_CENTER,0,0);lv_obj_add_event_cb(c->slider,event_cb,LV_EVENT_VALUE_CHANGED,c);lv_obj_add_event_cb(c->slider,event_cb,LV_EVENT_RELEASED,c);lv_obj_add_event_cb(c->slider,event_cb,LV_EVENT_DELETE,c);
     apply_visual(c);o->obj=card;o->ctx=c;return ESP_OK;
 }
