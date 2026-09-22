@@ -437,6 +437,32 @@ esp_err_t ui_bindings_run_entity(const char *entity_id)
     return err;
 }
 
+esp_err_t ui_bindings_trigger_automation(const char *entity_id)
+{
+    if (entity_id == NULL || entity_id[0] == '\0') {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    char domain[32] = {0};
+    if (!split_entity_id(entity_id, domain, sizeof(domain)) ||
+        strcmp(domain, "automation") != 0) {
+        return ESP_ERR_NOT_SUPPORTED;
+    }
+
+    if (!ui_bindings_allow_power_command_now(entity_id, true, true)) {
+        return ESP_OK;
+    }
+
+    char payload[192] = {0};
+    snprintf(payload, sizeof(payload), "{\"entity_id\":\"%s\"}", entity_id);
+
+    esp_err_t err = ha_client_call_service(domain, "trigger", payload);
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "automation trigger failed entity=%s err=%s", entity_id, esp_err_to_name(err));
+    }
+    return err;
+}
+
 esp_err_t ui_bindings_press_button(const char *entity_id)
 {
     if (entity_id == NULL || entity_id[0] == '\0') {
