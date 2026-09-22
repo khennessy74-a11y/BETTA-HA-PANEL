@@ -1772,6 +1772,11 @@ fSliderAccentColor: document.getElementById("fSliderAccentColor"),
   settingsLanguage: document.getElementById("settingsLanguage"),
   settingsBrightness: document.getElementById("settingsBrightness"),
   settingsBrightnessValue: document.getElementById("settingsBrightnessValue"),
+  settingsNightBrightness: document.getElementById("settingsNightBrightness"),
+  settingsNightBrightnessValue: document.getElementById("settingsNightBrightnessValue"),
+  settingsNightModeAuto: document.getElementById("settingsNightModeAuto"),
+  settingsNightStartHour: document.getElementById("settingsNightStartHour"),
+  settingsDayStartHour: document.getElementById("settingsDayStartHour"),
   reloadLanguagesBtn: document.getElementById("reloadLanguagesBtn"),
   downloadLanguageBtn: document.getElementById("downloadLanguageBtn"),
   uploadLanguageCode: document.getElementById("uploadLanguageCode"),
@@ -2920,6 +2925,14 @@ function renderSettings() {
     el.settingsBrightness.value = String(brightness);
     if (el.settingsBrightnessValue) el.settingsBrightnessValue.textContent = `${brightness}%`;
   }
+  if (el.settingsNightBrightness) {
+    const nightBrightness = clamp(Math.round(Number(ui.night_brightness_percent ?? 20)), 0, 100);
+    el.settingsNightBrightness.value = String(nightBrightness);
+    if (el.settingsNightBrightnessValue) el.settingsNightBrightnessValue.textContent = `${nightBrightness}%`;
+  }
+  if (el.settingsNightModeAuto) el.settingsNightModeAuto.checked = ui.night_mode_auto === true;
+  if (el.settingsNightStartHour) el.settingsNightStartHour.value = String(clamp(Math.round(Number(ui.night_start_hour ?? 22)), 0, 23));
+  if (el.settingsDayStartHour) el.settingsDayStartHour.value = String(clamp(Math.round(Number(ui.day_start_hour ?? 7)), 0, 23));
   renderLanguageOptions();
 
   const connectedRssiText = Number.isFinite(Number(wifi.rssi_dbm))
@@ -3512,6 +3525,10 @@ async function saveSettings() {
   const timezone = el.settingsTimezone.value.trim();
   const language = normalizeUiLanguage(el.settingsLanguage?.value);
   const brightnessPercent = clamp(Math.round(Number(el.settingsBrightness?.value ?? 100)), 0, 100);
+  const nightBrightnessPercent = clamp(Math.round(Number(el.settingsNightBrightness?.value ?? 20)), 0, 100);
+  const nightModeAuto = Boolean(el.settingsNightModeAuto?.checked);
+  const nightStartHour = clamp(Math.round(Number(el.settingsNightStartHour?.value ?? 22)), 0, 23);
+  const dayStartHour = clamp(Math.round(Number(el.settingsDayStartHour?.value ?? 7)), 0, 23);
 
   if (!wifiCountryCode) {
     setStatus(t("settings.language.invalid_country"), true);
@@ -3543,6 +3560,10 @@ async function saveSettings() {
     ui: {
       language,
       brightness_percent: brightnessPercent,
+      night_brightness_percent: nightBrightnessPercent,
+      night_mode_auto: nightModeAuto,
+      night_start_hour: nightStartHour,
+      day_start_hour: dayStartHour,
     },
     reboot: true,
   };
