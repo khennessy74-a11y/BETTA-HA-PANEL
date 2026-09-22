@@ -159,6 +159,9 @@ void app_main(void)
         s_runtime_settings.display_night_mode_auto,
         s_runtime_settings.display_night_start_hour,
         s_runtime_settings.display_day_start_hour);
+    display_configure_idle(
+        s_runtime_settings.display_idle_timeout_seconds,
+        s_runtime_settings.display_idle_brightness_percent);
     (void)ui_boot_splash_show();
 
     ui_boot_splash_set_status(ui_i18n_get("boot.initializing_wifi", "Initializing Wi-Fi"));
