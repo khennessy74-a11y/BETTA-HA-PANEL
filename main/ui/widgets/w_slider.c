@@ -128,10 +128,16 @@ static int slider_extract_percent_value(const ha_state_t *state, bool *out_has_n
 
     cJSON *attrs = cJSON_Parse(state->attributes_json);
     if (attrs != NULL) {
+        cJSON *percentage = cJSON_GetObjectItemCaseSensitive(attrs, "percentage");
         cJSON *current_position = cJSON_GetObjectItemCaseSensitive(attrs, "current_position");
         cJSON *brightness_pct = cJSON_GetObjectItemCaseSensitive(attrs, "brightness_pct");
         cJSON *brightness = cJSON_GetObjectItemCaseSensitive(attrs, "brightness");
-        if (cJSON_IsNumber(current_position)) {
+        if (cJSON_IsNumber(percentage)) {
+            value = clamp_percent((int)(percentage->valuedouble + 0.5));
+            if (out_has_numeric != NULL) {
+                *out_has_numeric = true;
+            }
+        } else if (cJSON_IsNumber(current_position)) {
             value = clamp_percent((int)(current_position->valuedouble + 0.5));
             if (out_has_numeric != NULL) {
                 *out_has_numeric = true;
