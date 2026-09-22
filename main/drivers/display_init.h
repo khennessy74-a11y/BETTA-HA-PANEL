@@ -14,3 +14,4 @@ bool display_lock(uint32_t timeout_ms);
 void display_unlock(void);
 esp_err_t display_set_brightness_percent(int percent);
 void display_note_activity(void);
+void display_configure_night_mode(int day_percent, int night_percent, bool auto_mode, int night_start_hour, int day_start_hour);
