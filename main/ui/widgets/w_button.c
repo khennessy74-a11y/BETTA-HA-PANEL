@@ -149,6 +149,14 @@ static bool button_entity_is_scene(const char *entity_id)
     return strncmp(entity_id, "scene.", strlen("scene.")) == 0;
 }
 
+static bool button_entity_is_automation(const char *entity_id)
+{
+    if (entity_id == NULL) {
+        return false;
+    }
+    return strncmp(entity_id, "automation.", strlen("automation.")) == 0;
+}
+
 static bool button_entity_is_ha_button(const char *entity_id)
 {
     if (entity_id == NULL) {
@@ -159,7 +167,9 @@ static bool button_entity_is_ha_button(const char *entity_id)
 
 static bool button_entity_is_runnable(const char *entity_id)
 {
-    return button_entity_is_script(entity_id) || button_entity_is_scene(entity_id);
+    return button_entity_is_script(entity_id) ||
+           button_entity_is_scene(entity_id) ||
+           button_entity_is_automation(entity_id);
 }
 
 static w_button_mode_t button_mode_from_text(const char *mode_text)
@@ -799,6 +809,11 @@ static void button_run_primary_action(w_button_ctx_t *ctx)
     }
 
     if (ctx->mode == W_BUTTON_MODE_RUN) {
+        if (button_entity_is_automation(ctx->entity_id)) {
+            (void)ui_bindings_trigger_automation(ctx->entity_id);
+            return;
+        }
+
         if (button_entity_is_scene(ctx->entity_id)) {
             /* Scenes have no meaningful "running" state to cancel; every tap
              * just re-activates it. */
