@@ -1,3 +1,4 @@
+# CI retrigger: input_number fix
 name: Build BETTA HA Panel - panels3
 
 on:
