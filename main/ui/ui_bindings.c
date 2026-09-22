@@ -738,6 +738,28 @@ esp_err_t ui_bindings_set_slider_value(
         payload);
 }
 
+esp_err_t ui_bindings_set_number_value(
+    const char *entity_id,
+    double value)
+{
+    if (entity_id == NULL || entity_id[0] == '\0') {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    char domain[32] = {0};
+    if (!split_entity_id(entity_id, domain, sizeof(domain)) ||
+        strcmp(domain, "input_number") != 0) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    char payload[256] = {0};
+    snprintf(payload, sizeof(payload),
+        "{\"entity_id\":\"%s\",\"value\":%.6g}",
+        entity_id, value);
+
+    return ha_client_call_service(domain, HA_SERVICE_SET_VALUE, payload);
+}
+
 esp_err_t ui_bindings_set_climate_target_c(
     const char *entity_id,
     float celsius)
