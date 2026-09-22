@@ -32,6 +32,12 @@ esp_err_t ui_bindings_press_button(const char *entity_id);
 esp_err_t ui_bindings_cancel_entity(const char *entity_id);
 esp_err_t ui_bindings_set_entity_power(const char *entity_id, bool on);
 esp_err_t ui_bindings_set_slider_value(const char *entity_id, int value);
+typedef enum {
+    UI_BINDINGS_COVER_OPEN = 0,
+    UI_BINDINGS_COVER_STOP,
+    UI_BINDINGS_COVER_CLOSE,
+} ui_bindings_cover_action_t;
+esp_err_t ui_bindings_cover_action(const char *entity_id, ui_bindings_cover_action_t action);
 esp_err_t ui_bindings_set_number_value(const char *entity_id, double value);
 esp_err_t ui_bindings_set_climate_target_c(const char *entity_id, float celsius);
 esp_err_t ui_bindings_set_light_color_temp_kelvin(const char *entity_id, int kelvin);
