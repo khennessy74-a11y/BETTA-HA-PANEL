@@ -56,9 +56,61 @@ esp_err_t w_input_number_create(const ui_widget_def_t *d,lv_obj_t *p,ui_widget_i
     c->slider=lv_slider_create(card);lv_slider_set_range(c->slider,0,1000);lv_obj_set_size(c->slider,d->w-44,20);lv_obj_align(c->slider,LV_ALIGN_CENTER,0,0);lv_obj_add_event_cb(c->slider,event_cb,LV_EVENT_VALUE_CHANGED,c);lv_obj_add_event_cb(c->slider,event_cb,LV_EVENT_RELEASED,c);lv_obj_add_event_cb(c->slider,event_cb,LV_EVENT_DELETE,c);
     apply_visual(c);o->obj=card;o->ctx=c;return ESP_OK;
 }
-void w_input_number_apply_state(ui_widget_instance_t *i,const ha_state_t *s){
-    if(!i||!s)return;w_input_number_ctx_t *c=i->ctx;if(!c)return;c->unavailable=!strcmp(s->state,"unavailable")||!strcmp(s->state,"unknown");
-    cJSON *a=cJSON_Parse(s->attributes_json);if(a){cJSON *mn=cJSON_GetObjectItemCaseSensitive(a,"min"),*mx=cJSON_GetObjectItemCaseSensitive(a,"max"),*st=cJSON_GetObjectItemCaseSensitive(a,"step");if(cJSON_IsNumber(mn))c->min=mn->valuedouble;if(cJSON_IsNumber(mx))c->max=mx->valuedouble;if(cJSON_IsNumber(st)&&st->valuedouble>0)c->step=st->valuedouble;cJSON_Delete(a);}
-    if(c->max<=c->min)c->max=c->min+1;char *end=NULL;double v=strtod(s->state,&end);if(end!=s->state)c->value=clamp_value(c,v);apply_visual(c);
+void w_input_number_apply_state(ui_widget_instance_t *instance, const ha_state_t *state)
+{
+    if (instance == NULL || state == NULL) {
+        return;
+    }
+
+    w_input_number_ctx_t *ctx = instance->ctx;
+    if (ctx == NULL) {
+        return;
+    }
+
+    ctx->unavailable =
+        strcmp(state->state, "unavailable") == 0 ||
+        strcmp(state->state, "unknown") == 0;
+
+    cJSON *attrs = cJSON_Parse(state->attributes_json);
+    if (attrs != NULL) {
+        cJSON *min_item = cJSON_GetObjectItemCaseSensitive(attrs, "min");
+        cJSON *max_item = cJSON_GetObjectItemCaseSensitive(attrs, "max");
+        cJSON *step_item = cJSON_GetObjectItemCaseSensitive(attrs, "step");
+
+        if (cJSON_IsNumber(min_item)) {
+            ctx->min = min_item->valuedouble;
+        }
+        if (cJSON_IsNumber(max_item)) {
+            ctx->max = max_item->valuedouble;
+        }
+        if (cJSON_IsNumber(step_item) && step_item->valuedouble > 0) {
+            ctx->step = step_item->valuedouble;
+        }
+        cJSON_Delete(attrs);
+    }
+
+    if (ctx->max <= ctx->min) {
+        ctx->max = ctx->min + 1;
+    }
+
+    char *end = NULL;
+    double value = strtod(state->state, &end);
+    if (end != state->state) {
+        ctx->value = clamp_value(ctx, value);
+    }
+
+    apply_visual(ctx);
 }
-void w_input_number_mark_unavailable(ui_widget_instance_t *i){if(!i)return;w_input_number_ctx_t *c=i->ctx;if(c){c->unavailable=true;apply_visual(c);}}
+
+void w_input_number_mark_unavailable(ui_widget_instance_t *instance)
+{
+    if (instance == NULL) {
+        return;
+    }
+
+    w_input_number_ctx_t *ctx = instance->ctx;
+    if (ctx != NULL) {
+        ctx->unavailable = true;
+        apply_visual(ctx);
+    }
+}
