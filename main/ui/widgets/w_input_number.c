@@ -28,26 +28,38 @@ static double clamp_value(w_input_number_ctx_t *c, double v) {
 static long round_nearest(double v) {
     return (long)(v >= 0.0 ? v + 0.5 : v - 0.5);
 }
+static int step_count(w_input_number_ctx_t *c) {
+    if (c->step <= 0.0 || c->max <= c->min) return 1;
+    long count = round_nearest((c->max - c->min) / c->step);
+    if (count < 1) count = 1;
+    /* LVGL slider values are int32_t; keep headroom while still preserving
+     * far more discrete input_number values than the old fixed 1000 range. */
+    if (count > 1000000L) count = 1000000L;
+    return (int)count;
+}
 static double pos_to_value(w_input_number_ctx_t *c, int pos) {
-    double v = c->min + (c->max - c->min) * ((double)pos / 1000.0);
-    if (c->step > 0) {
-        v = c->min + (double)round_nearest((v - c->min) / c->step) * c->step;
-    }
-    return clamp_value(c, v);
+    if (c->step <= 0.0) return c->min;
+    return clamp_value(c, c->min + (double)pos * c->step);
 }
 static int value_to_pos(w_input_number_ctx_t *c, double v) {
-    if (c->max <= c->min) return 0;
-    return (int)round_nearest((clamp_value(c, v) - c->min) * 1000.0 / (c->max - c->min));
+    if (c->step <= 0.0 || c->max <= c->min) return 0;
+    long pos = round_nearest((clamp_value(c, v) - c->min) / c->step);
+    int count = step_count(c);
+    if (pos < 0) pos = 0;
+    if (pos > count) pos = count;
+    return (int)pos;
 }
 static int precision_for_step(double step) {
-    if (step >= 1.0) return 0;
-    int precision = 0;
+    if (step <= 0.0) return 0;
     double scaled = step;
-    while (precision < 6 && scaled < 1.0) {
+    for (int precision = 0; precision < 6; precision++) {
+        long nearest = round_nearest(scaled);
+        double diff = scaled - (double)nearest;
+        if (diff < 0.0) diff = -diff;
+        if (diff < 0.000001) return precision;
         scaled *= 10.0;
-        precision++;
     }
-    return precision;
+    return 6;
 }
 static void apply_visual(w_input_number_ctx_t *c) {
     char b[64];
@@ -57,7 +69,10 @@ static void apply_visual(w_input_number_ctx_t *c) {
         snprintf(b, sizeof(b), "%.*f", c->precision, c->value);
     }
     lv_label_set_text(c->value_label,c->unavailable?ui_i18n_get("common.unavailable", "unavailable"):b);
-    c->suppress=true; lv_slider_set_value(c->slider,value_to_pos(c,c->value),LV_ANIM_OFF); c->suppress=false;
+    c->suppress=true;
+    lv_slider_set_range(c->slider,0,step_count(c));
+    lv_slider_set_value(c->slider,value_to_pos(c,c->value),LV_ANIM_OFF);
+    c->suppress=false;
     lv_obj_set_style_bg_color(c->card,lv_color_hex(APP_UI_COLOR_CARD_BG_OFF),LV_PART_MAIN);
 }
 static void event_cb(lv_event_t *e) {
@@ -73,7 +88,7 @@ esp_err_t w_input_number_create(const ui_widget_def_t *d,lv_obj_t *p,ui_widget_i
     w_input_number_ctx_t *c=ui_calloc_prefer_psram(1,sizeof(*c));if(!c){lv_obj_del(card);return ESP_ERR_NO_MEM;} snprintf(c->entity_id,sizeof(c->entity_id),"%s",d->entity_id);c->card=card;c->min=0;c->max=100;c->step=1;c->precision=0;c->unit[0]='\0';c->show_title=d->show_title;c->show_state=d->show_state;
     c->title=lv_label_create(card);lv_label_set_text(c->title,d->title[0]?d->title:d->id);lv_obj_set_style_text_font(c->title,APP_FONT_TEXT_20,LV_PART_MAIN);lv_obj_align(c->title,LV_ALIGN_BOTTOM_MID,0,-8);if(!c->show_title)lv_obj_add_flag(c->title,LV_OBJ_FLAG_HIDDEN);
     c->value_label=lv_label_create(card);lv_obj_set_style_text_font(c->value_label,APP_FONT_TEXT_20,LV_PART_MAIN);lv_obj_align(c->value_label,LV_ALIGN_TOP_MID,0,2);if(!c->show_state)lv_obj_add_flag(c->value_label,LV_OBJ_FLAG_HIDDEN);
-    c->slider=lv_slider_create(card);lv_slider_set_range(c->slider,0,1000);lv_obj_set_size(c->slider,d->w-44,20);lv_obj_align(c->slider,LV_ALIGN_CENTER,0,0);lv_obj_add_event_cb(c->slider,event_cb,LV_EVENT_VALUE_CHANGED,c);lv_obj_add_event_cb(c->slider,event_cb,LV_EVENT_RELEASED,c);lv_obj_add_event_cb(c->slider,event_cb,LV_EVENT_DELETE,c);
+    c->slider=lv_slider_create(card);lv_slider_set_range(c->slider,0,step_count(c));lv_obj_set_size(c->slider,d->w-44,20);lv_obj_align(c->slider,LV_ALIGN_CENTER,0,0);lv_obj_add_event_cb(c->slider,event_cb,LV_EVENT_VALUE_CHANGED,c);lv_obj_add_event_cb(c->slider,event_cb,LV_EVENT_RELEASED,c);lv_obj_add_event_cb(c->slider,event_cb,LV_EVENT_DELETE,c);
     apply_visual(c);o->obj=card;o->ctx=c;return ESP_OK;
 }
 void w_input_number_apply_state(ui_widget_instance_t *instance, const ha_state_t *state)
