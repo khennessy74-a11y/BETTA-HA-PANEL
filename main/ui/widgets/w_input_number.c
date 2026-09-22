@@ -1,6 +1,5 @@
 /* SPDX-License-Identifier: LicenseRef-FNCL-1.1 */
 #include "ui/ui_widget_factory.h"
-#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -18,15 +17,23 @@ typedef struct {
 } w_input_number_ctx_t;
 
 static double clamp_value(w_input_number_ctx_t *c, double v) {
-    if (v < c->min) v = c->min; if (v > c->max) v = c->max; return v;
+    if (v < c->min) v = c->min;
+    if (v > c->max) v = c->max;
+    return v;
+}
+static long round_nearest(double v) {
+    return (long)(v >= 0.0 ? v + 0.5 : v - 0.5);
 }
 static double pos_to_value(w_input_number_ctx_t *c, int pos) {
-    double v=c->min+(c->max-c->min)*((double)pos/1000.0);
-    if(c->step>0) v=c->min+round((v-c->min)/c->step)*c->step;
-    return clamp_value(c,v);
+    double v = c->min + (c->max - c->min) * ((double)pos / 1000.0);
+    if (c->step > 0) {
+        v = c->min + (double)round_nearest((v - c->min) / c->step) * c->step;
+    }
+    return clamp_value(c, v);
 }
-static int value_to_pos(w_input_number_ctx_t *c,double v) {
-    if(c->max<=c->min)return 0; return (int)round((clamp_value(c,v)-c->min)*1000.0/(c->max-c->min));
+static int value_to_pos(w_input_number_ctx_t *c, double v) {
+    if (c->max <= c->min) return 0;
+    return (int)round_nearest((clamp_value(c, v) - c->min) * 1000.0 / (c->max - c->min));
 }
 static void apply_visual(w_input_number_ctx_t *c) {
     char b[32]; snprintf(b,sizeof(b),"%.6g",c->value); lv_label_set_text(c->value_label,c->unavailable?"unavailable":b);
