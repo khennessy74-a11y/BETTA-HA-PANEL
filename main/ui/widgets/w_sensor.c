@@ -145,6 +145,50 @@ static bool sensor_apply_icon(w_sensor_ctx_t *ctx, const char *icon_name)
 }
 
 
+static const char *binary_sensor_state_text(const char *device_class, bool is_on)
+{
+    if (device_class == NULL) {
+        device_class = "";
+    }
+
+    if (strcmp(device_class, "door") == 0 ||
+        strcmp(device_class, "garage_door") == 0 ||
+        strcmp(device_class, "opening") == 0 ||
+        strcmp(device_class, "window") == 0) {
+        return is_on ? "Open" : "Closed";
+    }
+    if (strcmp(device_class, "motion") == 0 ||
+        strcmp(device_class, "occupancy") == 0 ||
+        strcmp(device_class, "presence") == 0) {
+        return is_on ? "Detected" : "Clear";
+    }
+    if (strcmp(device_class, "moisture") == 0) {
+        return is_on ? "Wet" : "Dry";
+    }
+    if (strcmp(device_class, "smoke") == 0 ||
+        strcmp(device_class, "gas") == 0 ||
+        strcmp(device_class, "carbon_monoxide") == 0) {
+        return is_on ? "Detected" : "Clear";
+    }
+    if (strcmp(device_class, "problem") == 0 ||
+        strcmp(device_class, "safety") == 0) {
+        return is_on ? "Problem" : "OK";
+    }
+    if (strcmp(device_class, "battery") == 0) {
+        return is_on ? "Low" : "Normal";
+    }
+    if (strcmp(device_class, "connectivity") == 0 ||
+        strcmp(device_class, "plug") == 0 ||
+        strcmp(device_class, "power") == 0 ||
+        strcmp(device_class, "running") == 0) {
+        return is_on ? "On" : "Off";
+    }
+    if (strcmp(device_class, "lock") == 0) {
+        return is_on ? "Unlocked" : "Locked";
+    }
+    return is_on ? "ON" : "OFF";
+}
+
 static bool sensor_state_is_unavailable(const char *state_text)
 {
     if (state_text == NULL || state_text[0] == '\0') {
@@ -491,7 +535,17 @@ void w_sensor_apply_state(ui_widget_instance_t *instance, const ha_state_t *stat
         }
     }
 
-    if (unit != NULL && unit[0] != '\0') {
+    if (strcmp(instance->type, "binary_sensor") == 0) {
+        const char *device_class = NULL;
+        if (attrs != NULL) {
+            cJSON *class_item = cJSON_GetObjectItemCaseSensitive(attrs, "device_class");
+            if (cJSON_IsString(class_item) && class_item->valuestring != NULL) {
+                device_class = class_item->valuestring;
+            }
+        }
+        snprintf(value_text, sizeof(value_text), "%s",
+            binary_sensor_state_text(device_class, strcmp(state->state, "on") == 0));
+    } else if (unit != NULL && unit[0] != '\0') {
         snprintf(value_text, sizeof(value_text), "%s %s", state->state, unit);
     } else {
         snprintf(value_text, sizeof(value_text), "%s", state->state);
