@@ -27,6 +27,8 @@ esp_err_t ui_bindings_run_entity(const char *entity_id);
 esp_err_t ui_bindings_trigger_automation(const char *entity_id);
 /* Press a stateless Home Assistant button.* entity via button.press. */
 esp_err_t ui_bindings_press_button(const char *entity_id);
+/* Lock or unlock a Home Assistant lock.* entity. */
+esp_err_t ui_bindings_set_lock_state(const char *entity_id, bool locked);
 /* Stop a running script (script.turn_off).  Scenes cannot be cancelled and
  * return ESP_ERR_NOT_SUPPORTED. */
 esp_err_t ui_bindings_cancel_entity(const char *entity_id);
