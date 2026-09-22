@@ -122,6 +122,7 @@ static lv_display_t          *s_lv_display    = NULL;
 static esp_lcd_panel_handle_t s_panel         = NULL;
 static esp_timer_handle_t     s_dim_timer      = NULL;
 static int                    s_display_brightness = -1;
+static int                    s_active_brightness = APP_DISPLAY_ACTIVE_BRIGHTNESS_PERCENT;
 
 /* â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 static lvgl_port_cfg_t display_port_cfg(void)
@@ -169,6 +170,9 @@ static esp_err_t backlight_ledc_init(void)
 esp_err_t display_set_brightness_percent(int percent)
 {
     const int next = display_clamp_brightness(percent);
+    if (next > APP_DISPLAY_DIM_BRIGHTNESS_PERCENT) {
+        s_active_brightness = next;
+    }
     if (s_display_brightness == next) return ESP_OK;
 
     const uint32_t duty = (uint32_t)(next * ((1u << 10) - 1)) / 100u;
@@ -215,7 +219,7 @@ static void display_restart_dim_timer(void)
 void display_note_activity(void)
 {
     if (!s_display_ready) return;
-    (void)display_set_brightness_percent(APP_DISPLAY_ACTIVE_BRIGHTNESS_PERCENT);
+    (void)display_set_brightness_percent(s_active_brightness);
     display_restart_dim_timer();
 }
 
