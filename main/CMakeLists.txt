@@ -65,6 +65,7 @@ idf_component_register(
         "ui/widgets/w_sensor.c"
         "ui/widgets/w_button.c"
         "ui/widgets/w_slider.c"
+        "ui/widgets/w_input_number.c"
         "ui/widgets/w_graph.c"
         "ui/widgets/w_empty_tile.c"
         "ui/widgets/w_light_tile.c"
