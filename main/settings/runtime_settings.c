@@ -128,6 +128,7 @@ static esp_err_t write_public_settings_file(const runtime_settings_t *settings)
     cJSON_AddItemToObject(root, "time", time_cfg);
 
     cJSON_AddStringToObject(ui, "language", settings->ui_language);
+    cJSON_AddNumberToObject(ui, "brightness_percent", settings->display_brightness_percent);
     cJSON_AddItemToObject(root, "ui", ui);
 
     char *payload = cJSON_PrintUnformatted(root);
@@ -252,6 +253,11 @@ static esp_err_t parse_settings_json(
 
     if (cJSON_IsObject(ui)) {
         json_copy_string(ui, "language", out->ui_language, sizeof(out->ui_language));
+        cJSON *brightness = cJSON_GetObjectItemCaseSensitive(ui, "brightness_percent");
+        if (cJSON_IsNumber(brightness)) {
+            int value = brightness->valueint;
+            out->display_brightness_percent = value < 0 ? 0 : (value > 100 ? 100 : value);
+        }
     } else {
         json_copy_string(root, "language", out->ui_language, sizeof(out->ui_language));
     }
@@ -406,6 +412,7 @@ void runtime_settings_set_defaults(runtime_settings_t *out)
     strlcpy(out->ntp_server, APP_NTP_SERVER, sizeof(out->ntp_server));
     strlcpy(out->time_tz, APP_TIME_TZ, sizeof(out->time_tz));
     strlcpy(out->ui_language, APP_UI_DEFAULT_LANGUAGE, sizeof(out->ui_language));
+    out->display_brightness_percent = APP_DISPLAY_ACTIVE_BRIGHTNESS_PERCENT;
 }
 
 esp_err_t runtime_settings_load(runtime_settings_t *out)
