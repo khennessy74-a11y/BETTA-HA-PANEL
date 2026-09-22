@@ -1770,6 +1770,8 @@ fSliderAccentColor: document.getElementById("fSliderAccentColor"),
   settingsNtpServer: document.getElementById("settingsNtpServer"),
   settingsTimezone: document.getElementById("settingsTimezone"),
   settingsLanguage: document.getElementById("settingsLanguage"),
+  settingsBrightness: document.getElementById("settingsBrightness"),
+  settingsBrightnessValue: document.getElementById("settingsBrightnessValue"),
   reloadLanguagesBtn: document.getElementById("reloadLanguagesBtn"),
   downloadLanguageBtn: document.getElementById("downloadLanguageBtn"),
   uploadLanguageCode: document.getElementById("uploadLanguageCode"),
@@ -2913,6 +2915,11 @@ function renderSettings() {
   if (el.settingsLanguage) {
     el.settingsLanguage.value = normalizeUiLanguage(ui.language);
   }
+  if (el.settingsBrightness) {
+    const brightness = clamp(Math.round(Number(ui.brightness_percent ?? 100)), 0, 100);
+    el.settingsBrightness.value = String(brightness);
+    if (el.settingsBrightnessValue) el.settingsBrightnessValue.textContent = `${brightness}%`;
+  }
   renderLanguageOptions();
 
   const connectedRssiText = Number.isFinite(Number(wifi.rssi_dbm))
@@ -3486,6 +3493,12 @@ async function saveHaProvisioning() {
   setProvisioningInfo("ha", t("provision.saved_reboot"));
 }
 
+function updateBrightnessLabel() {
+  if (el.settingsBrightness && el.settingsBrightnessValue) {
+    el.settingsBrightnessValue.textContent = `${el.settingsBrightness.value}%`;
+  }
+}
+
 async function saveSettings() {
   const wifiSsid = el.settingsWifiSsid.value.trim();
   const wifiPassword = el.settingsWifiPassword.value;
@@ -3498,6 +3511,7 @@ async function saveSettings() {
   const ntpServer = el.settingsNtpServer.value.trim();
   const timezone = el.settingsTimezone.value.trim();
   const language = normalizeUiLanguage(el.settingsLanguage?.value);
+  const brightnessPercent = clamp(Math.round(Number(el.settingsBrightness?.value ?? 100)), 0, 100);
 
   if (!wifiCountryCode) {
     setStatus(t("settings.language.invalid_country"), true);
@@ -3528,6 +3542,7 @@ async function saveSettings() {
     },
     ui: {
       language,
+      brightness_percent: brightnessPercent,
     },
     reboot: true,
   };
