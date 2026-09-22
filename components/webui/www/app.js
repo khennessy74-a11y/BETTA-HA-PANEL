@@ -86,6 +86,18 @@ const ENTITY_PICKER_CONFIGS = {
     minSearch: 2,
     liveSearch: false,
   },
+  input_boolean: {
+    widgetType: "button",
+    domain: "input_boolean",
+    titleKey: "entity_picker.title_input_boolean",
+    blankKey: "entity_picker.blank_input_boolean",
+    widgetKey: "entity_picker.widget_input_boolean",
+    itemsKey: "entity_picker.items_input_boolean",
+    titleFallback: "Choose Input Boolean",
+    blankFallback: "Blank Input Boolean",
+    widgetFallback: "Input Boolean control",
+    itemsFallback: "input booleans",
+  },
   cover: {
     widgetType: "slider",
     sliderDomain: "cover",
@@ -1590,6 +1602,7 @@ const el = {
   addSensorBtn: document.getElementById("addSensorBtn"),
   addBinarySensorBtn: document.getElementById("addBinarySensorBtn"),
   addButtonBtn: document.getElementById("addButtonBtn"),
+  addInputBooleanBtn: document.getElementById("addInputBooleanBtn"),
   addScriptBtn: document.getElementById("addScriptBtn"),
   addSceneBtn: document.getElementById("addSceneBtn"),
   addSliderBtn: document.getElementById("addSliderBtn"),
@@ -3894,7 +3907,7 @@ function allowedEntityDomainsForWidgetType(
     const normalizedMode = normalizeButtonMode(buttonMode);
     if (buttonModeRequiresMediaPlayer(normalizedMode)) return ["media_player"];
     if (buttonModeRequiresRunnable(normalizedMode)) return ["script", "scene"];
-    return ["switch", "media_player"];
+    return ["switch", "input_boolean", "media_player"];
   }
   if (type === "light_tile") return ["light"];
   if (type === "heating_tile") return ["climate"];
@@ -6669,6 +6682,9 @@ function bindUi() {
     el.addBinarySensorBtn.onclick = () => openLightEntityPicker("binary_sensor");
   }
   el.addButtonBtn.onclick = () => openLightEntityPicker("button");
+  if (el.addInputBooleanBtn) {
+    el.addInputBooleanBtn.onclick = () => openLightEntityPicker("input_boolean");
+  }
   if (el.addScriptBtn) {
     el.addScriptBtn.onclick = () => openLightEntityPicker("button_script");
   }
