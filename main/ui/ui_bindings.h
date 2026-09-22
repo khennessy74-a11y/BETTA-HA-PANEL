@@ -28,6 +28,7 @@ esp_err_t ui_bindings_run_entity(const char *entity_id);
 esp_err_t ui_bindings_cancel_entity(const char *entity_id);
 esp_err_t ui_bindings_set_entity_power(const char *entity_id, bool on);
 esp_err_t ui_bindings_set_slider_value(const char *entity_id, int value);
+esp_err_t ui_bindings_set_number_value(const char *entity_id, double value);
 esp_err_t ui_bindings_set_climate_target_c(const char *entity_id, float celsius);
 esp_err_t ui_bindings_set_light_color_temp_kelvin(const char *entity_id, int kelvin);
 esp_err_t ui_bindings_set_light_rgb_color(const char *entity_id, uint8_t r, uint8_t g, uint8_t b);
