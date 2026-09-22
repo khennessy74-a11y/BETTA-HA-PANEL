@@ -828,6 +828,13 @@
             <label><span>Day starts</span>
               <input id="settingsDayStartHour" type="number" min="0" max="23" step="1" value="7" />
             </label>
+            <label><span>Inactivity timeout (seconds, 0 = disabled)</span>
+              <input id="settingsIdleTimeout" type="number" min="0" max="86400" step="1" value="60" />
+            </label>
+            <label><span>Idle brightness (0% = screen off)</span>
+              <input id="settingsIdleBrightness" type="range" min="0" max="100" step="1" value="10" oninput="document.getElementById('settingsIdleBrightnessValue').textContent=this.value+'%'" />
+              <span id="settingsIdleBrightnessValue">10%</span>
+            </label>
             <div id="settingsUiInfo" class="meta"></div>
             <div class="row">
               <button id="reloadLanguagesBtn" class="btn small" type="button">Reload Languages</button>
