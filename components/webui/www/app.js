@@ -1661,6 +1661,7 @@ const el = {
   addBinarySensorBtn: document.getElementById("addBinarySensorBtn"),
   addButtonBtn: document.getElementById("addButtonBtn"),
   addHaButtonBtn: document.getElementById("addHaButtonBtn"),
+  addLockBtn: document.getElementById("addLockBtn"),
   addInputBooleanBtn: document.getElementById("addInputBooleanBtn"),
   addAutomationBtn: document.getElementById("addAutomationBtn"),
   addAutomationTriggerBtn: document.getElementById("addAutomationTriggerBtn"),
@@ -6802,6 +6803,9 @@ function bindUi() {
   if (el.addHaButtonBtn) {
   el.addHaButtonBtn.onclick = () => openLightEntityPicker("ha_button");
 }
+  if (el.addLockBtn) {
+    el.addLockBtn.onclick = () => openLightEntityPicker("lock");
+  }
 
 if (el.addAutomationBtn) {
     el.addAutomationBtn.onclick = () => openLightEntityPicker("automation");
