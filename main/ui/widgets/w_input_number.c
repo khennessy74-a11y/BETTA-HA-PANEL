@@ -14,6 +14,8 @@ typedef struct {
     char entity_id[APP_MAX_ENTITY_ID_LEN];
     lv_obj_t *card, *title, *value_label, *slider;
     double min, max, step, value;
+    char unit[24];
+    int precision;
     bool unavailable, suppress;
     bool show_title, show_state;
 } w_input_number_ctx_t;
@@ -37,8 +39,24 @@ static int value_to_pos(w_input_number_ctx_t *c, double v) {
     if (c->max <= c->min) return 0;
     return (int)round_nearest((clamp_value(c, v) - c->min) * 1000.0 / (c->max - c->min));
 }
+static int precision_for_step(double step) {
+    if (step >= 1.0) return 0;
+    int precision = 0;
+    double scaled = step;
+    while (precision < 6 && scaled < 1.0) {
+        scaled *= 10.0;
+        precision++;
+    }
+    return precision;
+}
 static void apply_visual(w_input_number_ctx_t *c) {
-    char b[32]; snprintf(b,sizeof(b),"%.6g",c->value); lv_label_set_text(c->value_label,c->unavailable?ui_i18n_get("common.unavailable", "unavailable"):b);
+    char b[64];
+    if (c->unit[0] != '\0') {
+        snprintf(b, sizeof(b), "%.*f %s", c->precision, c->value, c->unit);
+    } else {
+        snprintf(b, sizeof(b), "%.*f", c->precision, c->value);
+    }
+    lv_label_set_text(c->value_label,c->unavailable?ui_i18n_get("common.unavailable", "unavailable"):b);
     c->suppress=true; lv_slider_set_value(c->slider,value_to_pos(c,c->value),LV_ANIM_OFF); c->suppress=false;
     lv_obj_set_style_bg_color(c->card,lv_color_hex(APP_UI_COLOR_CARD_BG_OFF),LV_PART_MAIN);
 }
@@ -52,7 +70,7 @@ static void event_cb(lv_event_t *e) {
 esp_err_t w_input_number_create(const ui_widget_def_t *d,lv_obj_t *p,ui_widget_instance_t *o){
     if(!d||!p||!o)return ESP_ERR_INVALID_ARG;
     lv_obj_t *card=lv_obj_create(p);lv_obj_set_pos(card,d->x,d->y);lv_obj_set_size(card,d->w,d->h);lv_obj_clear_flag(card,LV_OBJ_FLAG_SCROLLABLE);lv_obj_set_style_radius(card,APP_UI_CARD_RADIUS,LV_PART_MAIN);lv_obj_set_style_pad_all(card,16,LV_PART_MAIN);
-    w_input_number_ctx_t *c=ui_calloc_prefer_psram(1,sizeof(*c));if(!c){lv_obj_del(card);return ESP_ERR_NO_MEM;} snprintf(c->entity_id,sizeof(c->entity_id),"%s",d->entity_id);c->card=card;c->min=0;c->max=100;c->step=1;c->show_title=d->show_title;c->show_state=d->show_state;
+    w_input_number_ctx_t *c=ui_calloc_prefer_psram(1,sizeof(*c));if(!c){lv_obj_del(card);return ESP_ERR_NO_MEM;} snprintf(c->entity_id,sizeof(c->entity_id),"%s",d->entity_id);c->card=card;c->min=0;c->max=100;c->step=1;c->precision=0;c->unit[0]='\0';c->show_title=d->show_title;c->show_state=d->show_state;
     c->title=lv_label_create(card);lv_label_set_text(c->title,d->title[0]?d->title:d->id);lv_obj_set_style_text_font(c->title,APP_FONT_TEXT_20,LV_PART_MAIN);lv_obj_align(c->title,LV_ALIGN_BOTTOM_MID,0,-8);if(!c->show_title)lv_obj_add_flag(c->title,LV_OBJ_FLAG_HIDDEN);
     c->value_label=lv_label_create(card);lv_obj_set_style_text_font(c->value_label,APP_FONT_TEXT_20,LV_PART_MAIN);lv_obj_align(c->value_label,LV_ALIGN_TOP_MID,0,2);if(!c->show_state)lv_obj_add_flag(c->value_label,LV_OBJ_FLAG_HIDDEN);
     c->slider=lv_slider_create(card);lv_slider_set_range(c->slider,0,1000);lv_obj_set_size(c->slider,d->w-44,20);lv_obj_align(c->slider,LV_ALIGN_CENTER,0,0);lv_obj_add_event_cb(c->slider,event_cb,LV_EVENT_VALUE_CHANGED,c);lv_obj_add_event_cb(c->slider,event_cb,LV_EVENT_RELEASED,c);lv_obj_add_event_cb(c->slider,event_cb,LV_EVENT_DELETE,c);
@@ -78,6 +96,7 @@ void w_input_number_apply_state(ui_widget_instance_t *instance, const ha_state_t
         cJSON *min_item = cJSON_GetObjectItemCaseSensitive(attrs, "min");
         cJSON *max_item = cJSON_GetObjectItemCaseSensitive(attrs, "max");
         cJSON *step_item = cJSON_GetObjectItemCaseSensitive(attrs, "step");
+        cJSON *unit_item = cJSON_GetObjectItemCaseSensitive(attrs, "unit_of_measurement");
 
         if (cJSON_IsNumber(min_item)) {
             ctx->min = min_item->valuedouble;
@@ -87,6 +106,12 @@ void w_input_number_apply_state(ui_widget_instance_t *instance, const ha_state_t
         }
         if (cJSON_IsNumber(step_item) && step_item->valuedouble > 0) {
             ctx->step = step_item->valuedouble;
+        }
+        ctx->precision = precision_for_step(ctx->step);
+        if (cJSON_IsString(unit_item) && unit_item->valuestring != NULL) {
+            snprintf(ctx->unit, sizeof(ctx->unit), "%s", unit_item->valuestring);
+        } else {
+            ctx->unit[0] = '\0';
         }
         cJSON_Delete(attrs);
     }
