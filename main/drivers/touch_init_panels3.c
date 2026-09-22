@@ -46,7 +46,15 @@ static uint8_t s_gt911_addr = ESP_LCD_TOUCH_IO_I2C_GT911_ADDRESS;
 
 static void touch_activity_event_cb(lv_event_t *event)
 {
-    (void)event;
+    if (display_is_screen_off()) {
+        display_note_activity();
+        lv_indev_t *indev = lv_event_get_indev(event);
+        if (indev != NULL) {
+            lv_indev_reset(indev, NULL);
+        }
+        lv_event_stop_processing(event);
+        return;
+    }
     display_note_activity();
 }
 
