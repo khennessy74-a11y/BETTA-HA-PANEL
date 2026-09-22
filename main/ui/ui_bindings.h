@@ -23,6 +23,8 @@ bool ui_bindings_entity_is_runnable(const char *entity_id);
 /* Fire-and-forget activation: script.turn_on / scene.turn_on.  Returns
  * ESP_ERR_NOT_SUPPORTED for entities outside those domains. */
 esp_err_t ui_bindings_run_entity(const char *entity_id);
+/* Trigger an automation immediately via automation.trigger. */
+esp_err_t ui_bindings_trigger_automation(const char *entity_id);
 /* Press a stateless Home Assistant button.* entity via button.press. */
 esp_err_t ui_bindings_press_button(const char *entity_id);
 /* Stop a running script (script.turn_off).  Scenes cannot be cancelled and
