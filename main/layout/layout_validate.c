@@ -470,6 +470,7 @@ static bool widget_entity_domain_valid(
     if (strcmp(type, "button") == 0) {
         return
             entity_in_domain(entity_id, "switch") ||
+            entity_in_domain(entity_id, "button") ||
             entity_in_domain(entity_id, "input_boolean") ||
             entity_in_domain(entity_id, "automation") ||
             entity_in_domain(entity_id, "media_player") ||
