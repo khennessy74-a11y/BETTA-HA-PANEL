@@ -844,6 +844,30 @@ esp_err_t ui_bindings_set_slider_value(
         payload);
 }
 
+esp_err_t ui_bindings_set_fan_preset_mode(const char *entity_id, const char *preset_mode)
+{
+    if (entity_id == NULL || preset_mode == NULL || preset_mode[0] == '\0' ||
+        strncmp(entity_id, "fan.", 4) != 0) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    cJSON *root = cJSON_CreateObject();
+    if (root == NULL) return ESP_ERR_NO_MEM;
+    cJSON_AddStringToObject(root, "entity_id", entity_id);
+    cJSON_AddStringToObject(root, "preset_mode", preset_mode);
+    char *payload = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
+    if (payload == NULL) return ESP_ERR_NO_MEM;
+
+    esp_err_t err = ha_client_call_service("fan", "set_preset_mode", payload);
+    cJSON_free(payload);
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "fan preset failed entity=%s preset=%s err=%s",
+            entity_id, preset_mode, esp_err_to_name(err));
+    }
+    return err;
+}
+
 esp_err_t ui_bindings_set_number_value(
     const char *entity_id,
     double value)
