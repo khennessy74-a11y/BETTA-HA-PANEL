@@ -24,6 +24,7 @@ typedef struct {
     lv_obj_t *value;
     lv_obj_t *power;
     lv_obj_t *slider;
+    lv_obj_t *preset;
     bool is_on;
     bool unavailable;
     bool supports_percentage;
@@ -31,6 +32,9 @@ typedef struct {
     int percentage;
     bool show_title;
     bool show_state;
+    char preset_mode[48];
+    char preset_modes[8][48];
+    int preset_count;
 } w_fan_ctx_t;
 
 static int clamp_percent(int v) { return v < 0 ? 0 : (v > 100 ? 100 : v); }
@@ -53,6 +57,19 @@ static void fan_apply_visual(w_fan_ctx_t *ctx)
     char value[16];
     snprintf(value, sizeof(value), "%d%%", ctx->percentage);
     lv_label_set_text(ctx->value, value);
+
+    if (ctx->preset_count > 0) {
+        lv_obj_clear_flag(ctx->preset, LV_OBJ_FLAG_HIDDEN);
+        lv_dropdown_clear_options(ctx->preset);
+        for (int i = 0; i < ctx->preset_count; i++) {
+            lv_dropdown_add_option(ctx->preset, ctx->preset_modes[i], LV_DROPDOWN_POS_LAST);
+            if (strcmp(ctx->preset_modes[i], ctx->preset_mode) == 0) {
+                lv_dropdown_set_selected(ctx->preset, i);
+            }
+        }
+    } else {
+        lv_obj_add_flag(ctx->preset, LV_OBJ_FLAG_HIDDEN);
+    }
 
     if (ctx->supports_percentage) {
         lv_obj_clear_flag(ctx->slider, LV_OBJ_FLAG_HIDDEN);
@@ -96,6 +113,18 @@ static void fan_slider_event(lv_event_t *event)
             ctx->is_on = value > 0;
             fan_apply_visual(ctx);
         }
+    }
+}
+
+static void fan_preset_event(lv_event_t *event)
+{
+    if (lv_event_get_code(event) != LV_EVENT_VALUE_CHANGED) return;
+    w_fan_ctx_t *ctx = lv_event_get_user_data(event);
+    if (ctx == NULL || ctx->suppress || ctx->unavailable || ctx->preset_count <= 0) return;
+    uint32_t selected = lv_dropdown_get_selected(ctx->preset);
+    if (selected >= (uint32_t)ctx->preset_count) return;
+    if (ui_bindings_set_fan_preset_mode(ctx->entity_id, ctx->preset_modes[selected]) == ESP_OK) {
+        snprintf(ctx->preset_mode, sizeof(ctx->preset_mode), "%s", ctx->preset_modes[selected]);
     }
 }
 
@@ -151,6 +180,13 @@ esp_err_t w_fan_tile_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_wid
     lv_obj_align(ctx->slider, LV_ALIGN_CENTER, 0, 30);
     lv_obj_add_event_cb(ctx->slider, fan_slider_event, LV_EVENT_VALUE_CHANGED, ctx);
     lv_obj_add_event_cb(ctx->slider, fan_slider_event, LV_EVENT_RELEASED, ctx);
+
+    ctx->preset = lv_dropdown_create(card);
+    lv_obj_set_width(ctx->preset, def->w - 44);
+    lv_obj_align(ctx->preset, LV_ALIGN_CENTER, 0, 66);
+    lv_obj_add_flag(ctx->preset, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_event_cb(ctx->preset, fan_preset_event, LV_EVENT_VALUE_CHANGED, ctx);
+
     lv_obj_add_event_cb(card, fan_delete_event, LV_EVENT_DELETE, ctx);
 
     fan_apply_visual(ctx);
@@ -168,9 +204,28 @@ void w_fan_tile_apply_state(ui_widget_instance_t *instance, const ha_state_t *st
     ctx->is_on = strcmp(state->state, "on") == 0;
     ctx->supports_percentage = false;
     ctx->percentage = ctx->is_on ? 100 : 0;
+    ctx->preset_count = 0;
+    ctx->preset_mode[0] = '\0';
 
     cJSON *attrs = cJSON_Parse(state->attributes_json);
     if (attrs != NULL) {
+        cJSON *preset = cJSON_GetObjectItemCaseSensitive(attrs, "preset_mode");
+        if (cJSON_IsString(preset) && preset->valuestring != NULL) {
+            snprintf(ctx->preset_mode, sizeof(ctx->preset_mode), "%s", preset->valuestring);
+        }
+        cJSON *modes = cJSON_GetObjectItemCaseSensitive(attrs, "preset_modes");
+        if (cJSON_IsArray(modes)) {
+            cJSON *mode = NULL;
+            cJSON_ArrayForEach(mode, modes) {
+                if (ctx->preset_count >= 8) break;
+                if (cJSON_IsString(mode) && mode->valuestring != NULL) {
+                    snprintf(ctx->preset_modes[ctx->preset_count],
+                        sizeof(ctx->preset_modes[ctx->preset_count]), "%s", mode->valuestring);
+                    ctx->preset_count++;
+                }
+            }
+        }
+
         cJSON *pct = cJSON_GetObjectItemCaseSensitive(attrs, "percentage");
         if (cJSON_IsNumber(pct)) {
             ctx->supports_percentage = true;
