@@ -86,6 +86,14 @@ const ENTITY_PICKER_CONFIGS = {
     minSearch: 2,
     liveSearch: false,
   },
+  lock: {
+    widgetType: "button",
+    domain: "lock",
+    titleFallback: "Choose Lock",
+    blankFallback: "Blank Lock Control",
+    widgetFallback: "Lock control",
+    itemsFallback: "locks",
+  },
   ha_button: {
     widgetType: "button",
     domain: "button",
