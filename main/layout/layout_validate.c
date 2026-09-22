@@ -475,7 +475,8 @@ static bool widget_entity_domain_valid(
             entity_in_domain(entity_id, "automation") ||
             entity_in_domain(entity_id, "media_player") ||
             entity_in_domain(entity_id, "script") ||
-            entity_in_domain(entity_id, "scene");
+            entity_in_domain(entity_id, "scene") ||
+            entity_in_domain(entity_id, "lock");
     }
 
     if (strcmp(type, "media_player") == 0) {
