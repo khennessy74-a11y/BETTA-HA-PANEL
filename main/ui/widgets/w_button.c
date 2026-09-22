@@ -38,6 +38,7 @@ typedef struct {
     bool show_title;
     bool show_status;
     bool suppress_event;
+    bool suppress_click;
     bool is_on;
     bool unavailable;
 } w_button_ctx_t;
@@ -122,7 +123,7 @@ static bool state_is_on(const char *state)
         return false;
     }
     return (strcmp(state, "on") == 0) || (strcmp(state, "open") == 0) || (strcmp(state, "playing") == 0) ||
-           (strcmp(state, "home") == 0);
+           (strcmp(state, "home") == 0) || (strcmp(state, "locked") == 0) || (strcmp(state, "locking") == 0);
 }
 
 static bool button_entity_is_media_player(const char *entity_id)
@@ -873,6 +874,10 @@ static void w_button_card_event_cb(lv_event_t *event)
     }
 
     if (code == LV_EVENT_CLICKED) {
+        if (ctx->suppress_click) {
+            ctx->suppress_click = false;
+            return;
+        }
         if (button_entity_is_lock(ctx->entity_id)) {
             /* Locking is safe on a normal tap. Unlocking deliberately requires
              * a long press so a stray touch cannot unlock an entry. */
@@ -886,6 +891,9 @@ static void w_button_card_event_cb(lv_event_t *event)
         }
     } else if (code == LV_EVENT_LONG_PRESSED) {
         if (button_entity_is_lock(ctx->entity_id) && ctx->is_on && !ctx->unavailable) {
+            /* LVGL may emit CLICKED after LONG_PRESSED. Consume that follow-up
+             * click so a successful unlock cannot immediately relock. */
+            ctx->suppress_click = true;
             if (ui_bindings_set_lock_state(ctx->entity_id, false) == ESP_OK) {
                 button_apply_visual(ctx->card, ctx, false, false, "unlocked");
             }
