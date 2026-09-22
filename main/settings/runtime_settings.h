@@ -25,6 +25,8 @@ typedef struct {
     bool display_night_mode_auto;
     int display_night_start_hour;
     int display_day_start_hour;
+    int display_idle_timeout_seconds;
+    int display_idle_brightness_percent;
 } runtime_settings_t;
 
 void runtime_settings_set_defaults(runtime_settings_t *out);
