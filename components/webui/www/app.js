@@ -86,6 +86,14 @@ const ENTITY_PICKER_CONFIGS = {
     minSearch: 2,
     liveSearch: false,
   },
+  ha_button: {
+    widgetType: "button",
+    domain: "button",
+    titleFallback: "Choose Home Assistant Button",
+    blankFallback: "Blank Home Assistant Button",
+    widgetFallback: "Home Assistant button",
+    itemsFallback: "buttons",
+  },
   automation: {
     widgetType: "button",
     domain: "automation",
@@ -1635,6 +1643,7 @@ const el = {
   addSensorBtn: document.getElementById("addSensorBtn"),
   addBinarySensorBtn: document.getElementById("addBinarySensorBtn"),
   addButtonBtn: document.getElementById("addButtonBtn"),
+  addHaButtonBtn: document.getElementById("addHaButtonBtn"),
   addInputBooleanBtn: document.getElementById("addInputBooleanBtn"),
   addAutomationBtn: document.getElementById("addAutomationBtn"),
   addScriptBtn: document.getElementById("addScriptBtn"),
@@ -3944,7 +3953,7 @@ function allowedEntityDomainsForWidgetType(
     const normalizedMode = normalizeButtonMode(buttonMode);
     if (buttonModeRequiresMediaPlayer(normalizedMode)) return ["media_player"];
     if (buttonModeRequiresRunnable(normalizedMode)) return ["script", "scene"];
-    return ["switch", "input_boolean", "automation", "media_player"];
+    return ["switch", "button", "input_boolean", "automation", "media_player"];
   }
   if (type === "light_tile") return ["light"];
   if (type === "fan_tile") return ["fan"];
@@ -6723,7 +6732,11 @@ function bindUi() {
   if (el.addInputBooleanBtn) {
     el.addInputBooleanBtn.onclick = () => openLightEntityPicker("input_boolean");
   }
-  if (el.addAutomationBtn) {
+  if (el.addHaButtonBtn) {
+  el.addHaButtonBtn.onclick = () => openLightEntityPicker("ha_button");
+}
+
+if (el.addAutomationBtn) {
     el.addAutomationBtn.onclick = () => openLightEntityPicker("automation");
   }
   if (el.addScriptBtn) {
