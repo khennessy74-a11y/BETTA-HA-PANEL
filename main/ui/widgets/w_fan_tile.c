@@ -14,6 +14,7 @@
 #include "ui/ui_bindings.h"
 #include "ui/ui_i18n.h"
 #include "ui/ui_memory.h"
+#include "ui/widgets/widget_display_options.h"
 
 typedef struct {
     char entity_id[APP_MAX_ENTITY_ID_LEN];
@@ -28,6 +29,8 @@ typedef struct {
     bool supports_percentage;
     bool suppress;
     int percentage;
+    bool show_title;
+    bool show_state;
 } w_fan_ctx_t;
 
 static int clamp_percent(int v) { return v < 0 ? 0 : (v > 100 ? 100 : v); }
@@ -39,7 +42,10 @@ static void fan_apply_visual(w_fan_ctx_t *ctx)
         lv_color_hex(ctx->is_on && !ctx->unavailable ? APP_UI_COLOR_CARD_BG_ON : APP_UI_COLOR_CARD_BG_OFF),
         LV_PART_MAIN);
     lv_obj_set_style_bg_opa(ctx->card, LV_OPA_COVER, LV_PART_MAIN);
-    lv_label_set_text(ctx->state, ctx->unavailable ? "unavailable" : (ctx->is_on ? "ON" : "OFF"));
+    lv_label_set_text(ctx->state,
+        ctx->unavailable
+            ? ui_i18n_get("common.unavailable", "unavailable")
+            : (ctx->is_on ? ui_i18n_get("common.on", "ON") : ui_i18n_get("common.off", "OFF")));
     lv_obj_set_style_text_color(ctx->state,
         lv_color_hex(ctx->unavailable ? APP_UI_COLOR_TEXT_MUTED :
             (ctx->is_on ? APP_UI_COLOR_STATE_ON : APP_UI_COLOR_STATE_OFF)), LV_PART_MAIN);
@@ -112,15 +118,23 @@ esp_err_t w_fan_tile_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_wid
     if (ctx == NULL) { lv_obj_del(card); return ESP_ERR_NO_MEM; }
     snprintf(ctx->entity_id, sizeof(ctx->entity_id), "%s", def->entity_id);
     ctx->card = card;
+    ctx->show_title = def->show_title;
+    ctx->show_state = def->show_state;
 
     ctx->title = lv_label_create(card);
     lv_label_set_text(ctx->title, def->title[0] ? def->title : def->id);
     lv_obj_set_style_text_font(ctx->title, APP_FONT_TEXT_20, LV_PART_MAIN);
     lv_obj_align(ctx->title, LV_ALIGN_BOTTOM_MID, 0, -8);
+    if (!ctx->show_title) {
+        lv_obj_add_flag(ctx->title, LV_OBJ_FLAG_HIDDEN);
+    }
 
     ctx->state = lv_label_create(card);
     lv_obj_set_style_text_font(ctx->state, APP_FONT_TEXT_20, LV_PART_MAIN);
     lv_obj_align(ctx->state, LV_ALIGN_TOP_LEFT, 0, 2);
+    if (!ctx->show_state) {
+        lv_obj_add_flag(ctx->state, LV_OBJ_FLAG_HIDDEN);
+    }
 
     ctx->value = lv_label_create(card);
     lv_obj_set_style_text_font(ctx->value, APP_FONT_TEXT_20, LV_PART_MAIN);
