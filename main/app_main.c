@@ -196,7 +196,9 @@ void app_main(void)
                 s_runtime_settings.display_night_brightness_percent,
                 s_runtime_settings.display_night_mode,
                 s_runtime_settings.display_night_start_hour,
-                s_runtime_settings.display_day_start_hour);
+                s_runtime_settings.display_night_start_minute,
+                s_runtime_settings.display_day_start_hour,
+                s_runtime_settings.display_day_start_minute);
             ui_boot_splash_set_status(ui_i18n_get("boot.wifi_connected", "Wi-Fi connected"));
         }
     } else {
