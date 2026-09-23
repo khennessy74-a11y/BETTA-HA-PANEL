@@ -128,6 +128,7 @@ static int                    s_active_brightness = APP_DISPLAY_ACTIVE_BRIGHTNES
 static int                    s_day_brightness = APP_DISPLAY_ACTIVE_BRIGHTNESS_PERCENT;
 static int                    s_night_brightness = 20;
 static bool                   s_night_auto = false;
+static int                    s_night_mode = 0;
 static int                    s_night_start_hour = 22;
 static int                    s_day_start_hour = 7;
 static int                    s_idle_timeout_seconds = APP_DISPLAY_DIM_TIMEOUT_MS / 1000;
@@ -281,14 +282,16 @@ static esp_err_t display_night_timer_init(void)
     return err;
 }
 
-void display_configure_night_mode(int day_percent, int night_percent, bool auto_mode, int night_start_hour, int day_start_hour)
+void display_configure_night_mode(int day_percent, int night_percent, int mode, int night_start_hour, int day_start_hour)
 {
     s_day_brightness = display_clamp_brightness(day_percent);
     s_night_brightness = display_clamp_brightness(night_percent);
-    s_night_auto = auto_mode;
+    s_night_mode = mode < 0 ? 0 : (mode > 2 ? 2 : mode);
+    s_night_auto = s_night_mode == 2;
     s_night_start_hour = night_start_hour < 0 ? 0 : (night_start_hour > 23 ? 23 : night_start_hour);
     s_day_start_hour = day_start_hour < 0 ? 0 : (day_start_hour > 23 ? 23 : day_start_hour);
-    s_active_brightness = s_night_auto && display_is_night_now() ? s_night_brightness : s_day_brightness;
+    s_active_brightness = s_night_mode == 1 ? s_night_brightness :
+        (s_night_auto && display_is_night_now() ? s_night_brightness : s_day_brightness);
     s_display_idle = false;
     (void)display_set_brightness_percent(s_active_brightness);
     if (s_night_auto) {

@@ -1783,7 +1783,7 @@ fSliderAccentColor: document.getElementById("fSliderAccentColor"),
   settingsBrightnessValue: document.getElementById("settingsBrightnessValue"),
   settingsNightBrightness: document.getElementById("settingsNightBrightness"),
   settingsNightBrightnessValue: document.getElementById("settingsNightBrightnessValue"),
-  settingsNightModeAuto: document.getElementById("settingsNightModeAuto"),
+  settingsNightMode: document.getElementById("settingsNightMode"),
   settingsNightStartHour: document.getElementById("settingsNightStartHour"),
   settingsDayStartHour: document.getElementById("settingsDayStartHour"),
   settingsIdleTimeout: document.getElementById("settingsIdleTimeout"),
@@ -2942,7 +2942,7 @@ function renderSettings() {
     el.settingsNightBrightness.value = String(nightBrightness);
     if (el.settingsNightBrightnessValue) el.settingsNightBrightnessValue.textContent = `${nightBrightness}%`;
   }
-  if (el.settingsNightModeAuto) el.settingsNightModeAuto.checked = ui.night_mode_auto === true;
+  if (el.settingsNightMode) el.settingsNightMode.value = String(clamp(Math.round(Number(ui.night_mode ?? (ui.night_mode_auto ? 2 : 0))), 0, 2));
   if (el.settingsNightStartHour) el.settingsNightStartHour.value = String(clamp(Math.round(Number(ui.night_start_hour ?? 22)), 0, 23));
   if (el.settingsDayStartHour) el.settingsDayStartHour.value = String(clamp(Math.round(Number(ui.day_start_hour ?? 7)), 0, 23));
   if (el.settingsIdleTimeout) el.settingsIdleTimeout.value = String(clamp(Math.round(Number(ui.idle_timeout_seconds ?? 60)), 0, 86400));
@@ -3581,7 +3581,8 @@ async function saveSettings() {
       language,
       brightness_percent: brightnessPercent,
       night_brightness_percent: nightBrightnessPercent,
-      night_mode_auto: nightModeAuto,
+      night_mode: nightMode,
+      night_mode_auto: nightMode === 2,
       night_start_hour: nightStartHour,
       day_start_hour: dayStartHour,
       idle_timeout_seconds: idleTimeoutSeconds,

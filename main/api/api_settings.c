@@ -256,6 +256,7 @@ esp_err_t api_settings_get_handler(httpd_req_t *req)
     cJSON_AddNumberToObject(ui, "brightness_percent", settings->display_brightness_percent);
     cJSON_AddNumberToObject(ui, "night_brightness_percent", settings->display_night_brightness_percent);
     cJSON_AddBoolToObject(ui, "night_mode_auto", settings->display_night_mode_auto);
+    cJSON_AddNumberToObject(ui, "night_mode", settings->display_night_mode);
     cJSON_AddNumberToObject(ui, "night_start_hour", settings->display_night_start_hour);
     cJSON_AddNumberToObject(ui, "day_start_hour", settings->display_day_start_hour);
     cJSON_AddNumberToObject(ui, "idle_timeout_seconds", settings->display_idle_timeout_seconds);
@@ -445,6 +446,9 @@ esp_err_t api_settings_put_handler(httpd_req_t *req)
         (void)update_int_setting(
             ui, "night_brightness_percent", &settings->display_night_brightness_percent, 0, 100, &invalid_type);
         (void)update_bool_setting(ui, "night_mode_auto", &settings->display_night_mode_auto, &invalid_type);
+        if (update_int_setting(ui, "night_mode", &settings->display_night_mode, 0, 2, &invalid_type)) {
+            settings->display_night_mode_auto = settings->display_night_mode == 2;
+        }
         (void)update_int_setting(
             ui, "night_start_hour", &settings->display_night_start_hour, 0, 23, &invalid_type);
         (void)update_int_setting(

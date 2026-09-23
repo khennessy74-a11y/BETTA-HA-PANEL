@@ -820,9 +820,12 @@
               <input id="settingsNightBrightness" type="range" min="0" max="100" step="1" value="20" oninput="document.getElementById('settingsNightBrightnessValue').textContent=this.value+'%'" />
               <span id="settingsNightBrightnessValue">20%</span>
             </label>
-            <label class="row">
-              <input id="settingsNightModeAuto" type="checkbox" />
-              <span>Automatic Night Mode</span>
+            <label><span>Night Mode</span>
+              <select id="settingsNightMode">
+                <option value="0">Day</option>
+                <option value="1">Night</option>
+                <option value="2">Auto</option>
+              </select>
             </label>
             <label><span>Night starts</span>
               <input id="settingsNightStartHour" type="number" min="0" max="23" step="1" value="22" />

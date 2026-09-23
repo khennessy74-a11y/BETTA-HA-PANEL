@@ -15,5 +15,5 @@ void display_unlock(void);
 esp_err_t display_set_brightness_percent(int percent);
 void display_note_activity(void);
 bool display_is_screen_off(void);
-void display_configure_night_mode(int day_percent, int night_percent, bool auto_mode, int night_start_hour, int day_start_hour);
+void display_configure_night_mode(int day_percent, int night_percent, int mode, int night_start_hour, int day_start_hour);
 void display_configure_idle(int timeout_seconds, int brightness_percent);
