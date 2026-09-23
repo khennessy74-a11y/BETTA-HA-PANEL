@@ -938,7 +938,7 @@ void w_slider_apply_state(ui_widget_instance_t *instance, const ha_state_t *stat
     }
 
     if (ctx->is_cover) {
-        snprintf(ctx->cover_state, sizeof(ctx->cover_state), "%s", state->state != NULL ? state->state : "");
+        snprintf(ctx->cover_state, sizeof(ctx->cover_state), "%.15s", state->state);
         cJSON *attrs = cJSON_Parse(state->attributes_json);
         if (attrs != NULL) {
             cJSON *features = cJSON_GetObjectItemCaseSensitive(attrs, "supported_features");
