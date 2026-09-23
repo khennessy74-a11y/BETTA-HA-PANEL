@@ -51,6 +51,7 @@ typedef struct {
     bool dragging;
     bool suppress_event;
     int last_sent_value;
+    char cover_state[16];
 } w_slider_ctx_t;
 
 static const uint32_t W_SLIDER_FILL_OFF_HEX = 0x8C98A4;
@@ -689,9 +690,22 @@ static void slider_apply_visual(w_slider_ctx_t *ctx)
     ctx->suppress_event = false;
 
     slider_set_value_label(ctx->value_label, ctx->value);
-    lv_label_set_text(
-        ctx->state_label,
-        slider_translate_status_text(ctx->unavailable ? "unavailable" : (ctx->is_on ? "ON" : "OFF")));
+    const char *status_text = ctx->unavailable ? "unavailable" : (ctx->is_on ? "ON" : "OFF");
+    if (ctx->is_cover && !ctx->unavailable && ctx->cover_state[0] != '\0') {
+        status_text = ctx->cover_state;
+    }
+    lv_label_set_text(ctx->state_label, slider_translate_status_text(status_text));
+
+    if (ctx->is_cover) {
+        lv_obj_t *controls[] = {ctx->cover_open_btn, ctx->cover_stop_btn, ctx->cover_close_btn};
+        for (size_t i = 0; i < sizeof(controls) / sizeof(controls[0]); i++) {
+            if (controls[i] == NULL) continue;
+            if (ctx->unavailable) lv_obj_add_state(controls[i], LV_STATE_DISABLED);
+            else lv_obj_clear_state(controls[i], LV_STATE_DISABLED);
+        }
+        if (ctx->unavailable) lv_obj_add_state(ctx->slider, LV_STATE_DISABLED);
+        else lv_obj_clear_state(ctx->slider, LV_STATE_DISABLED);
+    }
 }
 
 static void cover_action_event(lv_event_t *event)
@@ -916,6 +930,7 @@ void w_slider_apply_state(ui_widget_instance_t *instance, const ha_state_t *stat
     if (slider_state_is_unavailable(state->state)) {
         ctx->value = 0;
         ctx->is_on = false;
+        if (ctx->is_cover) ctx->cover_state[0] = '\0';
         ctx->unavailable = true;
         ctx->dragging = false;
         slider_apply_visual(ctx);
@@ -923,6 +938,7 @@ void w_slider_apply_state(ui_widget_instance_t *instance, const ha_state_t *stat
     }
 
     if (ctx->is_cover) {
+        snprintf(ctx->cover_state, sizeof(ctx->cover_state), "%s", state->state != NULL ? state->state : "");
         cJSON *attrs = cJSON_Parse(state->attributes_json);
         if (attrs != NULL) {
             cJSON *features = cJSON_GetObjectItemCaseSensitive(attrs, "supported_features");
@@ -973,6 +989,7 @@ void w_slider_mark_unavailable(ui_widget_instance_t *instance)
 
     ctx->value = 0;
     ctx->is_on = false;
+    if (ctx->is_cover) ctx->cover_state[0] = '\0';
     ctx->unavailable = true;
     ctx->dragging = false;
     slider_apply_visual(ctx);
