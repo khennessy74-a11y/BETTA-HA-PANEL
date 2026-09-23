@@ -626,6 +626,7 @@ const WEB_I18N_BUILTIN = {
     "settings.ota.target_slot": "Target slot: {partition}",
     "settings.actions.heading": "Settings Actions",
     "settings.actions.reload": "Reload Settings",
+    "settings.actions.apply_display": "Apply Display",
     "settings.actions.save": "Save + Reboot",
     "settings.actions.hint": "After save, the device reboots and may switch from setup AP to your home Wi-Fi.",
     "settings.info.configured": "Configured",
@@ -651,6 +652,9 @@ const WEB_I18N_BUILTIN = {
     "ha_diagnostics.missing_title_more": "Some entities in this layout were not found in Home Assistant ({total} total, showing {listed})",
     "ha_diagnostics.missing_hint": "Open the affected widget, pick a valid entity and save the layout.",
     "ha_diagnostics.dismiss": "Dismiss",
+    "status.applying_display_settings": "Applying display settings...",
+    "status.display_settings_applied": "Display settings applied without reboot.",
+    "status.display_settings_apply_failed": "Display settings apply failed: {error}",
     "status.saving_settings": "Saving settings...",
     "status.settings_saved_reboot": "Settings saved. Device reboots in ~2s. Reconnect and reopen the panel URL.",
     "status.wifi_scan_running": "Scanning Wi-Fi...",
@@ -1784,6 +1788,7 @@ fSliderAccentColor: document.getElementById("fSliderAccentColor"),
   settingsNightBrightness: document.getElementById("settingsNightBrightness"),
   settingsNightBrightnessValue: document.getElementById("settingsNightBrightnessValue"),
   settingsNightMode: document.getElementById("settingsNightMode"),
+  settingsNightSchedule: document.getElementById("settingsNightSchedule"),
   settingsNightStartTime: document.getElementById("settingsNightStartTime"),
   settingsDayStartTime: document.getElementById("settingsDayStartTime"),
   settingsIdleTimeout: document.getElementById("settingsIdleTimeout"),
@@ -2580,7 +2585,7 @@ function applyWebTranslations() {
 
   setTextById("settingsActionsHeading", "settings.actions.heading");
   setTextById("reloadSettingsBtn", "settings.actions.reload");
-  if (el.applyDisplaySettingsBtn) el.applyDisplaySettingsBtn.textContent = "Apply Display";
+  if (el.applyDisplaySettingsBtn) el.applyDisplaySettingsBtn.textContent = t("settings.actions.apply_display");
   setTextById("saveSettingsBtn", "settings.actions.save");
   setTextById("settingsActionsHint", "settings.actions.hint");
   setTextById("setupWizardTitle", "setup.title");
@@ -2945,6 +2950,7 @@ function renderSettings() {
     if (el.settingsNightBrightnessValue) el.settingsNightBrightnessValue.textContent = `${nightBrightness}%`;
   }
   if (el.settingsNightMode) el.settingsNightMode.value = String(clamp(Math.round(Number(ui.night_mode ?? (ui.night_mode_auto ? 2 : 0))), 0, 2));
+  updateNightScheduleVisibility();
   if (el.settingsNightStartTime) {
     const h = clamp(Math.round(Number(ui.night_start_hour ?? 22)), 0, 23);
     const m = clamp(Math.round(Number(ui.night_start_minute ?? 0)), 0, 59);
@@ -3534,6 +3540,12 @@ async function saveHaProvisioning() {
   setProvisioningInfo("ha", t("provision.saved_reboot"));
 }
 
+function updateNightScheduleVisibility() {
+  if (el.settingsNightSchedule) {
+    el.settingsNightSchedule.hidden = Number(el.settingsNightMode?.value ?? 0) !== 2;
+  }
+}
+
 function updateBrightnessLabel() {
   if (el.settingsBrightness && el.settingsBrightnessValue) {
     el.settingsBrightnessValue.textContent = `${el.settingsBrightness.value}%`;
@@ -3561,9 +3573,9 @@ async function applyDisplaySettings() {
     },
     reboot: false,
   };
-  setStatus("Applying display settings...");
+  setStatus(t("status.applying_display_settings"));
   await putSettings(payload);
-  setStatus("Display settings applied without reboot.");
+  setStatus(t("status.display_settings_applied"));
 }
 
 async function saveSettings() {
@@ -7448,9 +7460,12 @@ bindInspectorAutoApply(
       try {
         await applyDisplaySettings();
       } catch (err) {
-        setStatus(`Display settings apply failed: ${err.message}`, true);
+        setStatus(t("status.display_settings_apply_failed", { error: err.message }), true);
       }
     };
+  }
+  if (el.settingsNightMode) {
+    el.settingsNightMode.onchange = updateNightScheduleVisibility;
   }
   el.saveSettingsBtn.onclick = async () => {
     try {
