@@ -170,46 +170,35 @@ static const char *binary_sensor_icon_name(const char *device_class)
 
 static const char *binary_sensor_state_text(const char *device_class, bool is_on)
 {
-    if (device_class == NULL) {
-        device_class = "";
-    }
+    if (device_class == NULL) device_class = "";
 
     if (strcmp(device_class, "door") == 0 ||
         strcmp(device_class, "garage_door") == 0 ||
         strcmp(device_class, "opening") == 0 ||
         strcmp(device_class, "window") == 0) {
-        return is_on ? "Open" : "Closed";
+        return is_on ? ui_i18n_get("binary_sensor.open", "Open") : ui_i18n_get("binary_sensor.closed", "Closed");
     }
     if (strcmp(device_class, "motion") == 0 ||
         strcmp(device_class, "occupancy") == 0 ||
-        strcmp(device_class, "presence") == 0) {
-        return is_on ? "Detected" : "Clear";
-    }
-    if (strcmp(device_class, "moisture") == 0) {
-        return is_on ? "Wet" : "Dry";
-    }
-    if (strcmp(device_class, "smoke") == 0 ||
+        strcmp(device_class, "presence") == 0 ||
+        strcmp(device_class, "smoke") == 0 ||
         strcmp(device_class, "gas") == 0 ||
         strcmp(device_class, "carbon_monoxide") == 0) {
-        return is_on ? "Detected" : "Clear";
+        return is_on ? ui_i18n_get("binary_sensor.detected", "Detected") : ui_i18n_get("binary_sensor.clear", "Clear");
     }
-    if (strcmp(device_class, "problem") == 0 ||
-        strcmp(device_class, "safety") == 0) {
-        return is_on ? "Problem" : "OK";
+    if (strcmp(device_class, "moisture") == 0) {
+        return is_on ? ui_i18n_get("binary_sensor.wet", "Wet") : ui_i18n_get("binary_sensor.dry", "Dry");
+    }
+    if (strcmp(device_class, "problem") == 0 || strcmp(device_class, "safety") == 0) {
+        return is_on ? ui_i18n_get("binary_sensor.problem", "Problem") : ui_i18n_get("binary_sensor.ok", "OK");
     }
     if (strcmp(device_class, "battery") == 0) {
-        return is_on ? "Low" : "Normal";
-    }
-    if (strcmp(device_class, "connectivity") == 0 ||
-        strcmp(device_class, "plug") == 0 ||
-        strcmp(device_class, "power") == 0 ||
-        strcmp(device_class, "running") == 0) {
-        return is_on ? "On" : "Off";
+        return is_on ? ui_i18n_get("binary_sensor.low", "Low") : ui_i18n_get("binary_sensor.normal", "Normal");
     }
     if (strcmp(device_class, "lock") == 0) {
-        return is_on ? "Unlocked" : "Locked";
+        return is_on ? ui_i18n_get("binary_sensor.unlocked", "Unlocked") : ui_i18n_get("binary_sensor.locked", "Locked");
     }
-    return is_on ? "ON" : "OFF";
+    return is_on ? ui_i18n_get("common.on", "ON") : ui_i18n_get("common.off", "OFF");
 }
 
 static bool sensor_state_is_unavailable(const char *state_text)
@@ -405,6 +394,8 @@ static void sensor_apply_unavailable(w_sensor_ctx_t *ctx)
     ctx->has_timestamp = false;
     ctx->last_update_ms = 0;
     sensor_set_value_text(ctx, ui_i18n_get("common.unavailable", "unavailable"));
+    lv_obj_set_style_text_color(ctx->value_label, theme_default_color_text_muted(), LV_PART_MAIN);
+    lv_obj_set_style_text_color(ctx->icon_label, theme_default_color_text_muted(), LV_PART_MAIN);
     sensor_update_age_label(ctx);
     sensor_apply_layout(ctx);
 }
@@ -584,6 +575,8 @@ void w_sensor_apply_state(ui_widget_instance_t *instance, const ha_state_t *stat
     }
 
     ctx->unavailable = false;
+    lv_obj_set_style_text_color(ctx->value_label, theme_default_color_text_primary(), LV_PART_MAIN);
+    lv_obj_set_style_text_color(ctx->icon_label, theme_default_color_text_primary(), LV_PART_MAIN);
     ctx->last_update_ms = state->last_changed_unix_ms;
     ctx->has_timestamp = ctx->last_update_ms > 0;
 
