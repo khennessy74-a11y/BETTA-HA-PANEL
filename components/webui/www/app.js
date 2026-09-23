@@ -1784,8 +1784,8 @@ fSliderAccentColor: document.getElementById("fSliderAccentColor"),
   settingsNightBrightness: document.getElementById("settingsNightBrightness"),
   settingsNightBrightnessValue: document.getElementById("settingsNightBrightnessValue"),
   settingsNightMode: document.getElementById("settingsNightMode"),
-  settingsNightStartHour: document.getElementById("settingsNightStartHour"),
-  settingsDayStartHour: document.getElementById("settingsDayStartHour"),
+  settingsNightStartTime: document.getElementById("settingsNightStartTime"),
+  settingsDayStartTime: document.getElementById("settingsDayStartTime"),
   settingsIdleTimeout: document.getElementById("settingsIdleTimeout"),
   settingsIdleBrightness: document.getElementById("settingsIdleBrightness"),
   settingsIdleBrightnessValue: document.getElementById("settingsIdleBrightnessValue"),
@@ -2943,8 +2943,16 @@ function renderSettings() {
     if (el.settingsNightBrightnessValue) el.settingsNightBrightnessValue.textContent = `${nightBrightness}%`;
   }
   if (el.settingsNightMode) el.settingsNightMode.value = String(clamp(Math.round(Number(ui.night_mode ?? (ui.night_mode_auto ? 2 : 0))), 0, 2));
-  if (el.settingsNightStartHour) el.settingsNightStartHour.value = String(clamp(Math.round(Number(ui.night_start_hour ?? 22)), 0, 23));
-  if (el.settingsDayStartHour) el.settingsDayStartHour.value = String(clamp(Math.round(Number(ui.day_start_hour ?? 7)), 0, 23));
+  if (el.settingsNightStartTime) {
+    const h = clamp(Math.round(Number(ui.night_start_hour ?? 22)), 0, 23);
+    const m = clamp(Math.round(Number(ui.night_start_minute ?? 0)), 0, 59);
+    el.settingsNightStartTime.value = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+  }
+  if (el.settingsDayStartTime) {
+    const h = clamp(Math.round(Number(ui.day_start_hour ?? 7)), 0, 23);
+    const m = clamp(Math.round(Number(ui.day_start_minute ?? 0)), 0, 59);
+    el.settingsDayStartTime.value = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+  }
   if (el.settingsIdleTimeout) el.settingsIdleTimeout.value = String(clamp(Math.round(Number(ui.idle_timeout_seconds ?? 60)), 0, 86400));
   if (el.settingsIdleBrightness) {
     const idleBrightness = clamp(Math.round(Number(ui.idle_brightness_percent ?? 10)), 0, 100);
@@ -3544,9 +3552,13 @@ async function saveSettings() {
   const language = normalizeUiLanguage(el.settingsLanguage?.value);
   const brightnessPercent = clamp(Math.round(Number(el.settingsBrightness?.value ?? 100)), 0, 100);
   const nightBrightnessPercent = clamp(Math.round(Number(el.settingsNightBrightness?.value ?? 20)), 0, 100);
-  const nightModeAuto = Boolean(el.settingsNightModeAuto?.checked);
-  const nightStartHour = clamp(Math.round(Number(el.settingsNightStartHour?.value ?? 22)), 0, 23);
-  const dayStartHour = clamp(Math.round(Number(el.settingsDayStartHour?.value ?? 7)), 0, 23);
+  const nightMode = clamp(Math.round(Number(el.settingsNightMode?.value ?? 0)), 0, 2);
+  const [nightHourRaw, nightMinuteRaw] = String(el.settingsNightStartTime?.value || "22:00").split(":");
+  const [dayHourRaw, dayMinuteRaw] = String(el.settingsDayStartTime?.value || "07:00").split(":");
+  const nightStartHour = clamp(Math.round(Number(nightHourRaw)), 0, 23);
+  const nightStartMinute = clamp(Math.round(Number(nightMinuteRaw)), 0, 59);
+  const dayStartHour = clamp(Math.round(Number(dayHourRaw)), 0, 23);
+  const dayStartMinute = clamp(Math.round(Number(dayMinuteRaw)), 0, 59);
   const idleTimeoutSeconds = clamp(Math.round(Number(el.settingsIdleTimeout?.value ?? 60)), 0, 86400);
   const idleBrightnessPercent = clamp(Math.round(Number(el.settingsIdleBrightness?.value ?? 10)), 0, 100);
 
@@ -3584,7 +3596,9 @@ async function saveSettings() {
       night_mode: nightMode,
       night_mode_auto: nightMode === 2,
       night_start_hour: nightStartHour,
+      night_start_minute: nightStartMinute,
       day_start_hour: dayStartHour,
+      day_start_minute: dayStartMinute,
       idle_timeout_seconds: idleTimeoutSeconds,
       idle_brightness_percent: idleBrightnessPercent,
     },

@@ -130,7 +130,9 @@ static int                    s_night_brightness = 20;
 static bool                   s_night_auto = false;
 static int                    s_night_mode = 0;
 static int                    s_night_start_hour = 22;
+static int                    s_night_start_minute = 0;
 static int                    s_day_start_hour = 7;
+static int                    s_day_start_minute = 0;
 static int                    s_idle_timeout_seconds = APP_DISPLAY_DIM_TIMEOUT_MS / 1000;
 static int                    s_idle_brightness = APP_DISPLAY_DIM_BRIGHTNESS_PERCENT;
 static bool                   s_display_idle = false;
@@ -241,11 +243,14 @@ static bool display_is_night_now(void)
     time_t now = time(NULL);
     struct tm local = {0};
     if (now < 100000 || localtime_r(&now, &local) == NULL) return false;
-    if (s_night_start_hour == s_day_start_hour) return false;
-    if (s_night_start_hour > s_day_start_hour) {
-        return local.tm_hour >= s_night_start_hour || local.tm_hour < s_day_start_hour;
+    const int now_minute = local.tm_hour * 60 + local.tm_min;
+    const int night_start = s_night_start_hour * 60 + s_night_start_minute;
+    const int day_start = s_day_start_hour * 60 + s_day_start_minute;
+    if (night_start == day_start) return false;
+    if (night_start > day_start) {
+        return now_minute >= night_start || now_minute < day_start;
     }
-    return local.tm_hour >= s_night_start_hour && local.tm_hour < s_day_start_hour;
+    return now_minute >= night_start && now_minute < day_start;
 }
 
 static void display_night_timer_cb(void *arg)
@@ -282,14 +287,16 @@ static esp_err_t display_night_timer_init(void)
     return err;
 }
 
-void display_configure_night_mode(int day_percent, int night_percent, int mode, int night_start_hour, int day_start_hour)
+void display_configure_night_mode(int day_percent, int night_percent, int mode, int night_start_hour, int night_start_minute, int day_start_hour, int day_start_minute)
 {
     s_day_brightness = display_clamp_brightness(day_percent);
     s_night_brightness = display_clamp_brightness(night_percent);
     s_night_mode = mode < 0 ? 0 : (mode > 2 ? 2 : mode);
     s_night_auto = s_night_mode == 2;
     s_night_start_hour = night_start_hour < 0 ? 0 : (night_start_hour > 23 ? 23 : night_start_hour);
+    s_night_start_minute = night_start_minute < 0 ? 0 : (night_start_minute > 59 ? 59 : night_start_minute);
     s_day_start_hour = day_start_hour < 0 ? 0 : (day_start_hour > 23 ? 23 : day_start_hour);
+    s_day_start_minute = day_start_minute < 0 ? 0 : (day_start_minute > 59 ? 59 : day_start_minute);
     s_active_brightness = s_night_mode == 1 ? s_night_brightness :
         (s_night_auto && display_is_night_now() ? s_night_brightness : s_day_brightness);
     s_display_idle = false;
