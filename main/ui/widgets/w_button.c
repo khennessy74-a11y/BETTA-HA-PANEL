@@ -123,7 +123,8 @@ static bool state_is_on(const char *state)
         return false;
     }
     return (strcmp(state, "on") == 0) || (strcmp(state, "open") == 0) || (strcmp(state, "playing") == 0) ||
-           (strcmp(state, "home") == 0) || (strcmp(state, "locked") == 0) || (strcmp(state, "locking") == 0);
+           (strcmp(state, "home") == 0) || (strcmp(state, "locked") == 0) || (strcmp(state, "locking") == 0) ||
+           (strcmp(state, "jammed") == 0);
 }
 
 static bool button_entity_is_media_player(const char *entity_id)
@@ -331,11 +332,20 @@ static const char *button_translate_status_text(const char *status_text)
     if (strcmp(status_text, "paused") == 0) {
         return ui_i18n_get("common.paused", "paused");
     }
-    if (strcmp(status_text, "locked") == 0 || strcmp(status_text, "locking") == 0) {
-        return "LOCKED";
+    if (strcmp(status_text, "locked") == 0) {
+        return ui_i18n_get("lock.locked", "LOCKED");
     }
-    if (strcmp(status_text, "unlocked") == 0 || strcmp(status_text, "unlocking") == 0) {
-        return "UNLOCKED";
+    if (strcmp(status_text, "locking") == 0) {
+        return ui_i18n_get("lock.locking", "LOCKING");
+    }
+    if (strcmp(status_text, "unlocked") == 0) {
+        return ui_i18n_get("lock.unlocked", "UNLOCKED");
+    }
+    if (strcmp(status_text, "unlocking") == 0) {
+        return ui_i18n_get("lock.unlocking", "UNLOCKING");
+    }
+    if (strcmp(status_text, "jammed") == 0) {
+        return ui_i18n_get("lock.jammed", "JAMMED");
     }
     return status_text;
 }
