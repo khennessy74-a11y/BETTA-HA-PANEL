@@ -132,6 +132,7 @@ static int                    s_night_start_hour = 22;
 static int                    s_day_start_hour = 7;
 static int                    s_idle_timeout_seconds = APP_DISPLAY_DIM_TIMEOUT_MS / 1000;
 static int                    s_idle_brightness = APP_DISPLAY_DIM_BRIGHTNESS_PERCENT;
+static bool                   s_display_idle = false;
 
 /* â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 static lvgl_port_cfg_t display_port_cfg(void)
@@ -179,9 +180,6 @@ static esp_err_t backlight_ledc_init(void)
 esp_err_t display_set_brightness_percent(int percent)
 {
     const int next = display_clamp_brightness(percent);
-    if (next > APP_DISPLAY_DIM_BRIGHTNESS_PERCENT) {
-        s_active_brightness = next;
-    }
     if (s_display_brightness == next) return ESP_OK;
 
     const uint32_t duty = (uint32_t)(next * ((1u << 10) - 1)) / 100u;
@@ -201,7 +199,10 @@ static void display_dim_timer_cb(void *arg)
 {
     (void)arg;
     if (!s_display_ready) return;
-    (void)display_set_brightness_percent(s_idle_brightness);
+    s_display_idle = true;
+    /* Idle must never brighten a display that is already dimmer in night mode. */
+    const int idle_target = s_idle_brightness < s_active_brightness ? s_idle_brightness : s_active_brightness;
+    (void)display_set_brightness_percent(idle_target);
 }
 
 static esp_err_t display_dim_timer_init(void)
@@ -252,16 +253,20 @@ static void display_night_timer_cb(void *arg)
     if (!s_display_ready || !s_night_auto) return;
     const int next = display_is_night_now() ? s_night_brightness : s_day_brightness;
     if (next == s_active_brightness) return;
-    const bool idle_or_off = s_display_brightness <= s_idle_brightness;
     s_active_brightness = next;
-    if (!idle_or_off) {
+    if (!s_display_idle) {
         (void)display_set_brightness_percent(s_active_brightness);
     }
 }
 
 static esp_err_t display_night_timer_init(void)
 {
-    if (s_night_timer != NULL) return ESP_OK;
+    if (s_night_timer != NULL) {
+        if (!esp_timer_is_active(s_night_timer)) {
+            return esp_timer_start_periodic(s_night_timer, 60ULL * 1000000ULL);
+        }
+        return ESP_OK;
+    }
     const esp_timer_create_args_t args = {
         .callback = display_night_timer_cb,
         .arg = NULL,
@@ -283,10 +288,8 @@ void display_configure_night_mode(int day_percent, int night_percent, bool auto_
     s_night_auto = auto_mode;
     s_night_start_hour = night_start_hour < 0 ? 0 : (night_start_hour > 23 ? 23 : night_start_hour);
     s_day_start_hour = day_start_hour < 0 ? 0 : (day_start_hour > 23 ? 23 : day_start_hour);
-    s_active_brightness = display_is_night_now() ? s_night_brightness : s_day_brightness;
-    if (s_night_auto) {
-        s_active_brightness = display_is_night_now() ? s_night_brightness : s_day_brightness;
-    }
+    s_active_brightness = s_night_auto && display_is_night_now() ? s_night_brightness : s_day_brightness;
+    s_display_idle = false;
     (void)display_set_brightness_percent(s_active_brightness);
     if (s_night_auto) {
         esp_err_t timer_err = display_night_timer_init();
@@ -304,6 +307,12 @@ bool display_is_screen_off(void)
 void display_note_activity(void)
 {
     if (!s_display_ready) return;
+    /* Re-evaluate the schedule on wake/activity so a screen that slept across
+     * a day/night boundary resumes at the correct configured brightness. */
+    if (s_night_auto) {
+        s_active_brightness = display_is_night_now() ? s_night_brightness : s_day_brightness;
+    }
+    s_display_idle = false;
     (void)display_set_brightness_percent(s_active_brightness);
     display_restart_dim_timer();
 }
