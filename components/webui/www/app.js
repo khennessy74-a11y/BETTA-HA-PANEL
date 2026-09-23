@@ -1808,6 +1808,7 @@ fSliderAccentColor: document.getElementById("fSliderAccentColor"),
   settingsOtaProgressBar: document.getElementById("settingsOtaProgressBar"),
   settingsOtaInfo: document.getElementById("settingsOtaInfo"),
   reloadSettingsBtn: document.getElementById("reloadSettingsBtn"),
+  applyDisplaySettingsBtn: document.getElementById("applyDisplaySettingsBtn"),
   saveSettingsBtn: document.getElementById("saveSettingsBtn"),
   provWifiSsid: document.getElementById("provWifiSsid"),
   provWifiCountryCode: document.getElementById("provWifiCountryCode"),
@@ -2579,6 +2580,7 @@ function applyWebTranslations() {
 
   setTextById("settingsActionsHeading", "settings.actions.heading");
   setTextById("reloadSettingsBtn", "settings.actions.reload");
+  if (el.applyDisplaySettingsBtn) el.applyDisplaySettingsBtn.textContent = "Apply Display";
   setTextById("saveSettingsBtn", "settings.actions.save");
   setTextById("settingsActionsHint", "settings.actions.hint");
   setTextById("setupWizardTitle", "setup.title");
@@ -3536,6 +3538,32 @@ function updateBrightnessLabel() {
   if (el.settingsBrightness && el.settingsBrightnessValue) {
     el.settingsBrightnessValue.textContent = `${el.settingsBrightness.value}%`;
   }
+}
+
+async function applyDisplaySettings() {
+  const brightnessPercent = clamp(Math.round(Number(el.settingsBrightness?.value ?? 100)), 0, 100);
+  const nightBrightnessPercent = clamp(Math.round(Number(el.settingsNightBrightness?.value ?? 20)), 0, 100);
+  const nightMode = clamp(Math.round(Number(el.settingsNightMode?.value ?? 0)), 0, 2);
+  const [nightHourRaw, nightMinuteRaw] = String(el.settingsNightStartTime?.value || "22:00").split(":");
+  const [dayHourRaw, dayMinuteRaw] = String(el.settingsDayStartTime?.value || "07:00").split(":");
+  const payload = {
+    ui: {
+      brightness_percent: brightnessPercent,
+      night_brightness_percent: nightBrightnessPercent,
+      night_mode: nightMode,
+      night_mode_auto: nightMode === 2,
+      night_start_hour: clamp(Math.round(Number(nightHourRaw)), 0, 23),
+      night_start_minute: clamp(Math.round(Number(nightMinuteRaw)), 0, 59),
+      day_start_hour: clamp(Math.round(Number(dayHourRaw)), 0, 23),
+      day_start_minute: clamp(Math.round(Number(dayMinuteRaw)), 0, 59),
+      idle_timeout_seconds: clamp(Math.round(Number(el.settingsIdleTimeout?.value ?? 60)), 0, 86400),
+      idle_brightness_percent: clamp(Math.round(Number(el.settingsIdleBrightness?.value ?? 10)), 0, 100),
+    },
+    reboot: false,
+  };
+  setStatus("Applying display settings...");
+  await putSettings(payload);
+  setStatus("Display settings applied without reboot.");
 }
 
 async function saveSettings() {
@@ -7412,6 +7440,15 @@ bindInspectorAutoApply(
         await saveHaProvisioning();
       } catch (err) {
         setProvisioningInfo("ha", t("provision.save_failed", { error: err.message }), true);
+      }
+    };
+  }
+  if (el.applyDisplaySettingsBtn) {
+    el.applyDisplaySettingsBtn.onclick = async () => {
+      try {
+        await applyDisplaySettings();
+      } catch (err) {
+        setStatus(`Display settings apply failed: ${err.message}`, true);
       }
     };
   }

@@ -14,6 +14,7 @@
 
 #include "app_config.h"
 #include "bsp/display.h"
+#include "drivers/display_init.h"
 #include "ha/ha_client.h"
 #include "net/wifi_mgr.h"
 #include "settings/i18n_store.h"
@@ -538,10 +539,25 @@ esp_err_t api_settings_put_handler(httpd_req_t *req)
     }
 
     esp_err_t save_err = runtime_settings_save(settings);
-    free(settings);
     if (save_err != ESP_OK) {
+        free(settings);
         return httpd_resp_send_500(req);
     }
+
+    if (!reboot) {
+        display_configure_night_mode(
+            settings->display_brightness_percent,
+            settings->display_night_brightness_percent,
+            settings->display_night_mode,
+            settings->display_night_start_hour,
+            settings->display_night_start_minute,
+            settings->display_day_start_hour,
+            settings->display_day_start_minute);
+        display_configure_idle(
+            settings->display_idle_timeout_seconds,
+            settings->display_idle_brightness_percent);
+    }
+    free(settings);
 
     cJSON *resp = cJSON_CreateObject();
     if (resp == NULL) {
