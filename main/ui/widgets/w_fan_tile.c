@@ -33,7 +33,7 @@ typedef struct {
     bool show_title;
     bool show_state;
     char preset_mode[48];
-    char preset_modes[8][48];
+    char preset_modes[16][48];
     int preset_count;
 } w_fan_ctx_t;
 
@@ -82,6 +82,18 @@ static void fan_apply_visual(w_fan_ctx_t *ctx)
     } else {
         lv_obj_add_flag(ctx->slider, LV_OBJ_FLAG_HIDDEN);
         lv_obj_add_flag(ctx->value, LV_OBJ_FLAG_HIDDEN);
+    }
+
+    /* Unavailable entities should look and behave unavailable. Keep the
+     * controls visible so the tile layout does not jump during reconnects. */
+    if (ctx->unavailable) {
+        lv_obj_add_state(ctx->power, LV_STATE_DISABLED);
+        lv_obj_add_state(ctx->slider, LV_STATE_DISABLED);
+        lv_obj_add_state(ctx->preset, LV_STATE_DISABLED);
+    } else {
+        lv_obj_remove_state(ctx->power, LV_STATE_DISABLED);
+        lv_obj_remove_state(ctx->slider, LV_STATE_DISABLED);
+        lv_obj_remove_state(ctx->preset, LV_STATE_DISABLED);
     }
 
     ctx->suppress = true;
@@ -222,7 +234,7 @@ void w_fan_tile_apply_state(ui_widget_instance_t *instance, const ha_state_t *st
         if (cJSON_IsArray(modes)) {
             cJSON *mode = NULL;
             cJSON_ArrayForEach(mode, modes) {
-                if (ctx->preset_count >= 8) break;
+                if (ctx->preset_count >= 16) break;
                 if (cJSON_IsString(mode) && mode->valuestring != NULL) {
                     snprintf(ctx->preset_modes[ctx->preset_count],
                         sizeof(ctx->preset_modes[ctx->preset_count]), "%s", mode->valuestring);
