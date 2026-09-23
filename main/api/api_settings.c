@@ -448,9 +448,14 @@ esp_err_t api_settings_put_handler(httpd_req_t *req)
             ui, "brightness_percent", &settings->display_brightness_percent, 0, 100, &invalid_type);
         (void)update_int_setting(
             ui, "night_brightness_percent", &settings->display_night_brightness_percent, 0, 100, &invalid_type);
-        (void)update_bool_setting(ui, "night_mode_auto", &settings->display_night_mode_auto, &invalid_type);
-        if (update_int_setting(ui, "night_mode", &settings->display_night_mode, 0, 2, &invalid_type)) {
+        bool legacy_night_mode_updated = update_bool_setting(
+            ui, "night_mode_auto", &settings->display_night_mode_auto, &invalid_type);
+        bool night_mode_updated = update_int_setting(
+            ui, "night_mode", &settings->display_night_mode, 0, 2, &invalid_type);
+        if (night_mode_updated) {
             settings->display_night_mode_auto = settings->display_night_mode == 2;
+        } else if (legacy_night_mode_updated) {
+            settings->display_night_mode = settings->display_night_mode_auto ? 2 : 0;
         }
         (void)update_int_setting(
             ui, "night_start_hour", &settings->display_night_start_hour, 0, 23, &invalid_type);
