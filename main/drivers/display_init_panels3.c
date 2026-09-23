@@ -299,8 +299,13 @@ void display_configure_night_mode(int day_percent, int night_percent, int mode, 
     s_day_start_minute = day_start_minute < 0 ? 0 : (day_start_minute > 59 ? 59 : day_start_minute);
     s_active_brightness = s_night_mode == 1 ? s_night_brightness :
         (s_night_auto && display_is_night_now() ? s_night_brightness : s_day_brightness);
-    s_display_idle = false;
-    (void)display_set_brightness_percent(s_active_brightness);
+    /* Reconfiguring the schedule should not wake a panel that is already idle. */
+    if (s_display_idle) {
+        const int idle_target = s_idle_brightness < s_active_brightness ? s_idle_brightness : s_active_brightness;
+        (void)display_set_brightness_percent(idle_target);
+    } else {
+        (void)display_set_brightness_percent(s_active_brightness);
+    }
     if (s_night_auto) {
         esp_err_t timer_err = display_night_timer_init();
         if (timer_err != ESP_OK) ESP_LOGW(TAG_DISPLAY, "night timer init failed: %s", esp_err_to_name(timer_err));
