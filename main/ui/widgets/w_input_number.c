@@ -15,6 +15,7 @@ typedef struct {
     lv_obj_t *card, *title, *value_label, *slider;
     double min, max, step, value;
     char unit[24];
+    char mode[8];
     int precision;
     bool unavailable, suppress;
     bool show_title, show_state;
@@ -30,7 +31,11 @@ static long round_nearest(double v) {
 }
 static int step_count(w_input_number_ctx_t *c) {
     if (c->step <= 0.0 || c->max <= c->min) return 1;
-    long count = round_nearest((c->max - c->min) / c->step);
+    const double span = c->max - c->min;
+    long count = (long)(span / c->step);
+    if ((double)count * c->step < span - 0.000001) {
+        count++;
+    }
     if (count < 1) count = 1;
     /* LVGL slider values are int32_t; keep headroom while still preserving
      * far more discrete input_number values than the old fixed 1000 range. */
@@ -72,6 +77,11 @@ static void apply_visual(w_input_number_ctx_t *c) {
     c->suppress=true;
     lv_slider_set_range(c->slider,0,step_count(c));
     lv_slider_set_value(c->slider,value_to_pos(c,c->value),LV_ANIM_OFF);
+    if (c->unavailable) {
+        lv_obj_add_state(c->slider, LV_STATE_DISABLED);
+    } else {
+        lv_obj_remove_state(c->slider, LV_STATE_DISABLED);
+    }
     c->suppress=false;
     lv_obj_set_style_bg_color(c->card,lv_color_hex(APP_UI_COLOR_CARD_BG_OFF),LV_PART_MAIN);
 }
@@ -85,7 +95,7 @@ static void event_cb(lv_event_t *e) {
 esp_err_t w_input_number_create(const ui_widget_def_t *d,lv_obj_t *p,ui_widget_instance_t *o){
     if(!d||!p||!o)return ESP_ERR_INVALID_ARG;
     lv_obj_t *card=lv_obj_create(p);lv_obj_set_pos(card,d->x,d->y);lv_obj_set_size(card,d->w,d->h);lv_obj_clear_flag(card,LV_OBJ_FLAG_SCROLLABLE);lv_obj_set_style_radius(card,APP_UI_CARD_RADIUS,LV_PART_MAIN);lv_obj_set_style_pad_all(card,16,LV_PART_MAIN);
-    w_input_number_ctx_t *c=ui_calloc_prefer_psram(1,sizeof(*c));if(!c){lv_obj_del(card);return ESP_ERR_NO_MEM;} snprintf(c->entity_id,sizeof(c->entity_id),"%s",d->entity_id);c->card=card;c->min=0;c->max=100;c->step=1;c->precision=0;c->unit[0]='\0';c->show_title=d->show_title;c->show_state=d->show_state;
+    w_input_number_ctx_t *c=ui_calloc_prefer_psram(1,sizeof(*c));if(!c){lv_obj_del(card);return ESP_ERR_NO_MEM;} snprintf(c->entity_id,sizeof(c->entity_id),"%s",d->entity_id);c->card=card;c->min=0;c->max=100;c->step=1;c->precision=0;c->unit[0]='\0';snprintf(c->mode,sizeof(c->mode),"slider");c->show_title=d->show_title;c->show_state=d->show_state;
     c->title=lv_label_create(card);lv_label_set_text(c->title,d->title[0]?d->title:d->id);lv_obj_set_style_text_font(c->title,APP_FONT_TEXT_20,LV_PART_MAIN);lv_obj_align(c->title,LV_ALIGN_BOTTOM_MID,0,-8);if(!c->show_title)lv_obj_add_flag(c->title,LV_OBJ_FLAG_HIDDEN);
     c->value_label=lv_label_create(card);lv_obj_set_style_text_font(c->value_label,APP_FONT_TEXT_20,LV_PART_MAIN);lv_obj_align(c->value_label,LV_ALIGN_TOP_MID,0,2);if(!c->show_state)lv_obj_add_flag(c->value_label,LV_OBJ_FLAG_HIDDEN);
     c->slider=lv_slider_create(card);lv_slider_set_range(c->slider,0,step_count(c));lv_obj_set_size(c->slider,d->w-44,20);lv_obj_align(c->slider,LV_ALIGN_CENTER,0,0);lv_obj_add_event_cb(c->slider,event_cb,LV_EVENT_VALUE_CHANGED,c);lv_obj_add_event_cb(c->slider,event_cb,LV_EVENT_RELEASED,c);lv_obj_add_event_cb(c->slider,event_cb,LV_EVENT_DELETE,c);
@@ -112,6 +122,7 @@ void w_input_number_apply_state(ui_widget_instance_t *instance, const ha_state_t
         cJSON *max_item = cJSON_GetObjectItemCaseSensitive(attrs, "max");
         cJSON *step_item = cJSON_GetObjectItemCaseSensitive(attrs, "step");
         cJSON *unit_item = cJSON_GetObjectItemCaseSensitive(attrs, "unit_of_measurement");
+        cJSON *mode_item = cJSON_GetObjectItemCaseSensitive(attrs, "mode");
 
         if (cJSON_IsNumber(min_item)) {
             ctx->min = min_item->valuedouble;
@@ -124,9 +135,14 @@ void w_input_number_apply_state(ui_widget_instance_t *instance, const ha_state_t
         }
         ctx->precision = precision_for_step(ctx->step);
         if (cJSON_IsString(unit_item) && unit_item->valuestring != NULL) {
-            snprintf(ctx->unit, sizeof(ctx->unit), "%s", unit_item->valuestring);
+            snprintf(ctx->unit, sizeof(ctx->unit), "%.23s", unit_item->valuestring);
         } else {
             ctx->unit[0] = '\0';
+        }
+        if (cJSON_IsString(mode_item) && mode_item->valuestring != NULL) {
+            snprintf(ctx->mode, sizeof(ctx->mode), "%.7s", mode_item->valuestring);
+        } else {
+            snprintf(ctx->mode, sizeof(ctx->mode), "slider");
         }
         cJSON_Delete(attrs);
     }
@@ -137,7 +153,7 @@ void w_input_number_apply_state(ui_widget_instance_t *instance, const ha_state_t
 
     char *end = NULL;
     double value = strtod(state->state, &end);
-    if (end != state->state) {
+    if (end != state->state && end != NULL && *end == '\0') {
         ctx->value = clamp_value(ctx, value);
     }
 
