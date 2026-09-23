@@ -273,7 +273,10 @@ static esp_err_t parse_settings_json(
             out->display_night_brightness_percent = value < 0 ? 0 : (value > 100 ? 100 : value);
         }
         cJSON *night_auto = cJSON_GetObjectItemCaseSensitive(ui, "night_mode_auto");
-        if (cJSON_IsBool(night_auto)) out->display_night_mode_auto = cJSON_IsTrue(night_auto);
+        if (cJSON_IsBool(night_auto)) {
+            out->display_night_mode_auto = cJSON_IsTrue(night_auto);
+            out->display_night_mode = out->display_night_mode_auto ? 2 : 0;
+        }
         cJSON *night_mode = cJSON_GetObjectItemCaseSensitive(ui, "night_mode");
         if (cJSON_IsNumber(night_mode) && night_mode->valueint >= 0 && night_mode->valueint <= 2) {
             out->display_night_mode = night_mode->valueint;
