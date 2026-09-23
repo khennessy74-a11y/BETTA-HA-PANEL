@@ -156,6 +156,12 @@ static int display_clamp_brightness(int percent)
     return percent;
 }
 
+static int display_current_target_brightness(void)
+{
+    if (!s_display_idle) return s_active_brightness;
+    return s_idle_brightness < s_active_brightness ? s_idle_brightness : s_active_brightness;
+}
+
 /* â”€â”€ Backlight LEDC â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 static esp_err_t backlight_ledc_init(void)
 {
@@ -204,8 +210,7 @@ static void display_dim_timer_cb(void *arg)
     if (!s_display_ready) return;
     s_display_idle = true;
     /* Idle must never brighten a display that is already dimmer in night mode. */
-    const int idle_target = s_idle_brightness < s_active_brightness ? s_idle_brightness : s_active_brightness;
-    (void)display_set_brightness_percent(idle_target);
+    (void)display_set_brightness_percent(display_current_target_brightness());
 }
 
 static esp_err_t display_dim_timer_init(void)
@@ -234,6 +239,14 @@ void display_configure_idle(int timeout_seconds, int brightness_percent)
 {
     s_idle_timeout_seconds = timeout_seconds < 0 ? 0 : (timeout_seconds > 86400 ? 86400 : timeout_seconds);
     s_idle_brightness = display_clamp_brightness(brightness_percent);
+
+    if (s_display_idle) {
+        if (s_idle_timeout_seconds <= 0) {
+            /* Disabling inactivity while already idle restores the active level. */
+            s_display_idle = false;
+        }
+        (void)display_set_brightness_percent(display_current_target_brightness());
+    }
     display_restart_dim_timer();
 }
 
@@ -260,9 +273,9 @@ static void display_night_timer_cb(void *arg)
     const int next = display_is_night_now() ? s_night_brightness : s_day_brightness;
     if (next == s_active_brightness) return;
     s_active_brightness = next;
-    if (!s_display_idle) {
-        (void)display_set_brightness_percent(s_active_brightness);
-    }
+    /* A schedule transition also updates the physical idle target. This keeps
+     * screen-off at 0 and never wakes an idle panel above its configured cap. */
+    (void)display_set_brightness_percent(display_current_target_brightness());
 }
 
 static esp_err_t display_night_timer_init(void)
@@ -300,12 +313,7 @@ void display_configure_night_mode(int day_percent, int night_percent, int mode, 
     s_active_brightness = s_night_mode == 1 ? s_night_brightness :
         (s_night_auto && display_is_night_now() ? s_night_brightness : s_day_brightness);
     /* Reconfiguring the schedule should not wake a panel that is already idle. */
-    if (s_display_idle) {
-        const int idle_target = s_idle_brightness < s_active_brightness ? s_idle_brightness : s_active_brightness;
-        (void)display_set_brightness_percent(idle_target);
-    } else {
-        (void)display_set_brightness_percent(s_active_brightness);
-    }
+    (void)display_set_brightness_percent(display_current_target_brightness());
     if (s_night_auto) {
         esp_err_t timer_err = display_night_timer_init();
         if (timer_err != ESP_OK) ESP_LOGW(TAG_DISPLAY, "night timer init failed: %s", esp_err_to_name(timer_err));
