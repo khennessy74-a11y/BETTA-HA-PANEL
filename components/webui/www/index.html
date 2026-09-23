@@ -827,12 +827,14 @@
                 <option value="2">Auto</option>
               </select>
             </label>
-            <label><span>Night starts</span>
-              <input id="settingsNightStartTime" type="time" step="60" value="22:00" />
-            </label>
-            <label><span>Day starts</span>
-              <input id="settingsDayStartTime" type="time" step="60" value="07:00" />
-            </label>
+            <div id="settingsNightSchedule">
+              <label><span>Night starts</span>
+                <input id="settingsNightStartTime" type="time" step="60" value="22:00" />
+              </label>
+              <label><span>Day starts</span>
+                <input id="settingsDayStartTime" type="time" step="60" value="07:00" />
+              </label>
+            </div>
             <label><span>Inactivity timeout (seconds, 0 = disabled)</span>
               <input id="settingsIdleTimeout" type="number" min="0" max="86400" step="1" value="60" />
             </label>
