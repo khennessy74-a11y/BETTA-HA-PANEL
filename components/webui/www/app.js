@@ -3924,6 +3924,34 @@ function updateSliderIconControls() {
     );
   }
 }
+function updateTimerIconControls() {
+  const mode = document.getElementById("fTimerIconMode");
+  const wrap = document.getElementById("fTimerCustomIconWrap");
+  if (!mode || !wrap) return;
+  wrap.classList.toggle("hidden", mode.value !== "custom");
+}
+
+function syncTimerInspector(widget) {
+  if (!widget) return;
+
+  const configuredIcon =
+    typeof widget.icon === "string" ? widget.icon.trim() : "";
+  const mode = document.getElementById("fTimerIconMode");
+  const input = document.getElementById("fTimerCustomIcon");
+
+  if (mode) mode.value = configuredIcon ? "custom" : "automatic";
+  if (input) input.value = configuredIcon;
+  updateTimerIconControls();
+}
+
+const timerIconModeControl = document.getElementById("fTimerIconMode");
+if (timerIconModeControl) {
+  timerIconModeControl.addEventListener("change", () => {
+    updateTimerIconControls();
+    autoApplyInspector();
+  });
+}
+
 function setSensorCustomIconValue(iconName) {
   if (!el.fSensorCustomIcon) {
     return;
@@ -5968,7 +5996,7 @@ function renderInspector() {
     widget.type === "timer" &&
     typeof syncTimerInspector === "function"
   ) {
-    syncTimerInspector();
+    syncTimerInspector(widget);
   }
   
  if (isSensor) {
