@@ -47,6 +47,7 @@ static const mdi_icon_entry_t s_mdi_icons[] = {
     { "mdi:reddit", "Reddit", 0xF044DU },
     { "mdi:cog", "Settings", 0xF0493U },
     { "mdi:swap-vertical", "Swap vertical", 0xF04E2U },
+    { "mdi:home-assistant", "Home Assistant", 0xF06E8U },
 
     { "mdi:window-maximize", "Window maximize", 0xF05AFU },
     { "mdi:window-minimize", "Window minimize", 0xF05B0U },
