@@ -26,6 +26,10 @@ void w_input_datetime_mark_unavailable(ui_widget_instance_t *instance);
 esp_err_t w_alarm_control_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widget_instance_t *out_instance);
 void w_alarm_control_apply_state(ui_widget_instance_t *instance, const ha_state_t *state);
 void w_alarm_control_mark_unavailable(ui_widget_instance_t *instance);
+esp_err_t w_calendar_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widget_instance_t *out_instance);
+void w_calendar_apply_state(ui_widget_instance_t *instance, const ha_state_t *state);
+void w_calendar_mark_unavailable(ui_widget_instance_t *instance);
+
 esp_err_t w_update_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widget_instance_t *out_instance);
 void w_update_apply_state(ui_widget_instance_t *instance, const ha_state_t *state);
 void w_update_mark_unavailable(ui_widget_instance_t *instance);
@@ -111,6 +115,7 @@ static const widget_factory_entry_t WIDGET_FACTORY[] = {
     {"input_datetime", w_input_datetime_create, w_input_datetime_apply_state, w_input_datetime_mark_unavailable},
     {"alarm_control_panel", w_alarm_control_create, w_alarm_control_apply_state, w_alarm_control_mark_unavailable},
     {"update", w_update_create, w_update_apply_state, w_update_mark_unavailable},
+    {"calendar", w_calendar_create, w_calendar_apply_state, w_calendar_mark_unavailable},
     {"graph", w_graph_create, w_graph_apply_state, w_graph_mark_unavailable},
     {"empty_tile", w_empty_tile_create, w_empty_tile_apply_state, w_empty_tile_mark_unavailable},
     {"light_tile", w_light_tile_create, w_light_tile_apply_state, w_light_tile_mark_unavailable},
