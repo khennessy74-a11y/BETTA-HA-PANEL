@@ -48,6 +48,13 @@ static const mdi_icon_entry_t s_mdi_icons[] = {
     { "mdi:cog", "Settings", 0xF0493U },
     { "mdi:swap-vertical", "Swap vertical", 0xF04E2U },
 
+    { "mdi:window-maximize", "Window maximize", 0xF05AFU },
+    { "mdi:window-minimize", "Window minimize", 0xF05B0U },
+    { "mdi:window-open", "Window open", 0xF05B1U },
+    { "mdi:window-restore", "Window restore", 0xF05B2U },
+    { "mdi:windows", "Windows", 0xF05B3U },
+    { "mdi:wordpress", "WordPress", 0xF05B4U },
+
     { "mdi:weather-cloudy", "Weather cloudy", 0xF0590U },
     { "mdi:weather-fog", "Weather fog", 0xF0591U },
     { "mdi:weather-hail", "Weather hail", 0xF0592U },
