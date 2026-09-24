@@ -87,6 +87,52 @@ void w_timer_apply_state(
 void w_timer_mark_unavailable(
     ui_widget_instance_t *instance);
 
+typedef esp_err_t (*widget_create_fn_t)(const ui_widget_def_t *, lv_obj_t *, ui_widget_instance_t *);
+typedef void (*widget_state_fn_t)(ui_widget_instance_t *, const ha_state_t *);
+typedef void (*widget_unavailable_fn_t)(ui_widget_instance_t *);
+
+typedef struct {
+    const char *type;
+    widget_create_fn_t create;
+    widget_state_fn_t apply_state;
+    widget_unavailable_fn_t mark_unavailable;
+} widget_factory_entry_t;
+
+static const widget_factory_entry_t WIDGET_FACTORY[] = {
+    {"sensor", w_sensor_create, w_sensor_apply_state, w_sensor_mark_unavailable},
+    {"binary_sensor", w_sensor_create, w_sensor_apply_state, w_sensor_mark_unavailable},
+    {"person", w_sensor_create, w_sensor_apply_state, w_sensor_mark_unavailable},
+    {"device_tracker", w_sensor_create, w_sensor_apply_state, w_sensor_mark_unavailable},
+    {"button", w_button_create, w_button_apply_state, w_button_mark_unavailable},
+    {"slider", w_slider_create, w_slider_apply_state, w_slider_mark_unavailable},
+    {"input_number", w_input_number_create, w_input_number_apply_state, w_input_number_mark_unavailable},
+    {"select", w_select_create, w_select_apply_state, w_select_mark_unavailable},
+    {"input_text", w_input_text_create, w_input_text_apply_state, w_input_text_mark_unavailable},
+    {"input_datetime", w_input_datetime_create, w_input_datetime_apply_state, w_input_datetime_mark_unavailable},
+    {"alarm_control_panel", w_alarm_control_create, w_alarm_control_apply_state, w_alarm_control_mark_unavailable},
+    {"update", w_update_create, w_update_apply_state, w_update_mark_unavailable},
+    {"graph", w_graph_create, w_graph_apply_state, w_graph_mark_unavailable},
+    {"empty_tile", w_empty_tile_create, w_empty_tile_apply_state, w_empty_tile_mark_unavailable},
+    {"light_tile", w_light_tile_create, w_light_tile_apply_state, w_light_tile_mark_unavailable},
+    {"fan_tile", w_fan_tile_create, w_fan_tile_apply_state, w_fan_tile_mark_unavailable},
+    {"heating_tile", w_heating_tile_create, w_heating_tile_apply_state, w_heating_tile_mark_unavailable},
+    {"weather_tile", w_weather_tile_create, w_weather_tile_apply_state, w_weather_tile_mark_unavailable},
+    {"weather_3day", w_weather_tile_create, w_weather_tile_apply_state, w_weather_tile_mark_unavailable},
+    {"todo_list", w_todo_create, w_todo_apply_state, w_todo_mark_unavailable},
+    {"media_player", w_media_player_create, w_media_player_apply_state, w_media_player_mark_unavailable},
+    {"roborock_tile", w_roborock_create, w_roborock_apply_state, w_roborock_mark_unavailable},
+    {"timer", w_timer_create, w_timer_apply_state, w_timer_mark_unavailable},
+};
+
+static const widget_factory_entry_t *widget_factory_entry(const char *type)
+{
+    if (type == NULL) return NULL;
+    for (size_t i = 0; i < sizeof(WIDGET_FACTORY) / sizeof(WIDGET_FACTORY[0]); i++) {
+        if (strcmp(type, WIDGET_FACTORY[i].type) == 0) return &WIDGET_FACTORY[i];
+    }
+    return NULL;
+}
+
 esp_err_t ui_widget_factory_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widget_instance_t *out_instance)
 {
     if (def == NULL || parent == NULL || out_instance == NULL) {
@@ -126,157 +172,22 @@ out_instance->timer_show_finish = def->timer_show_finish;
     snprintf(out_instance->arc_opening, sizeof(out_instance->arc_opening), "%s", def->arc_opening);
     out_instance->ctx = NULL;
 
-    if (strcmp(def->type, "sensor") == 0 || strcmp(def->type, "binary_sensor") == 0 || strcmp(def->type, "person") == 0 || strcmp(def->type, "device_tracker") == 0) {
-        return w_sensor_create(def, parent, out_instance);
-    }
-    if (strcmp(def->type, "button") == 0) {
-        return w_button_create(def, parent, out_instance);
-    }
-    if (strcmp(def->type, "slider") == 0) {
-        return w_slider_create(def, parent, out_instance);
-    }
-    if (strcmp(def->type, "input_number") == 0) {
-        return w_input_number_create(def, parent, out_instance);
-    }
-    if (strcmp(def->type, "select") == 0) {
-        return w_select_create(def, parent, out_instance);
-    }
-    if (strcmp(def->type, "input_text") == 0) {
-        return w_input_text_create(def, parent, out_instance);
-    }
-    if (strcmp(def->type, "input_datetime") == 0) {
-        return w_input_datetime_create(def, parent, out_instance);
-    }
-    if (strcmp(def->type, "alarm_control_panel") == 0) {
-        return w_alarm_control_create(def, parent, out_instance);
-    }
-    if (strcmp(def->type, "update") == 0) {
-        return w_update_create(def, parent, out_instance);
-    }
-    if (strcmp(def->type, "graph") == 0) {
-        return w_graph_create(def, parent, out_instance);
-    }
-    if (strcmp(def->type, "empty_tile") == 0) {
-        return w_empty_tile_create(def, parent, out_instance);
-    }
-    if (strcmp(def->type, "light_tile") == 0) {
-        return w_light_tile_create(def, parent, out_instance);
-    }
-    if (strcmp(def->type, "fan_tile") == 0) {
-        return w_fan_tile_create(def, parent, out_instance);
-    }
-    if (strcmp(def->type, "heating_tile") == 0) {
-        return w_heating_tile_create(def, parent, out_instance);
-    }
-    if (strcmp(def->type, "weather_tile") == 0 || strcmp(def->type, "weather_3day") == 0) {
-        return w_weather_tile_create(def, parent, out_instance);
-    }
-    if (strcmp(def->type, "todo_list") == 0) {
-        return w_todo_create(def, parent, out_instance);
-    }
-    if (strcmp(def->type, "media_player") == 0) {
-        return w_media_player_create(def, parent, out_instance);
-    }
-    if (strcmp(def->type, "roborock_tile") == 0) {
-        return w_roborock_create(def, parent, out_instance);
-    }
-    if (strcmp(def->type, "timer") == 0) {
-    return w_timer_create(def, parent, out_instance);
-}
-    return ESP_ERR_NOT_SUPPORTED;
+    const widget_factory_entry_t *entry = widget_factory_entry(def->type);
+    return entry != NULL ? entry->create(def, parent, out_instance) : ESP_ERR_NOT_SUPPORTED;
 }
 
 void ui_widget_factory_apply_state(ui_widget_instance_t *instance, const ha_state_t *state)
 {
-    if (instance == NULL || instance->obj == NULL || state == NULL) {
-        return;
-    }
-    if (strcmp(instance->type, "sensor") == 0 || strcmp(instance->type, "binary_sensor") == 0 || strcmp(instance->type, "person") == 0 || strcmp(instance->type, "device_tracker") == 0) {
-        w_sensor_apply_state(instance, state);
-    } else if (strcmp(instance->type, "button") == 0) {
-        w_button_apply_state(instance, state);
-    } else if (strcmp(instance->type, "slider") == 0) {
-        w_slider_apply_state(instance, state);
-    } else if (strcmp(instance->type, "input_number") == 0) {
-        w_input_number_apply_state(instance, state);
-    } else if (strcmp(instance->type, "select") == 0) {
-        w_select_apply_state(instance, state);
-    } else if (strcmp(instance->type, "input_text") == 0) {
-        w_input_text_apply_state(instance, state);
-    } else if (strcmp(instance->type, "input_datetime") == 0) {
-        w_input_datetime_apply_state(instance, state);
-    } else if (strcmp(instance->type, "alarm_control_panel") == 0) {
-        w_alarm_control_apply_state(instance, state);
-    } else if (strcmp(instance->type, "update") == 0) {
-        w_update_apply_state(instance, state);
-    } else if (strcmp(instance->type, "graph") == 0) {
-        w_graph_apply_state(instance, state);
-    } else if (strcmp(instance->type, "empty_tile") == 0) {
-        w_empty_tile_apply_state(instance, state);
-    } else if (strcmp(instance->type, "light_tile") == 0) {
-        w_light_tile_apply_state(instance, state);
-    } else if (strcmp(instance->type, "fan_tile") == 0) {
-        w_fan_tile_apply_state(instance, state);
-    } else if (strcmp(instance->type, "heating_tile") == 0) {
-        w_heating_tile_apply_state(instance, state);
-    } else if (strcmp(instance->type, "weather_tile") == 0 || strcmp(instance->type, "weather_3day") == 0) {
-        w_weather_tile_apply_state(instance, state);
-    } else if (strcmp(instance->type, "todo_list") == 0) {
-        w_todo_apply_state(instance, state);
-    } else if (strcmp(instance->type, "media_player") == 0) {
-        w_media_player_apply_state(instance, state);
-    } else if (strcmp(instance->type, "roborock_tile") == 0) {
-        w_roborock_apply_state(instance, state);
-    } else if (strcmp(instance->type, "timer") == 0) {
-    w_timer_apply_state(instance, state);
-    }
-    
+    if (instance == NULL || instance->obj == NULL || state == NULL) return;
+    const widget_factory_entry_t *entry = widget_factory_entry(instance->type);
+    if (entry != NULL) entry->apply_state(instance, state);
 }
 
 void ui_widget_factory_mark_unavailable(ui_widget_instance_t *instance)
 {
-    if (instance == NULL || instance->obj == NULL) {
-        return;
-    }
-    if (strcmp(instance->type, "sensor") == 0 || strcmp(instance->type, "binary_sensor") == 0 || strcmp(instance->type, "person") == 0 || strcmp(instance->type, "device_tracker") == 0) {
-        w_sensor_mark_unavailable(instance);
-    } else if (strcmp(instance->type, "button") == 0) {
-        w_button_mark_unavailable(instance);
-    } else if (strcmp(instance->type, "slider") == 0) {
-        w_slider_mark_unavailable(instance);
-    } else if (strcmp(instance->type, "input_number") == 0) {
-        w_input_number_mark_unavailable(instance);
-    } else if (strcmp(instance->type, "select") == 0) {
-        w_select_mark_unavailable(instance);
-    } else if (strcmp(instance->type, "input_text") == 0) {
-        w_input_text_mark_unavailable(instance);
-    } else if (strcmp(instance->type, "input_datetime") == 0) {
-        w_input_datetime_mark_unavailable(instance);
-    } else if (strcmp(instance->type, "alarm_control_panel") == 0) {
-        w_alarm_control_mark_unavailable(instance);
-    } else if (strcmp(instance->type, "update") == 0) {
-        w_update_mark_unavailable(instance);
-    } else if (strcmp(instance->type, "graph") == 0) {
-        w_graph_mark_unavailable(instance);
-    } else if (strcmp(instance->type, "empty_tile") == 0) {
-        w_empty_tile_mark_unavailable(instance);
-    } else if (strcmp(instance->type, "light_tile") == 0) {
-        w_light_tile_mark_unavailable(instance);
-    } else if (strcmp(instance->type, "fan_tile") == 0) {
-        w_fan_tile_mark_unavailable(instance);
-    } else if (strcmp(instance->type, "heating_tile") == 0) {
-        w_heating_tile_mark_unavailable(instance);
-    } else if (strcmp(instance->type, "weather_tile") == 0 || strcmp(instance->type, "weather_3day") == 0) {
-        w_weather_tile_mark_unavailable(instance);
-    } else if (strcmp(instance->type, "todo_list") == 0) {
-        w_todo_mark_unavailable(instance);
-    } else if (strcmp(instance->type, "media_player") == 0) {
-        w_media_player_mark_unavailable(instance);
-    } else if (strcmp(instance->type, "roborock_tile") == 0) {
-        w_roborock_mark_unavailable(instance);
-    } else if (strcmp(instance->type, "timer") == 0) {
-    w_timer_mark_unavailable(instance);
-    }
+    if (instance == NULL || instance->obj == NULL) return;
+    const widget_factory_entry_t *entry = widget_factory_entry(instance->type);
+    if (entry != NULL) entry->mark_unavailable(instance);
 }
 
 void ui_widget_factory_set_visible(ui_widget_instance_t *instance, bool visible)
