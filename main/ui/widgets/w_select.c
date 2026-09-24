@@ -13,6 +13,8 @@
 #include "layout/layout_schema.h"
 #include "ui/ui_bindings.h"
 #include "ui/ui_i18n.h"
+#include "ui/ui_memory.h"
+#include "ui/fonts/app_text_fonts.h"
 #include "ui/ui_runtime.h"
 #include "ui/ui_widget_factory.h"
 #include "ui/theme/theme_default.h"
