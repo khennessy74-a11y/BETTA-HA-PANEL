@@ -1483,8 +1483,8 @@ function widgetSizeLimits(type) {
         : { minW: 120, minH: 80, maxW: CANVAS_WIDTH, maxH: CANVAS_HEIGHT };
     case "button":
       return compact
-        ? { minW: 82, minH: 82, maxW: 320, maxH: 260 }
-        : { minW: 100, minH: 100, maxW: 480, maxH: 320 };
+        ? { minW: 82, minH: 82, maxW: Math.min(320, CANVAS_WIDTH), maxH: Math.min(260, CANVAS_HEIGHT) }
+        : { minW: 100, minH: 100, maxW: Math.min(480, CANVAS_WIDTH), maxH: Math.min(320, CANVAS_HEIGHT) };
     case "slider":
       return compact
         ? { minW: 100, minH: 80, maxW: CANVAS_WIDTH, maxH: CANVAS_HEIGHT }
@@ -1499,28 +1499,28 @@ function widgetSizeLimits(type) {
         : { minW: 120, minH: 80, maxW: CANVAS_WIDTH, maxH: CANVAS_HEIGHT };
     case "light_tile":
       return compact
-        ? { minW: 140, minH: 140, maxW: 480, maxH: 480 }
-        : { minW: 180, minH: 180, maxW: 480, maxH: 480 };
+        ? { minW: 140, minH: 140, maxW: Math.min(480, CANVAS_WIDTH), maxH: Math.min(480, CANVAS_HEIGHT) }
+        : { minW: 180, minH: 180, maxW: Math.min(480, CANVAS_WIDTH), maxH: Math.min(480, CANVAS_HEIGHT) };
     case "heating_tile":
       return compact
-        ? { minW: 150, minH: 150, maxW: 480, maxH: 480 }
-        : { minW: 220, minH: 200, maxW: 480, maxH: 480 };
+        ? { minW: 150, minH: 150, maxW: Math.min(480, CANVAS_WIDTH), maxH: Math.min(480, CANVAS_HEIGHT) }
+        : { minW: 220, minH: 200, maxW: Math.min(480, CANVAS_WIDTH), maxH: Math.min(480, CANVAS_HEIGHT) };
     case "timer":
       return compact
-        ? { minW: 180, minH: 130, maxW: 360, maxH: 260 }
+        ? { minW: 180, minH: 130, maxW: Math.min(360, CANVAS_WIDTH), maxH: Math.min(260, CANVAS_HEIGHT) }
         : { minW: 220, minH: 160, maxW: CANVAS_WIDTH, maxH: CANVAS_HEIGHT };
     case "weather_tile":
       return compact
-        ? { minW: 160, minH: 150, maxW: 480, maxH: 480 }
-        : { minW: 220, minH: 200, maxW: 480, maxH: 480 };
+        ? { minW: 160, minH: 150, maxW: Math.min(480, CANVAS_WIDTH), maxH: Math.min(480, CANVAS_HEIGHT) }
+        : { minW: 220, minH: 200, maxW: Math.min(480, CANVAS_WIDTH), maxH: Math.min(480, CANVAS_HEIGHT) };
     case "weather_3day":
       return compact
-        ? { minW: 280, minH: 180, maxW: 640, maxH: 480 }
-        : { minW: 260, minH: 220, maxW: 640, maxH: 480 };
+        ? { minW: 280, minH: 180, maxW: Math.min(640, CANVAS_WIDTH), maxH: Math.min(480, CANVAS_HEIGHT) }
+        : { minW: 260, minH: 220, maxW: Math.min(640, CANVAS_WIDTH), maxH: Math.min(480, CANVAS_HEIGHT) };
     case "todo_list":
       return compact
-        ? { minW: 180, minH: 160, maxW: 640, maxH: 640 }
-        : { minW: 220, minH: 200, maxW: 640, maxH: 640 };
+        ? { minW: 180, minH: 160, maxW: Math.min(640, CANVAS_WIDTH), maxH: Math.min(640, CANVAS_HEIGHT) }
+        : { minW: 220, minH: 200, maxW: Math.min(640, CANVAS_WIDTH), maxH: Math.min(640, CANVAS_HEIGHT) };
     case "media_player":
       return compact
         ? { minW: 200, minH: 170, maxW: CANVAS_WIDTH, maxH: CANVAS_HEIGHT }
