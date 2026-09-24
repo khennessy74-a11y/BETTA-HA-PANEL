@@ -12,7 +12,7 @@
 
 typedef struct {
     char entity_id[APP_MAX_ENTITY_ID_LEN];
-    lv_obj_t *card, *title, *value_label, *slider;
+    lv_obj_t *card, *title, *value_label, *slider, *minus_btn, *plus_btn;
     double min, max, step, value;
     char unit[24];
     char mode[8];
@@ -66,6 +66,8 @@ static int precision_for_step(double step) {
     }
     return 6;
 }
+static bool box_mode(const w_input_number_ctx_t *c) { return strcmp(c->mode, "box") == 0; }
+static void set_button_enabled(lv_obj_t *obj, bool enabled) { if (enabled) lv_obj_remove_state(obj, LV_STATE_DISABLED); else lv_obj_add_state(obj, LV_STATE_DISABLED); }
 static void apply_visual(w_input_number_ctx_t *c) {
     char b[64];
     if (c->unit[0] != '\0') {
@@ -77,13 +79,22 @@ static void apply_visual(w_input_number_ctx_t *c) {
     c->suppress=true;
     lv_slider_set_range(c->slider,0,step_count(c));
     lv_slider_set_value(c->slider,value_to_pos(c,c->value),LV_ANIM_OFF);
-    if (c->unavailable) {
-        lv_obj_add_state(c->slider, LV_STATE_DISABLED);
-    } else {
-        lv_obj_remove_state(c->slider, LV_STATE_DISABLED);
-    }
+    const bool is_box = box_mode(c);
+    if (is_box) lv_obj_add_flag(c->slider, LV_OBJ_FLAG_HIDDEN); else lv_obj_remove_flag(c->slider, LV_OBJ_FLAG_HIDDEN);
+    if (is_box) { lv_obj_remove_flag(c->minus_btn, LV_OBJ_FLAG_HIDDEN); lv_obj_remove_flag(c->plus_btn, LV_OBJ_FLAG_HIDDEN); }
+    else { lv_obj_add_flag(c->minus_btn, LV_OBJ_FLAG_HIDDEN); lv_obj_add_flag(c->plus_btn, LV_OBJ_FLAG_HIDDEN); }
+    if (c->unavailable) lv_obj_add_state(c->slider, LV_STATE_DISABLED); else lv_obj_remove_state(c->slider, LV_STATE_DISABLED);
+    set_button_enabled(c->minus_btn, !c->unavailable && c->value > c->min);
+    set_button_enabled(c->plus_btn, !c->unavailable && c->value < c->max);
     c->suppress=false;
     lv_obj_set_style_bg_color(c->card,lv_color_hex(APP_UI_COLOR_CARD_BG_OFF),LV_PART_MAIN);
+}
+static void box_button_cb(lv_event_t *e) {
+    w_input_number_ctx_t *c = lv_event_get_user_data(e); if (!c || c->unavailable || lv_event_get_code(e) != LV_EVENT_CLICKED) return;
+    lv_obj_t *target = lv_event_get_target(e);
+    double delta = target == c->minus_btn ? -c->step : c->step;
+    double v = clamp_value(c, c->value + delta);
+    if (ui_bindings_set_number_value(c->entity_id, v) == ESP_OK) { c->value = v; apply_visual(c); }
 }
 static void event_cb(lv_event_t *e) {
     w_input_number_ctx_t *c=lv_event_get_user_data(e); if(!c)return;
@@ -99,6 +110,8 @@ esp_err_t w_input_number_create(const ui_widget_def_t *d,lv_obj_t *p,ui_widget_i
     c->title=lv_label_create(card);lv_label_set_text(c->title,d->title[0]?d->title:d->id);lv_obj_set_style_text_font(c->title,APP_FONT_TEXT_20,LV_PART_MAIN);lv_obj_align(c->title,LV_ALIGN_BOTTOM_MID,0,-8);if(!c->show_title)lv_obj_add_flag(c->title,LV_OBJ_FLAG_HIDDEN);
     c->value_label=lv_label_create(card);lv_obj_set_style_text_font(c->value_label,APP_FONT_TEXT_20,LV_PART_MAIN);lv_obj_align(c->value_label,LV_ALIGN_TOP_MID,0,2);if(!c->show_state)lv_obj_add_flag(c->value_label,LV_OBJ_FLAG_HIDDEN);
     c->slider=lv_slider_create(card);lv_slider_set_range(c->slider,0,step_count(c));lv_obj_set_size(c->slider,d->w-44,20);lv_obj_align(c->slider,LV_ALIGN_CENTER,0,0);lv_obj_add_event_cb(c->slider,event_cb,LV_EVENT_VALUE_CHANGED,c);lv_obj_add_event_cb(c->slider,event_cb,LV_EVENT_RELEASED,c);lv_obj_add_event_cb(c->slider,event_cb,LV_EVENT_DELETE,c);
+    c->minus_btn=lv_btn_create(card);lv_obj_set_size(c->minus_btn,52,44);lv_obj_align(c->minus_btn,LV_ALIGN_LEFT_MID,4,0);lv_obj_t *minus_label=lv_label_create(c->minus_btn);lv_label_set_text(minus_label,"-");lv_obj_center(minus_label);lv_obj_add_event_cb(c->minus_btn,box_button_cb,LV_EVENT_CLICKED,c);lv_obj_add_flag(c->minus_btn,LV_OBJ_FLAG_HIDDEN);
+    c->plus_btn=lv_btn_create(card);lv_obj_set_size(c->plus_btn,52,44);lv_obj_align(c->plus_btn,LV_ALIGN_RIGHT_MID,-4,0);lv_obj_t *plus_label=lv_label_create(c->plus_btn);lv_label_set_text(plus_label,"+");lv_obj_center(plus_label);lv_obj_add_event_cb(c->plus_btn,box_button_cb,LV_EVENT_CLICKED,c);lv_obj_add_flag(c->plus_btn,LV_OBJ_FLAG_HIDDEN);
     apply_visual(c);o->obj=card;o->ctx=c;return ESP_OK;
 }
 void w_input_number_apply_state(ui_widget_instance_t *instance, const ha_state_t *state)
