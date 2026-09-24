@@ -2,6 +2,9 @@ name: Build BETTA HA Panel - panels3
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - development-next
 
 jobs:
   build:
