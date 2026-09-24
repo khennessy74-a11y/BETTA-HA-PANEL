@@ -48,6 +48,8 @@ esp_err_t ui_bindings_select_option(const char *entity_id, const char *option);
 esp_err_t ui_bindings_set_input_text_value(const char *entity_id, const char *value);
 esp_err_t ui_bindings_set_input_datetime_value(const char *entity_id, const char *value, bool has_date, bool has_time);
 esp_err_t ui_bindings_alarm_control(const char *entity_id, const char *service, const char *code);
+/* Install a Home Assistant update.* entity. State remains authoritative from HA. */
+esp_err_t ui_bindings_install_update(const char *entity_id);
 esp_err_t ui_bindings_set_climate_target_c(const char *entity_id, float celsius);
 esp_err_t ui_bindings_set_light_color_temp_kelvin(const char *entity_id, int kelvin);
 esp_err_t ui_bindings_set_light_rgb_color(const char *entity_id, uint8_t r, uint8_t g, uint8_t b);

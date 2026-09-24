@@ -1041,6 +1041,34 @@ esp_err_t ui_bindings_set_input_datetime_value(
     return err;
 }
 
+esp_err_t ui_bindings_install_update(const char *entity_id)
+{
+    if (entity_id == NULL || entity_id[0] == '\0') {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    char domain[32] = {0};
+    if (!split_entity_id(entity_id, domain, sizeof(domain))) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    if (strcmp(domain, "update") != 0) {
+        return ESP_ERR_NOT_SUPPORTED;
+    }
+
+    char payload[192] = {0};
+    int written = snprintf(payload, sizeof(payload), "{\"entity_id\":\"%s\"}", entity_id);
+    if (written < 0 || (size_t)written >= sizeof(payload)) {
+        return ESP_ERR_INVALID_SIZE;
+    }
+
+    esp_err_t err = ha_client_call_service(domain, "install", payload);
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "update install failed entity=%s err=%s",
+                 entity_id, esp_err_to_name(err));
+    }
+    return err;
+}
+
 esp_err_t ui_bindings_set_climate_target_c(
     const char *entity_id,
     float celsius)
