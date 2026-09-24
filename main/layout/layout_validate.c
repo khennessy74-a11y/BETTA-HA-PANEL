@@ -114,35 +114,35 @@ static bool entity_in_domain(
         entity_id[domain_len] == '.';
 }
 
+typedef struct {
+    const char *type;
+    const char *domain;
+} widget_domain_rule_t;
+
+static const widget_domain_rule_t WIDGET_DOMAIN_RULES[] = {
+    {"sensor", "sensor"}, {"binary_sensor", "binary_sensor"},
+    {"person", "person"}, {"device_tracker", "device_tracker"},
+    {"button", NULL}, {"slider", NULL}, {"input_number", "input_number"},
+    {"select", NULL}, {"input_text", "input_text"}, {"input_datetime", "input_datetime"},
+    {"alarm_control_panel", "alarm_control_panel"}, {"update", "update"},
+    {"graph", "sensor"}, {"empty_tile", NULL}, {"light_tile", "light"},
+    {"fan_tile", "fan"}, {"heating_tile", "climate"}, {"weather_tile", "weather"},
+    {"weather_3day", "weather"}, {"todo_list", "todo"}, {"media_player", "media_player"},
+    {"roborock_tile", "vacuum"}, {"timer", "timer"},
+};
+
+static const widget_domain_rule_t *widget_domain_rule(const char *type)
+{
+    if (type == NULL) return NULL;
+    for (size_t i = 0; i < sizeof(WIDGET_DOMAIN_RULES) / sizeof(WIDGET_DOMAIN_RULES[0]); i++) {
+        if (strcmp(type, WIDGET_DOMAIN_RULES[i].type) == 0) return &WIDGET_DOMAIN_RULES[i];
+    }
+    return NULL;
+}
+
 static bool is_supported_widget_type(const char *type)
 {
-    if (type == NULL) {
-        return false;
-    }
-
-    return
-        (strcmp(type, "sensor") == 0) ||
-        (strcmp(type, "binary_sensor") == 0) ||
-        (strcmp(type, "person") == 0) ||
-        (strcmp(type, "device_tracker") == 0) ||
-        (strcmp(type, "button") == 0) ||
-        (strcmp(type, "slider") == 0) ||
-        (strcmp(type, "input_number") == 0) ||
-        (strcmp(type, "select") == 0) ||
-        (strcmp(type, "input_text") == 0) ||
-        (strcmp(type, "input_datetime") == 0) ||
-        (strcmp(type, "alarm_control_panel") == 0) ||
-        (strcmp(type, "update") == 0) ||
-        (strcmp(type, "graph") == 0) ||
-        (strcmp(type, "empty_tile") == 0) ||
-        (strcmp(type, "light_tile") == 0) ||
-        (strcmp(type, "fan_tile") == 0) ||
-        (strcmp(type, "heating_tile") == 0) ||
-        (strcmp(type, "weather_tile") == 0) ||
-        (strcmp(type, "weather_3day") == 0) ||
-        (strcmp(type, "todo_list") == 0) ||
-        (strcmp(type, "roborock_tile") == 0) ||
-        (strcmp(type, "timer") == 0);
+    return widget_domain_rule(type) != NULL;
 }
 
 static bool is_supported_page_type(const char *type)
@@ -405,80 +405,10 @@ static widget_size_limits_t widget_size_limits_for_type(
     return limits;
 }
 
-static const char *required_domain_for_widget_type(
-    const char *type)
+static const char *required_domain_for_widget_type(const char *type)
 {
-    if (type == NULL) {
-        return NULL;
-    }
-
-    if (strcmp(type, "sensor") == 0) {
-        return "sensor";
-    }
-
-    if (strcmp(type, "binary_sensor") == 0) {
-        return "binary_sensor";
-    }
-    if (strcmp(type, "person") == 0) {
-        return "person";
-    }
-    if (strcmp(type, "device_tracker") == 0) {
-        return "device_tracker";
-    }
-
-    if (strcmp(type, "input_number") == 0) {
-        return "input_number";
-    }
-    if (strcmp(type, "select") == 0) {
-        return NULL;
-    }
-    if (strcmp(type, "input_text") == 0) {
-        return "input_text";
-    }
-    if (strcmp(type, "input_datetime") == 0) {
-        return "input_datetime";
-    }
-    if (strcmp(type, "alarm_control_panel") == 0) {
-        return "alarm_control_panel";
-    }
-    if (strcmp(type, "update") == 0) {
-        return "update";
-    }
-
-    if (strcmp(type, "light_tile") == 0) {
-        return "light";
-    }
-
-    if (strcmp(type, "fan_tile") == 0) {
-        return "fan";
-    }
-
-    if (strcmp(type, "heating_tile") == 0) {
-        return "climate";
-    }
-
-    if (strcmp(type, "weather_tile") == 0 ||
-        strcmp(type, "weather_3day") == 0) {
-        return "weather";
-    }
-
-    if (strcmp(type, "todo_list") == 0) {
-        return "todo";
-    }
-
-    if (strcmp(type, "media_player") == 0) {
-        return "media_player";
-    }
-
-    if (strcmp(type, "roborock_tile") == 0) {
-        return "vacuum";
-    }
-
-    if (strcmp(type, "timer") == 0) {
-        return "timer";
-    }
-
-    return NULL;
+    const widget_domain_rule_t *rule = widget_domain_rule(type);
+    return rule != NULL ? rule->domain : NULL;
 }
 
 static bool widget_entity_domain_valid(
