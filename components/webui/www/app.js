@@ -1678,6 +1678,7 @@ const el = {
   addSelectBtn: document.getElementById("addSelectBtn"),
   addInputTextBtn: document.getElementById("addInputTextBtn"),
   addInputDatetimeBtn: document.getElementById("addInputDatetimeBtn"),
+  addAlarmControlBtn: document.getElementById("addAlarmControlBtn"),
   addGraphBtn: document.getElementById("addGraphBtn"),
   addEmptyTileBtn: document.getElementById("addEmptyTileBtn"),
   addLightTileBtn: document.getElementById("addLightTileBtn"),
@@ -4139,6 +4140,7 @@ function allowedEntityDomainsForWidgetType(
   if (type === "select") return ["select", "input_select"];
   if (type === "input_text") return ["input_text"];
   if (type === "input_datetime") return ["input_datetime"];
+  if (type === "alarm_control_panel") return ["alarm_control_panel"];
   if (type === "button") {
     const normalizedMode = normalizeButtonMode(buttonMode);
     if (buttonModeRequiresMediaPlayer(normalizedMode)) return ["media_player"];
@@ -6959,6 +6961,9 @@ if (el.addAutomationBtn) {
   }
   if (el.addInputDatetimeBtn) {
     el.addInputDatetimeBtn.onclick = () => openLightEntityPicker("input_datetime");
+  }
+  if (el.addAlarmControlBtn) {
+    el.addAlarmControlBtn.onclick = () => openLightEntityPicker("alarm_control_panel");
   }
   el.addGraphBtn.onclick = () => openLightEntityPicker("graph");
   el.addEmptyTileBtn.onclick = () => addWidget("empty_tile");
