@@ -42,6 +42,38 @@ static lv_obj_t *s_nav_home_label = NULL;
 static lv_obj_t *s_nav_extra_buttons[APP_MAX_PAGES - 1] = {0};
 static lv_obj_t *s_nav_extra_labels[APP_MAX_PAGES - 1] = {0};
 static uint16_t s_nav_extra_page_index[APP_MAX_PAGES - 1] = {0};
+static ui_pages_geometry_t s_geometry = {
+    .screen_w = APP_SCREEN_WIDTH,
+    .screen_h = APP_SCREEN_HEIGHT,
+    .content_x = APP_CONTENT_BOX_X,
+    .content_y = APP_CONTENT_BOX_Y,
+    .content_w = APP_CONTENT_BOX_WIDTH,
+    .content_h = APP_CONTENT_BOX_HEIGHT,
+    .nav_h = 60,
+};
+
+const ui_pages_geometry_t *ui_pages_geometry(void)
+{
+    return &s_geometry;
+}
+
+static void ui_pages_refresh_geometry(lv_obj_t *screen)
+{
+    lv_coord_t screen_w = screen != NULL ? lv_obj_get_width(screen) : 0;
+    lv_coord_t screen_h = screen != NULL ? lv_obj_get_height(screen) : 0;
+    if (screen_w <= 0) screen_w = APP_SCREEN_WIDTH;
+    if (screen_h <= 0) screen_h = APP_SCREEN_HEIGHT;
+
+    s_geometry.screen_w = screen_w;
+    s_geometry.screen_h = screen_h;
+    s_geometry.content_x = APP_CONTENT_BOX_X;
+    s_geometry.content_y = APP_CONTENT_BOX_Y;
+    s_geometry.nav_h = 60;
+    s_geometry.content_w = screen_w - s_geometry.content_x;
+    s_geometry.content_h = screen_h - s_geometry.content_y - s_geometry.nav_h;
+    if (s_geometry.content_w < 0) s_geometry.content_w = 0;
+    if (s_geometry.content_h < 0) s_geometry.content_h = 0;
+}
 
 /* ---- Easter egg: 7 taps on the home nav button reveal a swimming Betta. */
 #if LV_USE_LOTTIE && APP_UI_BETTA_LOTTIE_ASSET
@@ -124,7 +156,7 @@ static void ui_pages_apply_tab_style(uint16_t selected_index)
     const lv_coord_t nav_home_gap = 12;
     const lv_coord_t nav_side_gap = 8;
     const lv_coord_t nav_min_side_btn_w = 64;
-    const lv_coord_t nav_home_x = (APP_SCREEN_WIDTH - nav_home_w) / 2;
+    const lv_coord_t nav_home_x = (s_geometry.screen_w - nav_home_w) / 2;
 
     lv_obj_set_size(s_nav_home_button, nav_home_w, nav_btn_h);
     lv_obj_set_pos(s_nav_home_button, nav_home_x, nav_btn_y);
@@ -138,7 +170,7 @@ static void ui_pages_apply_tab_style(uint16_t selected_index)
     lv_coord_t left_start = nav_outer_margin;
     lv_coord_t left_end = nav_home_x - nav_home_gap;
     lv_coord_t right_start = nav_home_x + nav_home_w + nav_home_gap;
-    lv_coord_t right_end = APP_SCREEN_WIDTH - nav_outer_margin;
+    lv_coord_t right_end = s_geometry.screen_w - nav_outer_margin;
 
     lv_coord_t left_region_w = (left_end > left_start) ? (left_end - left_start) : 0;
     lv_coord_t right_region_w = (right_end > right_start) ? (right_end - right_start) : 0;
@@ -337,11 +369,11 @@ static void ui_nav_extra_button_event_cb(lv_event_t *event)
 
 static void ui_pages_create_topbar(lv_obj_t *screen)
 {
-    const lv_coord_t topbar_h = APP_CONTENT_BOX_Y;
+    const lv_coord_t topbar_h = s_geometry.content_y;
 
     s_topbar = lv_obj_create(screen);
     lv_obj_remove_style_all(s_topbar);
-    lv_obj_set_size(s_topbar, APP_SCREEN_WIDTH, topbar_h);
+    lv_obj_set_size(s_topbar, s_geometry.screen_w, topbar_h);
     lv_obj_set_pos(s_topbar, 0, 0);
     lv_obj_clear_flag(s_topbar, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_style_radius(s_topbar, 0, LV_PART_MAIN);
@@ -388,8 +420,8 @@ static void ui_pages_create_nav(lv_obj_t *screen)
 {
     s_nav_bar = lv_obj_create(screen);
     lv_obj_remove_style_all(s_nav_bar);
-    lv_obj_set_size(s_nav_bar, APP_SCREEN_WIDTH, 60);
-    lv_obj_set_pos(s_nav_bar, 0, APP_SCREEN_HEIGHT - 60);
+    lv_obj_set_size(s_nav_bar, s_geometry.screen_w, s_geometry.nav_h);
+    lv_obj_set_pos(s_nav_bar, 0, s_geometry.screen_h - s_geometry.nav_h);
     lv_obj_clear_flag(s_nav_bar, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_style_radius(s_nav_bar, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_color(s_nav_bar, lv_color_hex(APP_UI_COLOR_TOPBAR_BG), LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -468,6 +500,7 @@ void ui_pages_init(void)
 #endif
 
     lv_obj_t *screen = lv_scr_act();
+    ui_pages_refresh_geometry(screen);
     lv_obj_clean(screen);
     lv_obj_clear_flag(screen, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_style_bg_color(screen, lv_color_hex(APP_UI_COLOR_SCREEN_BG), LV_PART_MAIN);
@@ -477,7 +510,7 @@ void ui_pages_init(void)
 
     s_background = lv_obj_create(screen);
     lv_obj_remove_style_all(s_background);
-    lv_obj_set_size(s_background, APP_SCREEN_WIDTH, APP_SCREEN_HEIGHT);
+    lv_obj_set_size(s_background, s_geometry.screen_w, s_geometry.screen_h);
     lv_obj_set_pos(s_background, 0, 0);
     lv_obj_clear_flag(s_background, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_style_radius(s_background, 0, LV_PART_MAIN);
@@ -487,8 +520,8 @@ void ui_pages_init(void)
 
     s_content_box = lv_obj_create(screen);
     lv_obj_remove_style_all(s_content_box);
-    lv_obj_set_size(s_content_box, APP_CONTENT_BOX_WIDTH, APP_CONTENT_BOX_HEIGHT);
-    lv_obj_set_pos(s_content_box, APP_CONTENT_BOX_X, APP_CONTENT_BOX_Y);
+    lv_obj_set_size(s_content_box, s_geometry.content_w, s_geometry.content_h);
+    lv_obj_set_pos(s_content_box, s_geometry.content_x, s_geometry.content_y);
     lv_obj_clear_flag(s_content_box, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_style_radius(s_content_box, 0, LV_PART_MAIN);
     lv_obj_set_style_bg_color(s_content_box, lv_color_hex(APP_UI_COLOR_CONTENT_BG), LV_PART_MAIN);
