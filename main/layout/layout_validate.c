@@ -122,7 +122,7 @@ typedef struct {
 static const widget_domain_rule_t WIDGET_DOMAIN_RULES[] = {
     {"sensor", "sensor"}, {"binary_sensor", "binary_sensor"},
     {"person", "person"}, {"device_tracker", "device_tracker"},
-    {"button", NULL}, {"slider", NULL}, {"input_number", "input_number"},
+    {"button", NULL}, {"slider", NULL}, {"input_number", NULL},
     {"select", NULL}, {"input_text", "input_text"}, {"input_datetime", "input_datetime"},
     {"alarm_control_panel", "alarm_control_panel"}, {"update", "update"},
     {"graph", "sensor"}, {"empty_tile", NULL}, {"light_tile", "light"},
@@ -423,6 +423,11 @@ static bool widget_entity_domain_valid(
         return
             entity_in_domain(entity_id, "sensor") ||
             entity_in_domain(entity_id, "binary_sensor");
+    }
+
+    if (strcmp(type, "input_number") == 0) {
+        return entity_in_domain(entity_id, "input_number") ||
+               entity_in_domain(entity_id, "number");
     }
 
     if (strcmp(type, "select") == 0) {

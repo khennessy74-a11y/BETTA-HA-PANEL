@@ -137,7 +137,7 @@ const ENTITY_PICKER_CONFIGS = {
   },
   input_number: {
     widgetType: "input_number",
-    domain: "input_number",
+    domain: "input_number,number",
     titleFallback: "Choose Input Number",
     blankFallback: "Blank Input Number",
     widgetFallback: "Input Number control",
@@ -4135,7 +4135,7 @@ const WIDGET_ENTITY_DOMAINS = Object.freeze({
   sensor: ["sensor"],
   graph: ["sensor"],
   binary_sensor: ["binary_sensor"],
-  input_number: ["input_number"],
+  input_number: ["input_number", "number"],
   select: ["select", "input_select"],
   input_text: ["input_text"],
   input_datetime: ["input_datetime"],
