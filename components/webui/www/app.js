@@ -3940,7 +3940,21 @@ function syncTimerInspector(widget) {
   const input = document.getElementById("fTimerCustomIcon");
 
   if (mode) mode.value = configuredIcon ? "custom" : "automatic";
-  if (input) input.value = configuredIcon;
+  if (input) {
+    input.innerHTML = el.fButtonCustomIcon
+      ? el.fButtonCustomIcon.innerHTML
+      : "";
+    if (
+      configuredIcon &&
+      !Array.from(input.options).some(option => option.value === configuredIcon)
+    ) {
+      const option = document.createElement("option");
+      option.value = configuredIcon;
+      option.textContent = `${configuredIcon} (existing)`;
+      input.appendChild(option);
+    }
+    input.value = configuredIcon;
+  }
   updateTimerIconControls();
 }
 
