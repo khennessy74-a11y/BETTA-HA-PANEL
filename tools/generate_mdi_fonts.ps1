@@ -30,5 +30,9 @@ foreach ($size in @(42,56,72)) {
   Write-Host "Generating $output"
   & npx --yes lv_font_conv --font $MdiFont --size $size --bpp 4 --no-compress --range $range --format lvgl --output $output
   if ($LASTEXITCODE -ne 0) { throw "LVGL font conversion failed for $size px" }
+
+  $generated = Get-Content -Raw $output
+  $generated = $generated -replace '#ifdef LV_LVGL_H_INCLUDE_SIMPLE\r?\n#include "lvgl.h"\r?\n#else\r?\n#include "lvgl/lvgl.h"\r?\n#endif', '#include "lvgl.h"'
+  Set-Content -Path $output -Value $generated -NoNewline
 }
 Write-Host "MDI fonts regenerated with the Home Assistant icon batch."
