@@ -12,8 +12,7 @@
 #   init in main/drivers/display_init_panels3.c (no upstream BSP package).
 # - GT911 touch via I2C (same as P4 panels) — same component.
 dependencies:
-  idf:
-   version: ">=5.5"
+  idf: "5.5"
   lvgl/lvgl:
     version: "^9"
   espressif/esp_lvgl_port:

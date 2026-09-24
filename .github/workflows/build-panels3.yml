@@ -1,12 +1,7 @@
-# CI retrigger: input_number fix
 name: Build BETTA HA Panel - panels3
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - development
-      - development-next
 
 jobs:
   build:
@@ -30,12 +25,6 @@ jobs:
             -DSDKCONFIG=sdkconfig.panels3 \
             build
 
-      - name: Package OTA firmware
-        shell: bash
-        run: |
-          mkdir -p release/ota
-          cp build-panels3/betta-ha-panel-s3.bin release/ota/betta86-ha-panel-v0.8.2-panels3.ota.bin
-
       - name: Upload firmware
         uses: actions/upload-artifact@v4
         with:
@@ -43,4 +32,3 @@ jobs:
           path: |
             build-panels3/*.bin
             build-panels3/**/*.bin
-            release/ota/*.ota.bin
