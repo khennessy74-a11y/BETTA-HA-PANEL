@@ -15,7 +15,7 @@
 #include "ui/ui_i18n.h"
 #include "ui/ui_memory.h"
 #include "ui/ui_widget_factory.h"
-#define INPUT_DATETIME_VALUE_LEN 32
+#define INPUT_DATETIME_VALUE_LEN 64
 typedef struct {lv_obj_t *card,*title,*value,*edit_btn,*overlay,*textarea,*keyboard;char entity_id[APP_MAX_ENTITY_ID_LEN],current[INPUT_DATETIME_VALUE_LEN];bool unavailable,has_date,has_time,show_title,show_state;} w_input_datetime_ctx_t;
 static void close_editor(w_input_datetime_ctx_t *c){if(c==NULL||c->overlay==NULL)return;lv_obj_delete(c->overlay);c->overlay=NULL;c->textarea=NULL;c->keyboard=NULL;}
 static void keyboard_cb(lv_event_t *e){w_input_datetime_ctx_t *c=lv_event_get_user_data(e);if(c==NULL)return;lv_event_code_t code=lv_event_get_code(e);if(code==LV_EVENT_READY){const char *text=c->textarea?lv_textarea_get_text(c->textarea):"";if(ui_bindings_set_input_datetime_value(c->entity_id,text,c->has_date,c->has_time)==ESP_OK){snprintf(c->current,sizeof(c->current),"%s",text);lv_label_set_text(c->value,c->current);close_editor(c);}}else if(code==LV_EVENT_CANCEL){close_editor(c);}}
