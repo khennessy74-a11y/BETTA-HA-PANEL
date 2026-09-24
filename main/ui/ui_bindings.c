@@ -938,6 +938,61 @@ esp_err_t ui_bindings_set_input_text_value(const char *entity_id, const char *va
     return err;
 }
 
+esp_err_t ui_bindings_alarm_control(
+    const char *entity_id,
+    const char *service,
+    const char *code)
+{
+    if (entity_id == NULL || entity_id[0] == '\0' ||
+        service == NULL || service[0] == '\0') {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    char domain[32] = {0};
+    if (!split_entity_id(entity_id, domain, sizeof(domain)) ||
+        strcmp(domain, "alarm_control_panel") != 0) {
+        return ESP_ERR_NOT_SUPPORTED;
+    }
+
+    const bool valid_service =
+        strcmp(service, "alarm_disarm") == 0 ||
+        strcmp(service, "alarm_arm_home") == 0 ||
+        strcmp(service, "alarm_arm_away") == 0 ||
+        strcmp(service, "alarm_arm_night") == 0 ||
+        strcmp(service, "alarm_arm_vacation") == 0 ||
+        strcmp(service, "alarm_arm_custom_bypass") == 0;
+
+    if (!valid_service) {
+        return ESP_ERR_NOT_SUPPORTED;
+    }
+
+    cJSON *obj = cJSON_CreateObject();
+    if (obj == NULL) {
+        return ESP_ERR_NO_MEM;
+    }
+
+    cJSON_AddStringToObject(obj, "entity_id", entity_id);
+    if (code != NULL && code[0] != '\0') {
+        cJSON_AddStringToObject(obj, "code", code);
+    }
+
+    char *payload = cJSON_PrintUnformatted(obj);
+    cJSON_Delete(obj);
+    if (payload == NULL) {
+        return ESP_ERR_NO_MEM;
+    }
+
+    esp_err_t err = ha_client_call_service(domain, service, payload);
+    cJSON_free(payload);
+
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "alarm control failed entity=%s service=%s err=%s",
+            entity_id, service, esp_err_to_name(err));
+    }
+
+    return err;
+}
+
 esp_err_t ui_bindings_set_input_datetime_value(
     const char *entity_id,
     const char *value,
