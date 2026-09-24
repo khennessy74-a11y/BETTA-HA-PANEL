@@ -4131,44 +4131,48 @@ function inspectorButtonMode() {
   return normalizeButtonMode(selectedWidget()?.button_mode);
 }
 
+const WIDGET_ENTITY_DOMAINS = Object.freeze({
+  sensor: ["sensor"],
+  graph: ["sensor"],
+  binary_sensor: ["binary_sensor"],
+  input_number: ["input_number"],
+  select: ["select", "input_select"],
+  input_text: ["input_text"],
+  input_datetime: ["input_datetime"],
+  alarm_control_panel: ["alarm_control_panel"],
+  update: ["update"],
+  person: ["person"],
+  device_tracker: ["device_tracker"],
+  light_tile: ["light"],
+  fan_tile: ["fan"],
+  heating_tile: ["climate"],
+  timer: ["timer"],
+  weather_tile: ["weather"],
+  weather_3day: ["weather"],
+  todo_list: ["todo"],
+  media_player: ["media_player"],
+  roborock_tile: ["vacuum"],
+});
+
 function allowedEntityDomainsForWidgetType(
   type,
   sliderDomain = DEFAULT_SLIDER_ENTITY_DOMAIN,
   buttonMode = DEFAULT_BUTTON_MODE,
 ) {
   if (type === "empty_tile") return [];
-  if (type === "sensor" || type === "graph") return ["sensor"];
-  if (type === "binary_sensor") return ["binary_sensor"];
-  if (type === "input_number") return ["input_number"];
-  if (type === "select") return ["select", "input_select"];
-  if (type === "input_text") return ["input_text"];
-  if (type === "input_datetime") return ["input_datetime"];
-  if (type === "alarm_control_panel") return ["alarm_control_panel"];
-  if (type === "update") return ["update"];
-  if (type === "person") return ["person"];
-  if (type === "device_tracker") return ["device_tracker"];
   if (type === "button") {
     const normalizedMode = normalizeButtonMode(buttonMode);
     if (buttonModeRequiresMediaPlayer(normalizedMode)) return ["media_player"];
     if (buttonModeRequiresRunnable(normalizedMode)) return ["script", "scene", "automation"];
     return ["switch", "button", "input_boolean", "automation", "media_player"];
   }
-  if (type === "light_tile") return ["light"];
-  if (type === "fan_tile") return ["fan"];
-  if (type === "heating_tile") return ["climate"];
-  if (type === "timer") return ["timer"];
-  if (type === "weather_tile" || type === "weather_3day") return ["weather"];
-  if (type === "todo_list") return ["todo"];
-  if (type === "media_player") return ["media_player"];
-  if (type === "roborock_tile") return ["vacuum"];
   if (type === "slider") {
     const normalized = normalizeSliderEntityDomain(sliderDomain);
-    if (normalized === "auto") {
-      return ["light", "media_player", "cover", "fan"];
-    }
-    return [normalized];
+    return normalized === "auto"
+      ? ["light", "media_player", "cover", "fan"]
+      : [normalized];
   }
-  return [];
+  return WIDGET_ENTITY_DOMAINS[type] || [];
 }
 
 function expectedDomainForWidgetType(
