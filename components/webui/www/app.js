@@ -1676,6 +1676,7 @@ const el = {
   addFanBtn: document.getElementById("addFanBtn"),
   addInputNumberBtn: document.getElementById("addInputNumberBtn"),
   addSelectBtn: document.getElementById("addSelectBtn"),
+  addInputTextBtn: document.getElementById("addInputTextBtn"),
   addGraphBtn: document.getElementById("addGraphBtn"),
   addEmptyTileBtn: document.getElementById("addEmptyTileBtn"),
   addLightTileBtn: document.getElementById("addLightTileBtn"),
@@ -4135,6 +4136,7 @@ function allowedEntityDomainsForWidgetType(
   if (type === "binary_sensor") return ["binary_sensor"];
   if (type === "input_number") return ["input_number"];
   if (type === "select") return ["select", "input_select"];
+  if (type === "input_text") return ["input_text"];
   if (type === "button") {
     const normalizedMode = normalizeButtonMode(buttonMode);
     if (buttonModeRequiresMediaPlayer(normalizedMode)) return ["media_player"];
@@ -6949,6 +6951,9 @@ if (el.addAutomationBtn) {
   }
   if (el.addSelectBtn) {
     el.addSelectBtn.onclick = () => openLightEntityPicker("select");
+  }
+  if (el.addInputTextBtn) {
+    el.addInputTextBtn.onclick = () => openLightEntityPicker("input_text");
   }
   el.addGraphBtn.onclick = () => openLightEntityPicker("graph");
   el.addEmptyTileBtn.onclick = () => addWidget("empty_tile");

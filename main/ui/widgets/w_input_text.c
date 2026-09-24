@@ -1,0 +1,66 @@
+/* SPDX-License-Identifier: LicenseRef-FNCL-1.1 */
+#include <stdbool.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include "cJSON.h"
+#include "esp_err.h"
+#include "lvgl.h"
+#include "app_config.h"
+#include "ha/ha_model.h"
+#include "layout/layout_schema.h"
+#include "ui/fonts/app_text_fonts.h"
+#include "ui/theme/theme_default.h"
+#include "ui/ui_bindings.h"
+#include "ui/ui_i18n.h"
+#include "ui/ui_memory.h"
+#include "ui/ui_widget_factory.h"
+
+#define INPUT_TEXT_VALUE_LEN 256
+
+typedef struct {
+    lv_obj_t *card, *title, *value, *edit_btn;
+    lv_obj_t *overlay, *textarea, *keyboard;
+    char entity_id[APP_MAX_ENTITY_ID_LEN], current[INPUT_TEXT_VALUE_LEN];
+    int max_len;
+    bool unavailable, show_title, show_state;
+} w_input_text_ctx_t;
+
+static void close_editor(w_input_text_ctx_t *c) {
+    if (!c || !c->overlay) return;
+    lv_obj_delete(c->overlay); c->overlay=NULL; c->textarea=NULL; c->keyboard=NULL;
+}
+static void keyboard_cb(lv_event_t *e) {
+    w_input_text_ctx_t *c=lv_event_get_user_data(e); if(!c)return;
+    lv_event_code_t code=lv_event_get_code(e);
+    if(code==LV_EVENT_READY){
+        const char *text=c->textarea?lv_textarea_get_text(c->textarea):"";
+        if(ui_bindings_set_input_text_value(c->entity_id,text)==ESP_OK){
+            snprintf(c->current,sizeof(c->current),"%s",text); lv_label_set_text(c->value,c->current); close_editor(c);
+        }
+    } else if(code==LV_EVENT_CANCEL) close_editor(c);
+}
+static void open_editor_cb(lv_event_t *e) {
+    if(lv_event_get_code(e)!=LV_EVENT_CLICKED)return;
+    w_input_text_ctx_t *c=lv_event_get_user_data(e); if(!c||c->unavailable||c->overlay)return;
+    c->overlay=lv_obj_create(lv_screen_active()); lv_obj_set_size(c->overlay,LV_PCT(100),LV_PCT(100)); lv_obj_set_pos(c->overlay,0,0); lv_obj_set_style_pad_all(c->overlay,10,LV_PART_MAIN); lv_obj_set_style_radius(c->overlay,0,LV_PART_MAIN);
+    c->textarea=lv_textarea_create(c->overlay); lv_obj_set_size(c->textarea,LV_PCT(96),70); lv_obj_align(c->textarea,LV_ALIGN_TOP_MID,0,4); lv_textarea_set_text(c->textarea,c->current); lv_textarea_set_one_line(c->textarea,true); lv_textarea_set_max_length(c->textarea,c->max_len>0?c->max_len:255);
+    c->keyboard=lv_keyboard_create(c->overlay); lv_obj_set_size(c->keyboard,LV_PCT(100),LV_PCT(68)); lv_obj_align(c->keyboard,LV_ALIGN_BOTTOM_MID,0,0); lv_keyboard_set_textarea(c->keyboard,c->textarea); lv_obj_add_event_cb(c->keyboard,keyboard_cb,LV_EVENT_READY,c); lv_obj_add_event_cb(c->keyboard,keyboard_cb,LV_EVENT_CANCEL,c);
+}
+static void apply_visual(w_input_text_ctx_t *c) {
+    if(!c)return; lv_label_set_text(c->value,c->unavailable?ui_i18n_get("common.unavailable","unavailable"):c->current);
+    if(c->unavailable)lv_obj_add_state(c->edit_btn,LV_STATE_DISABLED);else lv_obj_remove_state(c->edit_btn,LV_STATE_DISABLED);
+}
+static void delete_cb(lv_event_t *e){if(lv_event_get_code(e)==LV_EVENT_DELETE){w_input_text_ctx_t *c=lv_event_get_user_data(e);if(c){close_editor(c);free(c);}}}
+esp_err_t w_input_text_create(const ui_widget_def_t *d,lv_obj_t *p,ui_widget_instance_t *o){
+    if(!d||!p||!o)return ESP_ERR_INVALID_ARG; lv_obj_t *card=lv_obj_create(p);lv_obj_set_pos(card,d->x,d->y);lv_obj_set_size(card,d->w,d->h);lv_obj_clear_flag(card,LV_OBJ_FLAG_SCROLLABLE);lv_obj_set_style_radius(card,APP_UI_CARD_RADIUS,LV_PART_MAIN);lv_obj_set_style_pad_all(card,12,LV_PART_MAIN);
+    w_input_text_ctx_t *c=ui_calloc_prefer_psram(1,sizeof(*c));if(!c){lv_obj_delete(card);return ESP_ERR_NO_MEM;}c->card=card;c->max_len=255;c->show_title=d->show_title;c->show_state=d->show_state;snprintf(c->entity_id,sizeof(c->entity_id),"%s",d->entity_id);
+    c->title=lv_label_create(card);lv_label_set_text(c->title,d->title[0]?d->title:d->id);lv_obj_set_style_text_font(c->title,APP_FONT_TEXT_20,LV_PART_MAIN);lv_obj_align(c->title,LV_ALIGN_TOP_MID,0,2);if(!c->show_title)lv_obj_add_flag(c->title,LV_OBJ_FLAG_HIDDEN);
+    c->value=lv_label_create(card);lv_obj_set_width(c->value,d->w>48?d->w-48:d->w-12);lv_label_set_long_mode(c->value,LV_LABEL_LONG_DOT);lv_obj_set_style_text_align(c->value,LV_TEXT_ALIGN_CENTER,LV_PART_MAIN);lv_obj_set_style_text_font(c->value,APP_FONT_TEXT_20,LV_PART_MAIN);lv_obj_align(c->value,LV_ALIGN_CENTER,0,0);if(!c->show_state)lv_obj_add_flag(c->value,LV_OBJ_FLAG_HIDDEN);
+    c->edit_btn=lv_btn_create(card);lv_obj_set_size(c->edit_btn,d->w>130?92:72,38);lv_obj_align(c->edit_btn,LV_ALIGN_BOTTOM_MID,0,-2);lv_obj_t *label=lv_label_create(c->edit_btn);lv_label_set_text(label,"Edit");lv_obj_center(label);lv_obj_add_event_cb(c->edit_btn,open_editor_cb,LV_EVENT_CLICKED,c);lv_obj_add_event_cb(card,delete_cb,LV_EVENT_DELETE,c);apply_visual(c);o->obj=card;o->ctx=c;return ESP_OK;
+}
+void w_input_text_apply_state(ui_widget_instance_t *i,const ha_state_t *s){
+    if(!i||!s||!i->ctx)return;w_input_text_ctx_t *c=i->ctx;c->unavailable=!strcmp(s->state,"unavailable")||!strcmp(s->state,"unknown");if(!c->unavailable)snprintf(c->current,sizeof(c->current),"%s",s->state);
+    cJSON *a=cJSON_Parse(s->attributes_json);if(a){cJSON *mx=cJSON_GetObjectItemCaseSensitive(a,"max");if(cJSON_IsNumber(mx)&&mx->valueint>0)c->max_len=mx->valueint>255?255:mx->valueint;cJSON_Delete(a);}apply_visual(c);
+}
+void w_input_text_mark_unavailable(ui_widget_instance_t *i){if(i&&i->ctx){w_input_text_ctx_t *c=i->ctx;c->unavailable=true;apply_visual(c);}}

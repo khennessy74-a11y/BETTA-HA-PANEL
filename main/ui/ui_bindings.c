@@ -921,6 +921,23 @@ esp_err_t ui_bindings_select_option(const char *entity_id, const char *option)
     return err;
 }
 
+esp_err_t ui_bindings_set_input_text_value(const char *entity_id, const char *value)
+{
+    if (entity_id == NULL || entity_id[0] == '\0' || value == NULL) return ESP_ERR_INVALID_ARG;
+    char domain[32] = {0};
+    if (!split_entity_id(entity_id, domain, sizeof(domain)) || strcmp(domain, "input_text") != 0) return ESP_ERR_NOT_SUPPORTED;
+    cJSON *obj = cJSON_CreateObject();
+    if (obj == NULL) return ESP_ERR_NO_MEM;
+    cJSON_AddStringToObject(obj, "entity_id", entity_id);
+    cJSON_AddStringToObject(obj, "value", value);
+    char *payload = cJSON_PrintUnformatted(obj); cJSON_Delete(obj);
+    if (payload == NULL) return ESP_ERR_NO_MEM;
+    esp_err_t err = ha_client_call_service(domain, "set_value", payload); cJSON_free(payload);
+    if (err == ESP_OK) ui_bindings_apply_optimistic_state_text(entity_id, value);
+    else ESP_LOGW(TAG, "input_text set value failed entity=%s err=%s", entity_id, esp_err_to_name(err));
+    return err;
+}
+
 esp_err_t ui_bindings_set_climate_target_c(
     const char *entity_id,
     float celsius)
