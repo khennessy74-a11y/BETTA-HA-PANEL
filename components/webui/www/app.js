@@ -1677,6 +1677,7 @@ const el = {
   addInputNumberBtn: document.getElementById("addInputNumberBtn"),
   addSelectBtn: document.getElementById("addSelectBtn"),
   addInputTextBtn: document.getElementById("addInputTextBtn"),
+  addInputDatetimeBtn: document.getElementById("addInputDatetimeBtn"),
   addGraphBtn: document.getElementById("addGraphBtn"),
   addEmptyTileBtn: document.getElementById("addEmptyTileBtn"),
   addLightTileBtn: document.getElementById("addLightTileBtn"),
@@ -4137,6 +4138,7 @@ function allowedEntityDomainsForWidgetType(
   if (type === "input_number") return ["input_number"];
   if (type === "select") return ["select", "input_select"];
   if (type === "input_text") return ["input_text"];
+  if (type === "input_datetime") return ["input_datetime"];
   if (type === "button") {
     const normalizedMode = normalizeButtonMode(buttonMode);
     if (buttonModeRequiresMediaPlayer(normalizedMode)) return ["media_player"];
@@ -6954,6 +6956,9 @@ if (el.addAutomationBtn) {
   }
   if (el.addInputTextBtn) {
     el.addInputTextBtn.onclick = () => openLightEntityPicker("input_text");
+  }
+  if (el.addInputDatetimeBtn) {
+    el.addInputDatetimeBtn.onclick = () => openLightEntityPicker("input_datetime");
   }
   el.addGraphBtn.onclick = () => openLightEntityPicker("graph");
   el.addEmptyTileBtn.onclick = () => addWidget("empty_tile");
