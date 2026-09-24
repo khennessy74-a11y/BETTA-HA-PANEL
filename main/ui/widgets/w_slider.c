@@ -34,6 +34,7 @@ typedef struct {
     lv_obj_t *state_label;
     lv_obj_t *value_label;
     lv_obj_t *slider;
+    lv_obj_t *cover_tilt_slider;
     lv_obj_t *cover_open_btn;
     lv_obj_t *cover_stop_btn;
     lv_obj_t *cover_close_btn;
@@ -53,6 +54,7 @@ typedef struct {
     int last_sent_value;
     char cover_state[16];
     int cover_tilt_position;
+    int cover_tilt_last_sent_value;
     bool cover_has_tilt_position;
 } w_slider_ctx_t;
 
@@ -729,6 +731,32 @@ static void cover_action_event(lv_event_t *event)
     }
 }
 
+static void cover_tilt_event_cb(lv_event_t *event)
+{
+    w_slider_ctx_t *ctx = (w_slider_ctx_t *)lv_event_get_user_data(event);
+    if (ctx == NULL || ctx->unavailable || !ctx->is_cover || ctx->suppress_event) {
+        return;
+    }
+
+    lv_obj_t *slider = lv_event_get_target(event);
+    if (slider == NULL) {
+        return;
+    }
+
+    lv_event_code_t code = lv_event_get_code(event);
+    if (code == LV_EVENT_RELEASED) {
+        int next_value = clamp_percent(lv_slider_get_value(slider));
+        if (next_value != ctx->cover_tilt_last_sent_value) {
+            if (ui_bindings_set_cover_tilt_position(ctx->entity_id, next_value) == ESP_OK) {
+                ctx->cover_tilt_position = next_value;
+                ctx->cover_tilt_last_sent_value = next_value;
+            } else {
+                lv_slider_set_value(slider, ctx->cover_tilt_position, LV_ANIM_OFF);
+            }
+        }
+    }
+}
+
 static void w_slider_event_cb(lv_event_t *event)
 {
     lv_event_code_t code = lv_event_get_code(event);
@@ -767,7 +795,7 @@ static void w_slider_event_cb(lv_event_t *event)
         bool next_is_on = next_value > 0;
         ctx->dragging = false;
         if (next_value != ctx->last_sent_value) {
-            esp_err_t err = (ctx->is_cover && (ctx->cover_supported_features & 128U))
+            esp_err_t err = (ctx->is_cover && !(ctx->cover_supported_features & 4U) && (ctx->cover_supported_features & 128U))
                 ? ui_bindings_set_cover_tilt_position(ctx->entity_id, next_value)
                 : ui_bindings_set_slider_value(ctx->entity_id, next_value);
             if (err != ESP_OK) {
@@ -851,6 +879,13 @@ esp_err_t w_slider_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widge
     ctx->slider = slider;
     ctx->is_cover = strncmp(def->entity_id, "cover.", 6) == 0;
     if (ctx->is_cover) {
+        ctx->cover_tilt_slider = lv_slider_create(card);
+        lv_obj_set_size(ctx->cover_tilt_slider, def->w - 32, 18);
+        lv_slider_set_range(ctx->cover_tilt_slider, 0, 100);
+        lv_slider_set_value(ctx->cover_tilt_slider, 0, LV_ANIM_OFF);
+        lv_obj_align(ctx->cover_tilt_slider, LV_ALIGN_BOTTOM_MID, 0, -82);
+        lv_obj_add_flag(ctx->cover_tilt_slider, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_event_cb(ctx->cover_tilt_slider, cover_tilt_event_cb, LV_EVENT_RELEASED, ctx);
         ctx->cover_open_btn = lv_btn_create(card);
         ctx->cover_stop_btn = lv_btn_create(card);
         ctx->cover_close_btn = lv_btn_create(card);
@@ -902,6 +937,7 @@ esp_err_t w_slider_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widge
     ctx->dragging = false;
     ctx->suppress_event = false;
     ctx->last_sent_value = -1;
+    ctx->cover_tilt_last_sent_value = -1;
 
     lv_color_t parsed_color = lv_color_hex(0);
     if (slider_parse_hex_color(def->slider_accent_color, &parsed_color)) {
@@ -968,6 +1004,18 @@ void w_slider_apply_state(ui_widget_instance_t *instance, const ha_state_t *stat
         if (ctx->slider != NULL) {
             if (ctx->cover_supported_features & 4U) lv_obj_clear_flag(ctx->slider, LV_OBJ_FLAG_HIDDEN);
             else lv_obj_add_flag(ctx->slider, LV_OBJ_FLAG_HIDDEN);
+        }
+        if (ctx->cover_tilt_slider != NULL) {
+            bool show_tilt = (ctx->cover_supported_features & 128U) && ctx->cover_has_tilt_position;
+            if (show_tilt) {
+                ctx->suppress_event = true;
+                lv_slider_set_value(ctx->cover_tilt_slider, ctx->cover_tilt_position, LV_ANIM_OFF);
+                ctx->suppress_event = false;
+                ctx->cover_tilt_last_sent_value = ctx->cover_tilt_position;
+                lv_obj_clear_flag(ctx->cover_tilt_slider, LV_OBJ_FLAG_HIDDEN);
+            } else {
+                lv_obj_add_flag(ctx->cover_tilt_slider, LV_OBJ_FLAG_HIDDEN);
+            }
         }
     }
 
