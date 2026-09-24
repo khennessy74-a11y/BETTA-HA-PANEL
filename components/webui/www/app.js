@@ -295,6 +295,13 @@ const ENTITY_PICKER_CONFIGS = {
     widgetFallback: "Roborock tile",
     itemsFallback: "vacuum robots",
   },
+  image: {
+    domain: "image",
+    titleFallback: "Choose Image",
+    blankFallback: "Blank Image Tile",
+    widgetFallback: "Image tile",
+    itemsFallback: "images",
+  },
   calendar: {
     domain: "calendar",
     titleFallback: "Choose Calendar",
@@ -1688,6 +1695,7 @@ const el = {
   addAlarmControlBtn: document.getElementById("addAlarmControlBtn"),
   addUpdateBtn: document.getElementById("addUpdateBtn"),
   addCalendarBtn: document.getElementById("addCalendarBtn"),
+  addImageBtn: document.getElementById("addImageBtn"),
   addPersonBtn: document.getElementById("addPersonBtn"),
   addDeviceTrackerBtn: document.getElementById("addDeviceTrackerBtn"),
   addGraphBtn: document.getElementById("addGraphBtn"),
@@ -4150,6 +4158,7 @@ const WIDGET_ENTITY_DOMAINS = Object.freeze({
   alarm_control_panel: ["alarm_control_panel"],
   update: ["update"],
   calendar: ["calendar"],
+  image: ["image"],
   person: ["person"],
   device_tracker: ["device_tracker"],
   light_tile: ["light"],
@@ -6989,6 +6998,9 @@ if (el.addAutomationBtn) {
   }
   if (el.addCalendarBtn) {
     el.addCalendarBtn.onclick = () => openLightEntityPicker("calendar");
+  }
+  if (el.addImageBtn) {
+    el.addImageBtn.onclick = () => openLightEntityPicker("image");
   }
   if (el.addPersonBtn) {
     el.addPersonBtn.onclick = () => openLightEntityPicker("person");

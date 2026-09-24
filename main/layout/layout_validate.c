@@ -124,7 +124,7 @@ static const widget_domain_rule_t WIDGET_DOMAIN_RULES[] = {
     {"person", "person"}, {"device_tracker", "device_tracker"},
     {"button", NULL}, {"slider", NULL}, {"input_number", NULL},
     {"select", NULL}, {"input_text", "input_text"}, {"input_datetime", "input_datetime"},
-    {"alarm_control_panel", "alarm_control_panel"}, {"update", "update"}, {"calendar", "calendar"},
+    {"alarm_control_panel", "alarm_control_panel"}, {"update", "update"}, {"calendar", "calendar"}, {"image", "image"},
     {"graph", "sensor"}, {"empty_tile", NULL}, {"light_tile", "light"},
     {"fan_tile", "fan"}, {"heating_tile", "climate"}, {"weather_tile", "weather"},
     {"weather_3day", "weather"}, {"todo_list", "todo"}, {"media_player", "media_player"},
@@ -209,7 +209,7 @@ static widget_size_limits_t widget_size_limits_for_type(
 
 #endif
 
-    } else if (strcmp(type, "slider") == 0 || strcmp(type, "input_number") == 0 || strcmp(type, "select") == 0 || strcmp(type, "input_text") == 0 || strcmp(type, "input_datetime") == 0 || strcmp(type, "alarm_control_panel") == 0 || strcmp(type, "update") == 0 || strcmp(type, "calendar") == 0) {
+    } else if (strcmp(type, "slider") == 0 || strcmp(type, "input_number") == 0 || strcmp(type, "select") == 0 || strcmp(type, "input_text") == 0 || strcmp(type, "input_datetime") == 0 || strcmp(type, "alarm_control_panel") == 0 || strcmp(type, "update") == 0 || strcmp(type, "calendar") == 0 || strcmp(type, "image") == 0) {
 
         limits.min_w = 100;
 

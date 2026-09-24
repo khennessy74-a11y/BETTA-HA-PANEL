@@ -72,6 +72,7 @@ idf_component_register(
         "ui/widgets/w_alarm_control.c"
         "ui/widgets/w_update.c"
         "ui/widgets/w_calendar.c"
+        "ui/widgets/w_image.c"
         "ui/widgets/w_graph.c"
         "ui/widgets/w_empty_tile.c"
         "ui/widgets/w_light_tile.c"
