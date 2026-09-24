@@ -26,6 +26,9 @@ void w_input_datetime_mark_unavailable(ui_widget_instance_t *instance);
 esp_err_t w_alarm_control_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widget_instance_t *out_instance);
 void w_alarm_control_apply_state(ui_widget_instance_t *instance, const ha_state_t *state);
 void w_alarm_control_mark_unavailable(ui_widget_instance_t *instance);
+esp_err_t w_update_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widget_instance_t *out_instance);
+void w_update_apply_state(ui_widget_instance_t *instance, const ha_state_t *state);
+void w_update_mark_unavailable(ui_widget_instance_t *instance);
 
 esp_err_t w_input_number_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widget_instance_t *out_instance);
 void w_input_number_apply_state(ui_widget_instance_t *instance, const ha_state_t *state);
@@ -147,6 +150,9 @@ out_instance->timer_show_finish = def->timer_show_finish;
     if (strcmp(def->type, "alarm_control_panel") == 0) {
         return w_alarm_control_create(def, parent, out_instance);
     }
+    if (strcmp(def->type, "update") == 0) {
+        return w_update_create(def, parent, out_instance);
+    }
     if (strcmp(def->type, "graph") == 0) {
         return w_graph_create(def, parent, out_instance);
     }
@@ -201,6 +207,8 @@ void ui_widget_factory_apply_state(ui_widget_instance_t *instance, const ha_stat
         w_input_datetime_apply_state(instance, state);
     } else if (strcmp(instance->type, "alarm_control_panel") == 0) {
         w_alarm_control_apply_state(instance, state);
+    } else if (strcmp(instance->type, "update") == 0) {
+        w_update_apply_state(instance, state);
     } else if (strcmp(instance->type, "graph") == 0) {
         w_graph_apply_state(instance, state);
     } else if (strcmp(instance->type, "empty_tile") == 0) {
@@ -246,6 +254,8 @@ void ui_widget_factory_mark_unavailable(ui_widget_instance_t *instance)
         w_input_datetime_mark_unavailable(instance);
     } else if (strcmp(instance->type, "alarm_control_panel") == 0) {
         w_alarm_control_mark_unavailable(instance);
+    } else if (strcmp(instance->type, "update") == 0) {
+        w_update_mark_unavailable(instance);
     } else if (strcmp(instance->type, "graph") == 0) {
         w_graph_mark_unavailable(instance);
     } else if (strcmp(instance->type, "empty_tile") == 0) {

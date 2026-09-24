@@ -70,6 +70,7 @@ idf_component_register(
         "ui/widgets/w_input_text.c"
         "ui/widgets/w_input_datetime.c"
         "ui/widgets/w_alarm_control.c"
+        "ui/widgets/w_update.c"
         "ui/widgets/w_graph.c"
         "ui/widgets/w_empty_tile.c"
         "ui/widgets/w_light_tile.c"
