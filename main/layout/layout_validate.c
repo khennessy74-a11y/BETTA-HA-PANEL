@@ -1623,8 +1623,8 @@ static bool validate_widget(
                 rh <= 0 ||
                 rx < 0 ||
                 ry < 0 ||
-                (rx + rw) > APP_CONTENT_BOX_WIDTH ||
-                (ry + rh) > APP_CONTENT_BOX_HEIGHT) {
+                (rx + rw) > content_w ||
+                (ry + rh) > content_h) {
 
                 snprintf(
                     msg,
@@ -1672,6 +1672,8 @@ bool layout_validate_json(
     const char *json,
     layout_validation_result_t *result)
 {
+    const int content_w = APP_CONTENT_BOX_WIDTH;
+    const int content_h = APP_CONTENT_BOX_HEIGHT;
     layout_validation_clear(result);
 
     if (json == NULL) {

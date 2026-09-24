@@ -123,11 +123,14 @@ typedef struct {
 
 static ui_widget_size_limits_t ui_runtime_widget_size_limits(const char *type)
 {
+    const ui_pages_geometry_t *geometry = ui_pages_geometry();
+    const int content_w = geometry != NULL ? geometry->content_w : APP_CONTENT_BOX_WIDTH;
+    const int content_h = geometry != NULL ? geometry->content_h : APP_CONTENT_BOX_HEIGHT;
     ui_widget_size_limits_t limits = {
         .min_w = 60,
         .min_h = 60,
-        .max_w = APP_CONTENT_BOX_WIDTH,
-        .max_h = APP_CONTENT_BOX_HEIGHT,
+        .max_w = content_w,
+        .max_h = content_h,
     };
 
     if (type == NULL) {
@@ -245,8 +248,8 @@ static ui_widget_size_limits_t ui_runtime_widget_size_limits(const char *type)
         limits.min_w = 260;
         limits.min_h = 220;
 #endif
-        limits.max_w = APP_CONTENT_BOX_WIDTH;
-        limits.max_h = APP_CONTENT_BOX_HEIGHT;
+        limits.max_w = content_w;
+        limits.max_h = content_h;
 
     } else if (strcmp(type, "roborock_tile") == 0) {
 #if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
@@ -256,8 +259,8 @@ static ui_widget_size_limits_t ui_runtime_widget_size_limits(const char *type)
         limits.min_w = 240;
         limits.min_h = 220;
 #endif
-        limits.max_w = APP_CONTENT_BOX_WIDTH;
-        limits.max_h = APP_CONTENT_BOX_HEIGHT;
+        limits.max_w = content_w;
+        limits.max_h = content_h;
 
     } else if (strcmp(type, "timer") == 0) {
 #if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
@@ -268,17 +271,17 @@ static ui_widget_size_limits_t ui_runtime_widget_size_limits(const char *type)
 #else
         limits.min_w = 220;
         limits.min_h = 160;
-        limits.max_w = APP_CONTENT_BOX_WIDTH;
-        limits.max_h = APP_CONTENT_BOX_HEIGHT;
+        limits.max_w = content_w;
+        limits.max_h = content_h;
 #endif
     }
 
-    if (limits.max_w > APP_CONTENT_BOX_WIDTH) {
-        limits.max_w = APP_CONTENT_BOX_WIDTH;
+    if (limits.max_w > content_w) {
+        limits.max_w = content_w;
     }
 
-    if (limits.max_h > APP_CONTENT_BOX_HEIGHT) {
-        limits.max_h = APP_CONTENT_BOX_HEIGHT;
+    if (limits.max_h > content_h) {
+        limits.max_h = content_h;
     }
 
     return limits;
@@ -316,12 +319,12 @@ static void ui_runtime_clamp_widget_rect(ui_widget_def_t *def)
         def->y = 0;
     }
 
-    if (def->x + def->w > APP_CONTENT_BOX_WIDTH) {
-        def->x = APP_CONTENT_BOX_WIDTH - def->w;
+    if (def->x + def->w > content_w) {
+        def->x = content_w - def->w;
     }
 
-    if (def->y + def->h > APP_CONTENT_BOX_HEIGHT) {
-        def->y = APP_CONTENT_BOX_HEIGHT - def->h;
+    if (def->y + def->h > content_h) {
+        def->y = content_h - def->h;
     }
 
     if (def->x < 0) {

@@ -7,6 +7,7 @@
 #include "esp_app_desc.h"
 
 #include "app_config.h"
+#include "ui/ui_pages.h"
 
 static void set_json_headers(httpd_req_t *req)
 {
@@ -33,10 +34,11 @@ esp_err_t api_version_get_handler(httpd_req_t *req)
     /* Panel geometry for the web editor canvas (px) - lets the same
      * app.js scale itself for both the 4" 720x720 and 10.1" 1280x800
      * variants without a separate build. */
-    cJSON_AddNumberToObject(root, "screen_w", APP_SCREEN_WIDTH);
-    cJSON_AddNumberToObject(root, "screen_h", APP_SCREEN_HEIGHT);
-    cJSON_AddNumberToObject(root, "canvas_w", APP_CONTENT_BOX_WIDTH);
-    cJSON_AddNumberToObject(root, "canvas_h", APP_CONTENT_BOX_HEIGHT);
+    const ui_pages_geometry_t *geometry = ui_pages_geometry();
+    cJSON_AddNumberToObject(root, "screen_w", geometry != NULL ? geometry->screen_w : APP_SCREEN_WIDTH);
+    cJSON_AddNumberToObject(root, "screen_h", geometry != NULL ? geometry->screen_h : APP_SCREEN_HEIGHT);
+    cJSON_AddNumberToObject(root, "canvas_w", geometry != NULL ? geometry->content_w : APP_CONTENT_BOX_WIDTH);
+    cJSON_AddNumberToObject(root, "canvas_h", geometry != NULL ? geometry->content_h : APP_CONTENT_BOX_HEIGHT);
 
     char *payload = cJSON_PrintUnformatted(root);
     cJSON_Delete(root);
