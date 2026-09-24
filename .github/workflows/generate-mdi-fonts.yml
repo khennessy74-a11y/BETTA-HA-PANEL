@@ -10,7 +10,7 @@ on:
       - ".github/workflows/generate-mdi-fonts.yml"
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   generate:
@@ -58,3 +58,18 @@ jobs:
             main/ui/fonts/mditop50icons42.c
             main/ui/fonts/mditop50icons56.c
             main/ui/fonts/mditop50icons72.c
+
+      - name: Commit generated fonts
+        if: github.event_name == 'push' && github.ref == 'refs/heads/development-next'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add main/ui/fonts/mditop50icons42.c main/ui/fonts/mditop50icons56.c main/ui/fonts/mditop50icons72.c
+          if git diff --cached --quiet; then
+            echo "Generated fonts are already up to date."
+            exit 0
+          fi
+          git commit -m "Expand embedded MDI font assets"
+          git push origin HEAD:development-next
