@@ -578,6 +578,26 @@ static void slider_apply_layout(lv_obj_t *card, w_slider_ctx_t *ctx)
         slider_x,
         slider_y);
 
+    /*
+     * Cover action buttons occupy the lower part of the card. Keep the
+     * primary position slider clear of them, and place the optional tilt
+     * slider in the gap immediately above the buttons.
+     */
+    if (ctx->is_cover) {
+        const lv_coord_t cover_controls_top = content_h - 78;
+        if (slider_y + slider_h > cover_controls_top) {
+            slider_h = cover_controls_top - slider_y;
+            if (slider_h < 18) slider_h = 18;
+        }
+
+        if (ctx->cover_tilt_slider != NULL) {
+            lv_coord_t tilt_y = cover_controls_top - 24;
+            if (tilt_y < top) tilt_y = top;
+            lv_obj_set_pos(ctx->cover_tilt_slider, 0, tilt_y);
+            lv_obj_set_size(ctx->cover_tilt_slider, area_w, 14);
+        }
+    }
+
     lv_obj_set_size(
         ctx->slider,
         slider_w,
