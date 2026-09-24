@@ -1,39 +1,53 @@
 <!-- SPDX-License-Identifier: LicenseRef-FNCL-1.1 | Copyright (c) 2026 Cpt_Kirk -->
-# MDI Icon Font Workflow (LVGL Converter)
+# MDI Icon Font Workflow
 
-This project uses an optional generated LVGL font source:
+BETTA keeps the Material Design Icons source font at:
 
-- `main/ui/fonts/mdi_standard_icons_56.c`
+- `main/ui/fonts/materialdesignicons-webfont.ttf`
 
-If the file exists, it is compiled automatically and used by light tiles.
-If it does not exist, the light tile falls back to `LV_SYMBOL_POWER`.
+The authoritative firmware icon manifest lives in:
 
-## 1) Generate converter input
+- `tools/mdi_to_lvgl_converter.py`
 
-From project root:
+## Generate the converter range
+
+From the repository root:
 
 ```powershell
-python tools/mdi_to_lvgl_converter.py --use-top50 --font main/ui/materialdesignicons-webfont.ttf
+python tools/mdi_to_lvgl_converter.py
 ```
 
-Copy the printed `Range:` string.
+Install the only tooling dependency if needed:
 
-## 2) LVGL Online Font Converter
+```powershell
+python -m pip install fonttools
+```
 
-Use the converter with:
+Use `--list` to audit the resolved MDI names and Unicode codepoints.
 
-- Font file: `materialdesignicons-webfont.ttf`
-- Range: paste the generated range string
-- BPP: your target setting (usually 4 for icons)
-- Size: `56` (for current tile design)
-- Font name: `mdi_standard_icons_56`
-- Output format: C file
+The script validates every requested icon against the bundled TTF and fails if
+an icon name is unavailable. This prevents the registry and generated fonts
+from silently drifting apart.
 
-Save output as:
+## Generate LVGL fonts
 
-- `main/ui/fonts/mdi_standard_icons_56.c`
+Use the printed `Range:` value with `lv_font_conv` or the LVGL online font
+converter. Current BETTA shared icon sizes are 42, 56 and 72 px, BPP 4.
 
-## 3) Build
+Example with `lv_font_conv`:
 
-Rebuild the firmware. No code change is needed; the font is auto-detected by CMake.
+```powershell
+lv_font_conv --font main/ui/fonts/materialdesignicons-webfont.ttf --range <RANGE> --size 42 --bpp 4 --format lvgl -o main/ui/fonts/mditop50icons42.c
+lv_font_conv --font main/ui/fonts/materialdesignicons-webfont.ttf --range <RANGE> --size 56 --bpp 4 --format lvgl -o main/ui/fonts/mditop50icons56.c
+lv_font_conv --font main/ui/fonts/materialdesignicons-webfont.ttf --range <RANGE> --size 72 --bpp 4 --format lvgl -o main/ui/fonts/mditop50icons72.c
+```
 
+Keep the generated C symbol names compatible with the existing files:
+`mditop50icons42`, `mditop50icons56`, and `mditop50icons72`.
+
+## Adding icons
+
+Add the MDI name (without the `mdi:` prefix) to `ICONS`, regenerate all
+three fonts, then add the resolved name/codepoint to `mdi_font_registry.c`.
+Commit the manifest, generated fonts and registry together so every registered
+icon is actually present in the compiled font.
