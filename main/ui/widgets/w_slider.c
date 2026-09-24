@@ -709,6 +709,18 @@ static void slider_apply_visual(w_slider_ctx_t *ctx)
         }
         if (ctx->unavailable) lv_obj_add_state(ctx->slider, LV_STATE_DISABLED);
         else lv_obj_clear_state(ctx->slider, LV_STATE_DISABLED);
+
+        if (ctx->cover_tilt_slider != NULL) {
+            lv_obj_set_style_bg_color(ctx->cover_tilt_slider, lv_color_hex(W_SLIDER_TRACK_HEX), LV_PART_MAIN);
+            lv_obj_set_style_bg_opa(ctx->cover_tilt_slider, LV_OPA_COVER, LV_PART_MAIN);
+            lv_obj_set_style_bg_color(ctx->cover_tilt_slider, ctx->accent_color, LV_PART_INDICATOR);
+            lv_obj_set_style_bg_opa(ctx->cover_tilt_slider, LV_OPA_COVER, LV_PART_INDICATOR);
+            lv_obj_set_style_border_width(ctx->cover_tilt_slider, 0, LV_PART_MAIN);
+            lv_obj_set_style_bg_opa(ctx->cover_tilt_slider, LV_OPA_TRANSP, LV_PART_KNOB);
+            lv_obj_set_style_border_opa(ctx->cover_tilt_slider, LV_OPA_TRANSP, LV_PART_KNOB);
+            if (ctx->unavailable) lv_obj_add_state(ctx->cover_tilt_slider, LV_STATE_DISABLED);
+            else lv_obj_clear_state(ctx->cover_tilt_slider, LV_STATE_DISABLED);
+        }
     }
 }
 
