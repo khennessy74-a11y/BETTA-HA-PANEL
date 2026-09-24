@@ -123,7 +123,7 @@ out_instance->timer_show_finish = def->timer_show_finish;
     snprintf(out_instance->arc_opening, sizeof(out_instance->arc_opening), "%s", def->arc_opening);
     out_instance->ctx = NULL;
 
-    if (strcmp(def->type, "sensor") == 0 || strcmp(def->type, "binary_sensor") == 0) {
+    if (strcmp(def->type, "sensor") == 0 || strcmp(def->type, "binary_sensor") == 0 || strcmp(def->type, "person") == 0 || strcmp(def->type, "device_tracker") == 0) {
         return w_sensor_create(def, parent, out_instance);
     }
     if (strcmp(def->type, "button") == 0) {
@@ -185,7 +185,7 @@ void ui_widget_factory_apply_state(ui_widget_instance_t *instance, const ha_stat
     if (instance == NULL || instance->obj == NULL || state == NULL) {
         return;
     }
-    if (strcmp(instance->type, "sensor") == 0 || strcmp(instance->type, "binary_sensor") == 0) {
+    if (strcmp(instance->type, "sensor") == 0 || strcmp(instance->type, "binary_sensor") == 0 || strcmp(instance->type, "person") == 0 || strcmp(instance->type, "device_tracker") == 0) {
         w_sensor_apply_state(instance, state);
     } else if (strcmp(instance->type, "button") == 0) {
         w_button_apply_state(instance, state);
@@ -230,7 +230,7 @@ void ui_widget_factory_mark_unavailable(ui_widget_instance_t *instance)
     if (instance == NULL || instance->obj == NULL) {
         return;
     }
-    if (strcmp(instance->type, "sensor") == 0 || strcmp(instance->type, "binary_sensor") == 0) {
+    if (strcmp(instance->type, "sensor") == 0 || strcmp(instance->type, "binary_sensor") == 0 || strcmp(instance->type, "person") == 0 || strcmp(instance->type, "device_tracker") == 0) {
         w_sensor_mark_unavailable(instance);
     } else if (strcmp(instance->type, "button") == 0) {
         w_button_mark_unavailable(instance);

@@ -1679,6 +1679,8 @@ const el = {
   addInputTextBtn: document.getElementById("addInputTextBtn"),
   addInputDatetimeBtn: document.getElementById("addInputDatetimeBtn"),
   addAlarmControlBtn: document.getElementById("addAlarmControlBtn"),
+  addPersonBtn: document.getElementById("addPersonBtn"),
+  addDeviceTrackerBtn: document.getElementById("addDeviceTrackerBtn"),
   addGraphBtn: document.getElementById("addGraphBtn"),
   addEmptyTileBtn: document.getElementById("addEmptyTileBtn"),
   addLightTileBtn: document.getElementById("addLightTileBtn"),
@@ -4141,6 +4143,8 @@ function allowedEntityDomainsForWidgetType(
   if (type === "input_text") return ["input_text"];
   if (type === "input_datetime") return ["input_datetime"];
   if (type === "alarm_control_panel") return ["alarm_control_panel"];
+  if (type === "person") return ["person"];
+  if (type === "device_tracker") return ["device_tracker"];
   if (type === "button") {
     const normalizedMode = normalizeButtonMode(buttonMode);
     if (buttonModeRequiresMediaPlayer(normalizedMode)) return ["media_player"];
@@ -6964,6 +6968,12 @@ if (el.addAutomationBtn) {
   }
   if (el.addAlarmControlBtn) {
     el.addAlarmControlBtn.onclick = () => openLightEntityPicker("alarm_control_panel");
+  }
+  if (el.addPersonBtn) {
+    el.addPersonBtn.onclick = () => openLightEntityPicker("person");
+  }
+  if (el.addDeviceTrackerBtn) {
+    el.addDeviceTrackerBtn.onclick = () => openLightEntityPicker("device_tracker");
   }
   el.addGraphBtn.onclick = () => openLightEntityPicker("graph");
   el.addEmptyTileBtn.onclick = () => addWidget("empty_tile");
