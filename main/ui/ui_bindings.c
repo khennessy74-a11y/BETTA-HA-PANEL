@@ -708,6 +708,16 @@ esp_err_t ui_bindings_cover_action(const char *entity_id, ui_bindings_cover_acti
     return err;
 }
 
+esp_err_t ui_bindings_set_cover_tilt_position(const char *entity_id, int tilt_position)
+{
+    if (entity_id == NULL || strncmp(entity_id, "cover.", 6) != 0) return ESP_ERR_INVALID_ARG;
+    if (tilt_position < 0) tilt_position = 0;
+    if (tilt_position > 100) tilt_position = 100;
+    char payload[192] = {0};
+    snprintf(payload, sizeof(payload), "{\"entity_id\":\"%s\",\"tilt_position\":%d}", entity_id, tilt_position);
+    return ha_client_call_service("cover", "set_cover_tilt_position", payload);
+}
+
 esp_err_t ui_bindings_set_slider_value(
     const char *entity_id,
     int value)

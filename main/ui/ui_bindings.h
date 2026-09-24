@@ -42,6 +42,7 @@ typedef enum {
     UI_BINDINGS_COVER_CLOSE,
 } ui_bindings_cover_action_t;
 esp_err_t ui_bindings_cover_action(const char *entity_id, ui_bindings_cover_action_t action);
+esp_err_t ui_bindings_set_cover_tilt_position(const char *entity_id, int tilt_position);
 esp_err_t ui_bindings_set_number_value(const char *entity_id, double value);
 esp_err_t ui_bindings_set_climate_target_c(const char *entity_id, float celsius);
 esp_err_t ui_bindings_set_light_color_temp_kelvin(const char *entity_id, int kelvin);

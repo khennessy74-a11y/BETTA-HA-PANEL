@@ -52,6 +52,8 @@ typedef struct {
     bool suppress_event;
     int last_sent_value;
     char cover_state[16];
+    int cover_tilt_position;
+    bool cover_has_tilt_position;
 } w_slider_ctx_t;
 
 static const uint32_t W_SLIDER_FILL_OFF_HEX = 0x8C98A4;
@@ -765,7 +767,9 @@ static void w_slider_event_cb(lv_event_t *event)
         bool next_is_on = next_value > 0;
         ctx->dragging = false;
         if (next_value != ctx->last_sent_value) {
-            esp_err_t err = ui_bindings_set_slider_value(ctx->entity_id, next_value);
+            esp_err_t err = (ctx->is_cover && (ctx->cover_supported_features & 128U))
+                ? ui_bindings_set_cover_tilt_position(ctx->entity_id, next_value)
+                : ui_bindings_set_slider_value(ctx->entity_id, next_value);
             if (err != ESP_OK) {
                 ctx->value = prev_value;
                 ctx->is_on = prev_is_on;
@@ -943,6 +947,9 @@ void w_slider_apply_state(ui_widget_instance_t *instance, const ha_state_t *stat
         if (attrs != NULL) {
             cJSON *features = cJSON_GetObjectItemCaseSensitive(attrs, "supported_features");
             ctx->cover_supported_features = cJSON_IsNumber(features) ? (uint32_t)features->valuedouble : 0U;
+            cJSON *tilt = cJSON_GetObjectItemCaseSensitive(attrs, "current_tilt_position");
+            ctx->cover_has_tilt_position = cJSON_IsNumber(tilt);
+            if (ctx->cover_has_tilt_position) ctx->cover_tilt_position = clamp_percent((int)(tilt->valuedouble + 0.5));
             cJSON_Delete(attrs);
         }
         /* Home Assistant cover feature bits: open=1, close=2, set_position=4, stop=8. */
@@ -969,6 +976,7 @@ void w_slider_apply_state(ui_widget_instance_t *instance, const ha_state_t *stat
     bool on_from_text = slider_state_is_on_text(state->state);
     bool is_on = has_numeric ? (value > 0 || on_from_text) : on_from_text;
 
+    if (ctx->is_cover && (ctx->cover_supported_features & 128U) && !(ctx->cover_supported_features & 4U) && ctx->cover_has_tilt_position) value = ctx->cover_tilt_position;
     ctx->value = clamp_percent(value);
     ctx->is_on = is_on;
     ctx->unavailable = false;
