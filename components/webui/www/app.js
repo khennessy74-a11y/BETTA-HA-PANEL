@@ -4012,15 +4012,9 @@ function setCommonCustomIconValue(value) {
   const select = el.fCommonCustomIcon;
   if (!select) return;
   const wanted = String(value || "").trim();
-  select.innerHTML = "";
-  const source = (typeof SENSOR_MDI_ICONS !== "undefined" && Array.isArray(SENSOR_MDI_ICONS))
-    ? SENSOR_MDI_ICONS : [];
-  for (const entry of source) {
-    const option = document.createElement("option");
-    option.value = entry.value;
-    option.textContent = entry.label;
-    select.appendChild(option);
-  }
+  select.innerHTML = el.fButtonCustomIcon
+    ? el.fButtonCustomIcon.innerHTML
+    : "";
   if (!wanted) return;
   const known = Array.from(select.options).some((option) => option.value === wanted);
   if (!known) {
