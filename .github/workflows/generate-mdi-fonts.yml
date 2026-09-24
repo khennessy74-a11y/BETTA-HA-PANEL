@@ -2,6 +2,12 @@ name: Generate MDI fonts
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - development-next
+    paths:
+      - "tools/generate_mdi_fonts.ps1"
+      - ".github/workflows/generate-mdi-fonts.yml"
 
 permissions:
   contents: read
