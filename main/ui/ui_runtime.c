@@ -293,6 +293,9 @@ static void ui_runtime_clamp_widget_rect(ui_widget_def_t *def)
         return;
     }
 
+    const ui_pages_geometry_t *geometry = ui_pages_geometry();
+    const int content_w = geometry != NULL ? geometry->content_w : APP_CONTENT_BOX_WIDTH;
+    const int content_h = geometry != NULL ? geometry->content_h : APP_CONTENT_BOX_HEIGHT;
     ui_widget_size_limits_t limits = ui_runtime_widget_size_limits(def->type);
 
     if (def->w < limits.min_w) {
