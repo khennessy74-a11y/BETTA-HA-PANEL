@@ -900,6 +900,27 @@ esp_err_t ui_bindings_set_number_value(
     return ha_client_call_service(domain, HA_SERVICE_SET_VALUE, payload);
 }
 
+esp_err_t ui_bindings_select_option(const char *entity_id, const char *option)
+{
+    if (entity_id == NULL || entity_id[0] == '\0' || option == NULL || option[0] == '\0') return ESP_ERR_INVALID_ARG;
+    char domain[32] = {0};
+    if (!split_entity_id(entity_id, domain, sizeof(domain)) ||
+        (strcmp(domain, "select") != 0 && strcmp(domain, "input_select") != 0)) return ESP_ERR_NOT_SUPPORTED;
+
+    cJSON *obj = cJSON_CreateObject();
+    if (obj == NULL) return ESP_ERR_NO_MEM;
+    cJSON_AddStringToObject(obj, "entity_id", entity_id);
+    cJSON_AddStringToObject(obj, "option", option);
+    char *payload = cJSON_PrintUnformatted(obj);
+    cJSON_Delete(obj);
+    if (payload == NULL) return ESP_ERR_NO_MEM;
+    esp_err_t err = ha_client_call_service(domain, "select_option", payload);
+    cJSON_free(payload);
+    if (err == ESP_OK) ui_bindings_apply_optimistic_state_text(entity_id, option);
+    else ESP_LOGW(TAG, "select option failed entity=%s err=%s", entity_id, esp_err_to_name(err));
+    return err;
+}
+
 esp_err_t ui_bindings_set_climate_target_c(
     const char *entity_id,
     float celsius)
