@@ -1849,6 +1849,31 @@ fSliderAccentColor: document.getElementById("fSliderAccentColor"),
   setupWizardDoneBtn: document.getElementById("setupWizardDoneBtn"),
 };
 
+/*
+ * Keep the Button picker as the single editor source of truth for the shared
+ * firmware MDI registry. Sensor and Slider use the same registry/font path, so
+ * clone the canonical options instead of maintaining three drifting lists.
+ */
+function syncMdiIconPickers() {
+  const source = el.fButtonCustomIcon;
+  if (!source) return;
+
+  for (const target of [el.fSensorCustomIcon, el.fSliderCustomIcon]) {
+    if (!target) continue;
+    const previousValue = target.value;
+    target.innerHTML = source.innerHTML;
+
+    if (
+      previousValue &&
+      Array.from(target.options).some(option => option.value === previousValue)
+    ) {
+      target.value = previousValue;
+    }
+  }
+}
+
+syncMdiIconPickers();
+
 const entityAutocomplete = {
   primary: {
     timerId: null,
