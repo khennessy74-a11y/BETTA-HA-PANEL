@@ -28,7 +28,7 @@ $range = (($existing + $haBatch) | Sort-Object -Unique | ForEach-Object { [strin
 foreach ($size in @(42,56,72)) {
   $output = Join-Path $outDir ("mditop50icons{0}.c" -f $size)
   Write-Host "Generating $output"
-  & npx --yes lv_font_conv --font $MdiFont --size $size --bpp 4 --no-compress --stride 1 --align 1 --range $range --format lvgl --output $output
+  & npx --yes lv_font_conv --font $MdiFont --size $size --bpp 4 --no-compress --range $range --format lvgl --output $output
   if ($LASTEXITCODE -ne 0) { throw "LVGL font conversion failed for $size px" }
 }
 Write-Host "MDI fonts regenerated with the Home Assistant icon batch."
