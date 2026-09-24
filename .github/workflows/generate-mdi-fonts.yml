@@ -1,0 +1,54 @@
+name: Generate MDI fonts
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Download Material Design Icons webfont
+        shell: bash
+        run: |
+          curl --fail --location --retry 3 \
+            --output materialdesignicons-webfont.ttf \
+            https://raw.githubusercontent.com/Templarian/MaterialDesign-Webfont/master/fonts/materialdesignicons-webfont.ttf
+
+      - name: Generate 42, 56 and 72 px MDI fonts
+        shell: pwsh
+        run: ./tools/generate_mdi_fonts.ps1 -MdiFont ./materialdesignicons-webfont.ttf
+
+      - name: Verify generated Home Assistant glyphs
+        shell: bash
+        run: |
+          set -euo pipefail
+          for font in main/ui/fonts/mditop50icons42.c main/ui/fonts/mditop50icons56.c main/ui/fonts/mditop50icons72.c; do
+            test -s "$font"
+            for codepoint in F0335 F0425 F050F F070D F07D1 F0BC1 F111C F19A1; do
+              grep -qi "$codepoint" "$font" || {
+                echo "Missing U+$codepoint in $font"
+                exit 1
+              }
+            done
+          done
+
+      - name: Upload generated fonts
+        uses: actions/upload-artifact@v4
+        with:
+          name: mdi-fonts-ha-batch
+          if-no-files-found: error
+          path: |
+            main/ui/fonts/mditop50icons42.c
+            main/ui/fonts/mditop50icons56.c
+            main/ui/fonts/mditop50icons72.c
