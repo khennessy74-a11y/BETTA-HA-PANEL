@@ -1043,9 +1043,9 @@ static const lv_font_t *weather_find_icon_font_for_cp(uint32_t codepoint)
     /* S3 weather rendering is deliberately static. Prefer the smaller
      * dedicated weather font first: it avoids the large 56/72 px glyph
      * allocation path that can leave the condition label blank on S3. */
-    const lv_font_t *font = mdi_font_weather_20();
-    if (font != NULL && weather_font_has_codepoint(font, codepoint)) {
-        return font;
+    const lv_font_t *small_font = mdi_font_weather_20();
+    if (small_font != NULL && weather_font_has_codepoint(small_font, codepoint)) {
+        return small_font;
     }
 #endif
     const lv_font_t *font = mdi_font_weather();
