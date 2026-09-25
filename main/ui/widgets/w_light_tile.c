@@ -637,6 +637,12 @@ static void light_apply_visual(lv_obj_t *card, const w_light_tile_ctx_t *ctx, bo
     light_position_icon_between_state_and_title(
         card, layout->icon_gap, layout->icon_bias_y,
         can_adjust_color ? light_icon_bias_x_for_button_size(color_button_size) : 0);
+    /* Positioning/layout can update child flags on the S3. Enforce display
+     * options last so Hide State remains authoritative after every refresh. */
+    if (ctx != NULL) {
+        widget_display_set_visible(w.state_label, ctx->show_state);
+        widget_display_set_visible(w.value_label, ctx->show_state && can_dim);
+    }
 }
 
 typedef enum {
