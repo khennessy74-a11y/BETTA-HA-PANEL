@@ -135,6 +135,14 @@ const ENTITY_PICKER_CONFIGS = {
     widgetFallback: "Input Boolean control",
     itemsFallback: "input booleans",
   },
+  alarm_control_panel: {
+    widgetType: "alarm_control_panel",
+    domain: "alarm_control_panel",
+    titleFallback: "Choose Alarm Control Panel",
+    blankFallback: "Blank Alarm Control Panel",
+    widgetFallback: "Alarm Control Panel",
+    itemsFallback: "alarm control panels",
+  },
   input_number: {
     widgetType: "input_number",
     domain: "input_number",
