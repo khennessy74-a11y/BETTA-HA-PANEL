@@ -1982,6 +1982,11 @@ static void weather_set_3day_rows_layout(lv_obj_t *card, w_weather_tile_ctx_t *c
 
         lv_obj_set_pos(row->high_label, x, 0);
         lv_obj_set_size(row->high_label, high_w, row_h);
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+        /* Centre highs in their fixed column.  This keeps 8°C/16°C/18°C
+         * visually balanced instead of using edge padding as alignment. */
+        lv_obj_set_style_text_align(row->high_label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+#endif
     }
 }
 
