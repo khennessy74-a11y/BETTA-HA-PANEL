@@ -104,16 +104,7 @@ void w_update_apply_state(ui_widget_instance_t *i, const ha_state_t *s)
         if (cJSON_IsString(latest) && latest->valuestring) snprintf(c->latest, sizeof(c->latest), "%s", latest->valuestring);
         c->skipped = cJSON_IsString(skipped) && skipped->valuestring != NULL && c->latest[0] != '\\0' && strcmp(skipped->valuestring, c->latest) == 0;
         if (cJSON_IsBool(progress)) {
-            if (cJSON_IsBool(progress)) {
             c->in_progress = cJSON_IsTrue(progress);
-        } else if (cJSON_IsNumber(progress)) {
-            c->in_progress = progress->valuedouble > 0.0 && progress->valuedouble < 100.0;
-        } else if (cJSON_IsString(progress) && progress->valuestring != NULL) {
-            c->in_progress = progress->valuestring[0] != '\0' &&
-                strcmp(progress->valuestring, "0") != 0 &&
-                strcmp(progress->valuestring, "100") != 0 &&
-                strcmp(progress->valuestring, "false") != 0;
-        }
         } else if (cJSON_IsNumber(progress)) {
             c->in_progress = progress->valuedouble > 0.0 && progress->valuedouble < 100.0;
         } else if (cJSON_IsString(progress) && progress->valuestring != NULL) {
