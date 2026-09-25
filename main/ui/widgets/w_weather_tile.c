@@ -80,7 +80,13 @@
 /* Meta line below the big current temperature (condition + humidity).
  * One step up from the forecast-row font to keep the visual hierarchy
  * big temp -> meta -> forecast rows. */
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+/* The 480 px forecast header shares one row with the large temperature.
+ * Keep condition/humidity compact enough to stay inside its right column. */
+#define WEATHER_3DAY_SUBMETA_FONT APP_FONT_TEXT_18
+#else
 #define WEATHER_3DAY_SUBMETA_FONT APP_FONT_TEXT_22
+#endif
 
 #if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
 #define WEATHER_3DAY_MAX_FORECAST 5
