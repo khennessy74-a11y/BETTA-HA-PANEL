@@ -328,13 +328,16 @@ static void sensor_apply_layout(w_sensor_ctx_t *ctx)
     lv_obj_set_style_text_align(ctx->value_label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     lv_obj_set_style_text_align(ctx->age_label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
 
-   if (ctx->show_title) {
-    lv_obj_align(
-        ctx->title_label,
-        LV_ALIGN_TOP_MID,
-        0,
-        APP_UI_TILE_LAYOUT_TUNED ? 2 : 0);
-}
+    if (ctx->show_title) {
+        lv_obj_clear_flag(ctx->title_label, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_align(
+            ctx->title_label,
+            LV_ALIGN_TOP_MID,
+            0,
+            APP_UI_TILE_LAYOUT_TUNED ? 2 : 0);
+    } else {
+        lv_obj_add_flag(ctx->title_label, LV_OBJ_FLAG_HIDDEN);
+    }
 
 const bool show_icon =
     ctx->show_icon &&
@@ -546,6 +549,16 @@ void w_sensor_apply_state(ui_widget_instance_t *instance, const ha_state_t *stat
         cJSON *unit_item = cJSON_GetObjectItemCaseSensitive(attrs, "unit_of_measurement");
         if (cJSON_IsString(unit_item) && unit_item->valuestring != NULL) {
             unit = unit_item->valuestring;
+        }
+    }
+
+    /* Follow Home Assistant's current icon when no custom icon is configured. */
+    if (ctx->show_icon && instance->icon[0] == '\0' && attrs != NULL) {
+        cJSON *icon_item = cJSON_GetObjectItemCaseSensitive(attrs, "icon");
+        if (cJSON_IsString(icon_item) && icon_item->valuestring != NULL &&
+            icon_item->valuestring[0] != '\0' &&
+            sensor_apply_icon(ctx, icon_item->valuestring)) {
+            lv_obj_clear_flag(ctx->icon_label, LV_OBJ_FLAG_HIDDEN);
         }
     }
 
