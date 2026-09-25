@@ -1169,15 +1169,16 @@ static const lv_font_t *weather_pick_render_icon_font(
         weather_append_unique_font_candidate(candidates, sizeof(candidates) / sizeof(candidates[0]), &count, font_56);
     }
 
-    if (preferred != NULL) {
-        weather_append_unique_font_candidate(candidates, sizeof(candidates) / sizeof(candidates[0]), &count, preferred);
-    } else {
-        weather_append_unique_font_candidate(
-            candidates, sizeof(candidates) / sizeof(candidates[0]), &count, weather_find_icon_font_for_cp(codepoint));
-    }
-
+    /* Never trust the previously cached font before probing current candidates.
+     * On S3 the cached large font can survive a resize even when it does not
+     * contain this weather glyph, which LVGL renders as a tofu square. */
     weather_append_unique_font_candidate(
         candidates, sizeof(candidates) / sizeof(candidates[0]), &count, mdi_font_weather_20());
+    if (preferred != NULL) {
+        weather_append_unique_font_candidate(candidates, sizeof(candidates) / sizeof(candidates[0]), &count, preferred);
+    }
+    weather_append_unique_font_candidate(
+        candidates, sizeof(candidates) / sizeof(candidates[0]), &count, weather_find_icon_font_for_cp(codepoint));
 
 #if APP_UI_WEATHER_ICON_DEBUG
     lv_coord_t card_w = (card != NULL) ? lv_obj_get_width(card) : 0;
