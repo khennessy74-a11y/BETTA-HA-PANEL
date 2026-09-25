@@ -2432,6 +2432,19 @@ static void weather_render_3day(lv_obj_t *card, w_weather_tile_ctx_t *ctx, const
     bool icon_mode = false;
     if (icon_cp != 0U) {
         icon_font = weather_pick_render_icon_font(card, ctx, icon_cp, ctx->last_icon_font);
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+        /* The 3-day header has its own fixed 56/68 px icon slot.  Font
+         * selection based on the whole 480x220 card min-dimension chooses
+         * the 56 px glyph even though the wide header has a 68 px slot.
+         * Prefer the weather 72 px font when it contains this glyph; the
+         * label clips safely to the header box. */
+        if (!compact_header) {
+            const lv_font_t *header_font = mdi_font_weather();
+            if (header_font != NULL && weather_font_has_codepoint(header_font, icon_cp)) {
+                icon_font = header_font;
+            }
+        }
+#endif
     }
     if (icon_cp != 0U && icon_font != NULL) {
         char icon_utf8[5] = {0};
