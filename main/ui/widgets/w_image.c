@@ -66,6 +66,7 @@ static void request_image(w_image_ctx_t *c)
     lv_coord_t w = lv_obj_get_width(c->card) - 20;
     lv_coord_t h = lv_obj_get_height(c->card) - 20;
     if (ha_cover_fetcher_request(c->url, w > 1 ? w : 1, h > 1 ? h : 1, image_cb, c) != ESP_OK) {
+        release_image(c);
         show_placeholder(c, "Image unavailable");
     }
 }
