@@ -1618,6 +1618,7 @@ esp_err_t w_light_tile_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_w
     lv_label_set_text(state_label, ui_i18n_get("common.off", "OFF"));
     lv_obj_set_style_text_font(state_label, APP_FONT_TEXT_16, LV_PART_MAIN);
     lv_obj_align(state_label, LV_ALIGN_TOP_LEFT, 0, 2);
+    widget_display_set_visible(state_label, def->show_state);
 
     lv_obj_t *slider = lv_slider_create(card);
     lv_obj_set_width(slider, def->w);
@@ -1634,6 +1635,7 @@ esp_err_t w_light_tile_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_w
     lv_label_set_text(value_label, "0 %");
     lv_obj_set_style_text_font(value_label, APP_FONT_TEXT_16, LV_PART_MAIN);
     lv_obj_align(value_label, LV_ALIGN_TOP_RIGHT, 0, 2);
+    widget_display_set_visible(value_label, def->show_state);
 
     lv_obj_t *color_button = lv_btn_create(card);
     lv_obj_set_size(color_button, light_color_button_size_for_class(light_tile_class_from_dim(configured_min_dim)),
