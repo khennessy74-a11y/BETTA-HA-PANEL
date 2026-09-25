@@ -1404,7 +1404,12 @@ static bool ha_client_discovery_domain_supported(const char *domain)
            strcmp(domain, "cover") == 0 ||
            strcmp(domain, "update") == 0 ||
            strcmp(domain, "calendar") == 0 ||
-           strcmp(domain, "alarm_control_panel") == 0;
+           strcmp(domain, "alarm_control_panel") == 0 ||
+           strcmp(domain, "binary_sensor") == 0 ||
+           strcmp(domain, "select") == 0 ||
+           strcmp(domain, "input_select") == 0 ||
+           strcmp(domain, "input_text") == 0 ||
+           strcmp(domain, "input_datetime") == 0;
 }
 
 static const char *ha_client_discovery_domain_or_default(const char *domain)
