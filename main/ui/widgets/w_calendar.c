@@ -47,13 +47,13 @@ esp_err_t w_calendar_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_wid
     if (!ctx->show_title) lv_obj_add_flag(ctx->title, LV_OBJ_FLAG_HIDDEN);
 
     ctx->message = lv_label_create(card);
-    lv_obj_set_width(ctx->message, def->w - 32);
+    lv_obj_set_width(ctx->message, def->w > 32 ? def->w - 32 : 1);
     lv_label_set_long_mode(ctx->message, LV_LABEL_LONG_DOT);
     lv_obj_set_style_text_font(ctx->message, APP_FONT_TEXT_20, LV_PART_MAIN);
     lv_obj_align(ctx->message, LV_ALIGN_CENTER, 0, -4);
 
     ctx->time = lv_label_create(card);
-    lv_obj_set_width(ctx->time, def->w - 32);
+    lv_obj_set_width(ctx->time, def->w > 32 ? def->w - 32 : 1);
     lv_label_set_long_mode(ctx->time, LV_LABEL_LONG_DOT);
     lv_obj_set_style_text_font(ctx->time, APP_FONT_TEXT_14, LV_PART_MAIN);
     lv_obj_align(ctx->time, LV_ALIGN_BOTTOM_LEFT, 0, 0);
