@@ -169,6 +169,8 @@ void w_alarm_control_apply_state(ui_widget_instance_t *i, const ha_state_t *s)
     w_alarm_control_ctx_t *c = i->ctx;
     c->unavailable = strcmp(s->state, "unavailable") == 0 || strcmp(s->state, "unknown") == 0;
     uint32_t old_features = c->supported_features;
+    c->supported_features = 0;
+    c->code_required = false;
     cJSON *a = cJSON_Parse(s->attributes_json);
     if (a != NULL) {
         cJSON *sf = cJSON_GetObjectItemCaseSensitive(a, "supported_features");

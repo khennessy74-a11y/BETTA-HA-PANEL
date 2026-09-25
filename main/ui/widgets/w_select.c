@@ -88,7 +88,7 @@ esp_err_t w_select_create(const ui_widget_def_t *d, lv_obj_t *p, ui_widget_insta
     if (!c->show_title) lv_obj_add_flag(c->title, LV_OBJ_FLAG_HIDDEN);
 
     c->value = lv_label_create(card);
-    lv_obj_set_width(c->value, d->w > 100 ? d->w - 100 : d->w - 20);
+    lv_obj_set_width(c->value, d->w > 100 ? d->w - 100 : (d->w > 20 ? d->w - 20 : 1));
     lv_label_set_long_mode(c->value, LV_LABEL_LONG_DOT);
     lv_obj_set_style_text_align(c->value, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     lv_obj_set_style_text_font(c->value, APP_FONT_TEXT_20, LV_PART_MAIN);

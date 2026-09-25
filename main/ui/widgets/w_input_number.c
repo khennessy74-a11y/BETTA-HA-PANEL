@@ -129,6 +129,7 @@ void w_input_number_apply_state(ui_widget_instance_t *instance, const ha_state_t
         strcmp(state->state, "unavailable") == 0 ||
         strcmp(state->state, "unknown") == 0;
 
+    ctx->min = 0; ctx->max = 100; ctx->step = 1; ctx->precision = 0; ctx->unit[0] = '\0'; snprintf(ctx->mode, sizeof(ctx->mode), "slider");
     cJSON *attrs = cJSON_Parse(state->attributes_json);
     if (attrs != NULL) {
         cJSON *min_item = cJSON_GetObjectItemCaseSensitive(attrs, "min");
