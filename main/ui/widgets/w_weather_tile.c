@@ -2301,35 +2301,17 @@ static void weather_render_3day(lv_obj_t *card, w_weather_tile_ctx_t *ctx, const
     const lv_coord_t rows_gap_from_header = compact_header ? 8 : 10;
     icon_x = side_pad;
     icon_y = compact_header ? 14 : 18;
+    /* Keep the three S3 forecast-header zones independent.  The previous
+     * centred temperature label could extend underneath the right-aligned
+     * condition/humidity label (e.g. "16.1 C" + "Partly cloudy").
+     * Give temperature and metadata explicit, non-overlapping columns. */
     const lv_coord_t temp_left_bound = icon_x + icon_box_w + head_gap;
-    lv_coord_t meta_w = compact_header ? 92 : 116;
-    lv_coord_t meta_x = header_right - meta_w;
-    lv_coord_t temp_available_w = meta_x - temp_left_bound - head_gap;
-    lv_coord_t temp_w = compact_header ? 144 : 170;
-    if (temp_w > temp_available_w) {
-        temp_w = temp_available_w;
-    }
-    if (temp_w < (compact_header ? 112 : 132)) {
-        temp_w = compact_header ? 112 : 132;
-        meta_x = temp_left_bound + temp_w + head_gap;
-        meta_w = header_right - meta_x;
-        temp_available_w = meta_x - temp_left_bound - head_gap;
-        if (temp_w > temp_available_w) {
-            temp_w = temp_available_w;
-        }
-    }
-    if (meta_w < 72) {
-        meta_w = 72;
-    }
-    lv_coord_t temp_x = (card_w - temp_w) / 2;
-    if (temp_x < temp_left_bound) {
-        temp_x = temp_left_bound;
-    }
-    if ((temp_x + temp_w) > (meta_x - head_gap)) {
-        temp_x = meta_x - head_gap - temp_w;
-    }
-    if (temp_x < temp_left_bound) {
-        temp_x = temp_left_bound;
+    const lv_coord_t meta_w = compact_header ? 108 : 132;
+    const lv_coord_t meta_x = header_right - meta_w;
+    lv_coord_t temp_x = temp_left_bound;
+    lv_coord_t temp_w = meta_x - head_gap - temp_x;
+    if (temp_w < 1) {
+        temp_w = 1;
     }
 #endif
 
