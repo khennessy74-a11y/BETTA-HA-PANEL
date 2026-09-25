@@ -104,7 +104,7 @@ void w_image_apply_state(ui_widget_instance_t *i, const ha_state_t *s)
     if (i == NULL || s == NULL || i->ctx == NULL) return;
     w_image_ctx_t *c = i->ctx;
     c->unavailable = strcmp(s->state, "unavailable") == 0 || strcmp(s->state, "unknown") == 0;
-    if (c->unavailable) { ha_cover_fetcher_cancel(c); show_placeholder(c, ui_i18n_get("common.unavailable", "Unavailable")); return; }
+    if (c->unavailable) { ha_cover_fetcher_cancel(c); release_image(c); show_placeholder(c, ui_i18n_get("common.unavailable", "Unavailable")); return; }
     char next[W_IMAGE_URL_LEN] = {0};
     cJSON *a = cJSON_Parse(s->attributes_json);
     if (a != NULL) {
@@ -125,6 +125,6 @@ void w_image_apply_state(ui_widget_instance_t *i, const ha_state_t *s)
 void w_image_mark_unavailable(ui_widget_instance_t *i)
 {
     if (i == NULL || i->ctx == NULL) return;
-    w_image_ctx_t *c = i->ctx; c->unavailable = true; ha_cover_fetcher_cancel(c);
+    w_image_ctx_t *c = i->ctx; c->unavailable = true; ha_cover_fetcher_cancel(c); release_image(c);
     show_placeholder(c, ui_i18n_get("common.unavailable", "Unavailable"));
 }
