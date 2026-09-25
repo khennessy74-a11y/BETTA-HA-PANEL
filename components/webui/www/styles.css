@@ -1458,3 +1458,10 @@ aside.actions-panel section {
   flex-direction: column;
   gap: 6px;
 }
+
+.checkbox-row { align-items: center; flex-wrap: nowrap; }
+.checkbox-row input[type="checkbox"] { width: auto; flex: 0 0 auto; margin: 0; }
+.checkbox-row span { line-height: 1.35; }
+.ha-connection-log-wrap { margin-top: 4px; }
+.ha-connection-log-title { display: block; margin-bottom: 4px; color: var(--muted); font-size: 12px; }
+.ha-connection-log { max-height: 132px; overflow-y: auto; white-space: pre-wrap; font-family: monospace; font-size: 11px; line-height: 1.45; padding: 8px; border: 1px solid #30506b; border-radius: 8px; background: #0e1c28; color: #b9c9d7; }

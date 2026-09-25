@@ -38,6 +38,7 @@ typedef struct {
     float target_temp;
     float current_temp;
     bool has_current_temp;
+    bool show_state;
     char status_text[32];
     lv_obj_t *icon_label;
     lv_obj_t *title_label;
@@ -471,6 +472,9 @@ static void heating_apply_visual(lv_obj_t *card, w_heating_tile_ctx_t *ctx, bool
     heating_set_target_label(target_label, target_temp);
     heating_set_actual_label(actual_label, has_current_temp, current_temp, allow_status_fallback ? status_text : "");
     heating_set_status_label(status_label, is_on, status_text);
+    widget_display_set_visible(target_label, ctx->show_state);
+    widget_display_set_visible(actual_label, ctx->show_state);
+    widget_display_set_visible(status_label, ctx->show_state);
     heating_apply_layout(card, ctx);
 }
 
@@ -792,6 +796,7 @@ esp_err_t w_heating_tile_create(const ui_widget_def_t *def, lv_obj_t *parent, ui
     ctx->target_temp = 20.0f;
     ctx->current_temp = 20.0f;
     ctx->has_current_temp = false;
+    ctx->show_state = def->show_state;
     snprintf(ctx->status_text, sizeof(ctx->status_text), "OFF");
     ctx->icon_label = icon;
     ctx->title_label = title;

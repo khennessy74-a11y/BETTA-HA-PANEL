@@ -273,26 +273,16 @@ static bool button_apply_custom_mdi_icon(
         return false;
     }
 
-    const lv_font_t *font =
-        mdi_font_icon_56();
-
-    if (font == NULL) {
-        font = mdi_font_large();
-    }
-
-    if (font == NULL) {
-        return false;
-    }
-
+    const lv_font_t *font = NULL;
+    const lv_font_t *candidates[] = {mdi_font_icon_56(), mdi_font_icon_42(), mdi_font_icon_72(), mdi_font_large()};
     lv_font_glyph_dsc_t glyph_dsc = {0};
-
-    if (!lv_font_get_glyph_dsc(
-            font,
-            &glyph_dsc,
-            codepoint,
-            0)) {
-        return false;
+    for (size_t i = 0; i < sizeof(candidates) / sizeof(candidates[0]); i++) {
+        if (candidates[i] != NULL && lv_font_get_glyph_dsc(candidates[i], &glyph_dsc, codepoint, 0)) {
+            font = candidates[i];
+            break;
+        }
     }
+    if (font == NULL) return false;
 
     char utf8[5] = {0};
 

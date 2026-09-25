@@ -1156,7 +1156,7 @@ static const lv_font_t *weather_pick_render_icon_font(
         min_dim = 240;
     }
 
-    const lv_font_t *candidates[4] = {0};
+    const lv_font_t *candidates[5] = {0};
     size_t count = 0;
 
     const lv_coord_t tier_72_min_dim = 261;
@@ -1175,6 +1175,9 @@ static const lv_font_t *weather_pick_render_icon_font(
         weather_append_unique_font_candidate(
             candidates, sizeof(candidates) / sizeof(candidates[0]), &count, weather_find_icon_font_for_cp(codepoint));
     }
+
+    weather_append_unique_font_candidate(
+        candidates, sizeof(candidates) / sizeof(candidates[0]), &count, mdi_font_weather_20());
 
 #if APP_UI_WEATHER_ICON_DEBUG
     lv_coord_t card_w = (card != NULL) ? lv_obj_get_width(card) : 0;
