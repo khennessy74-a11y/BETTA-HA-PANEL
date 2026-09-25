@@ -1050,6 +1050,9 @@ ctx->card = card;
          * rule so a one-shot entity is never driven via switch-toggle. */
         ctx->mode = W_BUTTON_MODE_RUN;
     }
+    /* Keep the saved display flag authoritative for the physical widget.
+     * This source touch also forces a firmware build after generated MDI
+     * assets are committed by the font workflow. */
     ctx->show_status =
     def->show_state &&
     !is_media_player &&
