@@ -2459,6 +2459,16 @@ static void weather_render_3day(lv_obj_t *card, w_weather_tile_ctx_t *ctx, const
             lv_obj_set_style_text_align(ctx->condition_label, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
 #endif
             lv_obj_set_style_text_font(ctx->condition_label, icon_font, LV_PART_MAIN);
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+            /* MDI weather glyph artwork does not fill the nominal font em box.
+             * Scale the forecast-header label to the slot instead of relying
+             * on font point size alone.  288 = 1.125x and keeps the 72 px
+             * glyph visually near the 68 px header box without changing the
+             * normal weather-tile path. */
+            lv_obj_set_style_transform_zoom(ctx->condition_label, compact_header ? 272 : 288, LV_PART_MAIN);
+#else
+            lv_obj_set_style_transform_zoom(ctx->condition_label, 256, LV_PART_MAIN);
+#endif
             lv_obj_set_style_text_color(ctx->condition_label, lv_color_hex(APP_UI_COLOR_WEATHER_ICON), LV_PART_MAIN);
             lv_obj_set_style_text_opa(ctx->condition_label, LV_OPA_COVER, LV_PART_MAIN);
             lv_obj_align(ctx->condition_label, LV_ALIGN_TOP_LEFT, icon_x, icon_y);
