@@ -4542,11 +4542,14 @@ function clearLightEntityPickerSearchDebounce() {
 
 function cancelLightEntityPickerRequest() {
   const config = entityPickerConfig();
-  const params = new URLSearchParams();
-  params.set("domain", config.domain);
+  const domains = Array.isArray(config.domains) && config.domains.length ? config.domains : [config.domain];
   const search = entityPickerSearchValue();
-  if (search) params.set("search", search);
-  fetch(`/api/ha/light_entities?${params.toString()}`, { method: "DELETE", cache: "no-store" }).catch(() => {});
+  for (const domain of domains) {
+    const params = new URLSearchParams();
+    params.set("domain", domain);
+    if (search) params.set("search", search);
+    fetch(`/api/ha/light_entities?${params.toString()}`, { method: "DELETE", cache: "no-store" }).catch(() => {});
+  }
 }
 
 function entityPickerConfig(widgetType = editor.lightPicker.widgetType) {
