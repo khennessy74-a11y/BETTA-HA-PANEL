@@ -106,6 +106,11 @@ Build artifacts land in `release/` and `release/ota/`. Previous versions are mov
 
 ---
 
+## Support development
+
+If BETTA HA Panel is useful to you and you'd like to support ongoing development, you can [buy Kieran a coffee](https://buymeacoffee.com/khennessy74).
+
+
 ## License
 
 Source released under [LicenseRef-FNCL-1.1](LICENSE). See [release-notes.md](release-notes.md) for per-version changes.
