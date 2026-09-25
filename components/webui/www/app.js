@@ -4596,11 +4596,13 @@ function entityPickerCacheKey(domain, search = entityPickerSearchValue()) {
   return `${domain}|${String(search || "").trim().toLowerCase()}`;
 }
 
-function normalizeEntityPickerItems(items, domain) {
+function normalizeEntityPickerItems(items, domainOrDomains) {
   if (!Array.isArray(items)) return [];
-  const prefix = `${domain}.`;
+  const domains = Array.isArray(domainOrDomains) ? domainOrDomains : [domainOrDomains];
+  const prefixes = domains.filter(Boolean).map((domain) => `${domain}.`);
   return items
-    .filter((item) => item && typeof item.id === "string" && item.id.startsWith(prefix))
+    .filter((item) => item && typeof item.id === "string" &&
+      prefixes.some((prefix) => item.id.startsWith(prefix)))
     .map((item) => ({
       id: item.id,
       name: String(item.name || item.id),
@@ -4668,7 +4670,8 @@ function renderLightEntityPicker(data = {}) {
   const sourceItems = Object.prototype.hasOwnProperty.call(data, "items")
     ? data.items
     : editor.lightPicker.items;
-  const items = normalizeEntityPickerItems(sourceItems, domain);
+  const pickerDomains = Array.isArray(config.domains) && config.domains.length ? config.domains : [domain];
+  const items = normalizeEntityPickerItems(sourceItems, pickerDomains);
 
   if (el.lightEntityPickerTitle) {
     el.lightEntityPickerTitle.textContent = t(config.titleKey, {}, config.titleFallback);
