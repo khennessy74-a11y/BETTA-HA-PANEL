@@ -114,7 +114,12 @@ void w_image_apply_state(ui_widget_instance_t *i, const ha_state_t *s)
         cJSON_Delete(a);
     }
     if (next[0] == '\0') {
-        snprintf(next, sizeof(next), "/api/image_proxy/%s?state=%s", c->entity_id, s->state);
+        const bool is_camera = strncmp(c->entity_id, "camera.", 7) == 0;
+        if (is_camera) {
+            snprintf(next, sizeof(next), "/api/camera_proxy/%s", c->entity_id);
+        } else {
+            snprintf(next, sizeof(next), "/api/image_proxy/%s?state=%s", c->entity_id, s->state);
+        }
     }
     if (strcmp(next, c->url) != 0 || c->dsc.data == NULL) {
         snprintf(c->url, sizeof(c->url), "%s", next);
