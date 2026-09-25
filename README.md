@@ -106,9 +106,11 @@ Build artifacts land in `release/` and `release/ota/`. Previous versions are mov
 
 ---
 
-## Support development
+## Support development of this fork
 
-If BETTA HA Panel is useful to you and you'd like to support ongoing development, you can [buy Kieran a coffee](https://buymeacoffee.com/khennessy74).
+If the additions and ongoing development in this fork are useful to you, you can support Kieran's work:
+
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-Support%20this%20fork-FFDD00?logo=buy-me-a-coffee&logoColor=000000)](https://buymeacoffee.com/khennessy74)
 
 
 ## License
