@@ -63,6 +63,7 @@ static void image_cb(void *user, const ha_cover_result_t *result)
 static void request_image(w_image_ctx_t *c)
 {
     if (c == NULL || c->unavailable || c->url[0] == '\0') return;
+    show_placeholder(c, "Loading image...");
     lv_coord_t w = lv_obj_get_width(c->card) - 20;
     lv_coord_t h = lv_obj_get_height(c->card) - 20;
     if (ha_cover_fetcher_request(c->url, w > 1 ? w : 1, h > 1 ? h : 1, image_cb, c) != ESP_OK) {
@@ -125,6 +126,7 @@ void w_image_apply_state(ui_widget_instance_t *i, const ha_state_t *s)
     if (strcmp(next, c->url) != 0 || c->dsc.data == NULL) {
         snprintf(c->url, sizeof(c->url), "%s", next);
         ha_cover_fetcher_cancel(c);
+        release_image(c);
         request_image(c);
     }
 }

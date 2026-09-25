@@ -120,5 +120,14 @@ void w_update_apply_state(ui_widget_instance_t *i, const ha_state_t *s)
 
 void w_update_mark_unavailable(ui_widget_instance_t *i)
 {
-    if (i != NULL && i->ctx != NULL) { w_update_ctx_t *c = i->ctx; c->unavailable = true; refresh(c); }
+    if (i != NULL && i->ctx != NULL) {
+        w_update_ctx_t *c = i->ctx;
+        c->unavailable = true;
+        c->update_available = false;
+        c->in_progress = false;
+        c->skipped = false;
+        c->installed[0] = '\0';
+        c->latest[0] = '\0';
+        refresh(c);
+    }
 }
