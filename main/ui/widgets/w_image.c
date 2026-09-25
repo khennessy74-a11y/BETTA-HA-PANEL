@@ -49,6 +49,7 @@ static void image_cb(void *user, const ha_cover_result_t *result)
         return;
     }
     if (result == NULL || !result->valid || result->image.data == NULL) {
+        release_image(c);
         show_placeholder(c, "Image unavailable");
         return;
     }
