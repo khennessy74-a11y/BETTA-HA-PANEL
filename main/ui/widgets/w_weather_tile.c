@@ -2274,6 +2274,7 @@ static lv_coord_t weather_pick_lottie_size_main_adaptive(
 
 static void weather_render_3day(lv_obj_t *card, w_weather_tile_ctx_t *ctx, const weather_values_t *values, bool available)
 {
+    /* Build marker: weather glyph assets regenerated at a14e0a9. */
     if (card == NULL || ctx == NULL) {
         return;
     }
