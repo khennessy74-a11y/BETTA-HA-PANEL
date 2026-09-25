@@ -78,7 +78,7 @@ esp_err_t w_update_create(const ui_widget_def_t *d, lv_obj_t *p, ui_widget_insta
     c->version_label = lv_label_create(card); lv_label_set_text(c->version_label, "");
     lv_label_set_long_mode(c->version_label, LV_LABEL_LONG_DOT); lv_obj_set_width(c->version_label, LV_PCT(100));
     lv_obj_set_style_text_align(c->version_label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN); lv_obj_align(c->version_label, LV_ALIGN_CENTER, 0, 12);
-    c->install_btn = lv_btn_create(card); lv_obj_set_size(c->install_btn, 120, 42); lv_obj_align(c->install_btn, LV_ALIGN_BOTTOM_MID, 0, 0);
+    c->install_btn = lv_btn_create(card); lv_obj_set_size(c->install_btn, d->w > 140 ? 120 : (d->w > 40 ? d->w - 20 : 20), 42); lv_obj_align(c->install_btn, LV_ALIGN_BOTTOM_MID, 0, 0);
     lv_obj_t *label = lv_label_create(c->install_btn); lv_label_set_text(label, "Install"); lv_obj_center(label);
     lv_obj_add_event_cb(c->install_btn, install_cb, LV_EVENT_CLICKED, c);
     lv_obj_add_event_cb(card, delete_cb, LV_EVENT_DELETE, c);
