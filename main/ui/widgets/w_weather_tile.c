@@ -2433,15 +2433,18 @@ static void weather_render_3day(lv_obj_t *card, w_weather_tile_ctx_t *ctx, const
     if (icon_cp != 0U) {
         icon_font = weather_pick_render_icon_font(card, ctx, icon_cp, ctx->last_icon_font);
 #if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
-        /* The 3-day header has its own fixed 56/68 px icon slot.  Font
-         * selection based on the whole 480x220 card min-dimension chooses
-         * the 56 px glyph even though the wide header has a 68 px slot.
-         * Prefer the weather 72 px font when it contains this glyph; the
-         * label clips safely to the header box. */
-        if (!compact_header) {
-            const lv_font_t *header_font = mdi_font_weather();
-            if (header_font != NULL && weather_font_has_codepoint(header_font, icon_cp)) {
+        /* The dedicated weather font is only 20 px.  mdi_font_weather() can
+         * fall back to it when a weather glyph is absent from the large
+         * top-icons font, which made the 3-day header icon tiny.  For this
+         * fixed header slot accept only a genuinely large font. */
+        const lv_font_t *header_fonts[] = {mdi_font_icon_72(), mdi_font_icon_56(), mdi_font_icon_42()};
+        for (size_t i = 0; i < sizeof(header_fonts) / sizeof(header_fonts[0]); i++) {
+            const lv_font_t *header_font = header_fonts[i];
+            if (header_font != NULL && header_font->line_height >= 42 &&
+                weather_font_has_codepoint(header_font, icon_cp) &&
+                weather_font_has_render_headroom(header_font, icon_cp)) {
                 icon_font = header_font;
+                break;
             }
         }
 #endif
