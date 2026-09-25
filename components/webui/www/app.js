@@ -273,7 +273,7 @@ const ENTITY_PICKER_CONFIGS = {
   widgetFallback: "Timer tile",
   itemsFallback: "timers",
 },
-  
+
   media_player: {
     domain: "media_player",
     titleKey: "entity_picker.title_media_player",
@@ -6043,7 +6043,7 @@ function renderInspector() {
     setCommonCustomIconValue(configuredIcon);
     updateCommonIconControls();
   }
-  
+
   if (el.buttonOptions) {
     el.buttonOptions.classList.toggle("hidden", !isButton);
   }
@@ -6074,7 +6074,7 @@ function renderInspector() {
   ) {
     syncTimerInspector(widget);
   }
-  
+
  if (isSensor) {
   const configuredIcon =
     typeof widget.icon === "string"
@@ -6211,7 +6211,7 @@ if (isButton) {
   updateButtonIconControls();
 }
 
-  
+
   if (isSlider) {
         const showTitle =
       widget.show_title !== false;
