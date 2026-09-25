@@ -6080,16 +6080,6 @@ function renderInspector() {
       widget.show_title !== false ? "true" : "false";
   }
 
-  if (el.fCommonShowIcon) {
-  el.fCommonShowIcon.addEventListener("change", () => { updateCommonIconControls(); autoApplyInspector(); });
-}
-if (el.fCommonIconMode) {
-  el.fCommonIconMode.addEventListener("change", () => { updateCommonIconControls(); autoApplyInspector(); });
-}
-if (el.fCommonShowTitle) el.fCommonShowTitle.addEventListener("change", () => autoApplyInspector());
-if (el.fCommonShowState) el.fCommonShowState.addEventListener("change", () => autoApplyInspector());
-if (el.fCommonCustomIcon) el.fCommonCustomIcon.addEventListener("change", () => autoApplyInspector());
-
 if (el.fSensorShowIcon) {
     el.fSensorShowIcon.value =
       widget.show_icon !== false ? "true" : "false";
@@ -6929,6 +6919,17 @@ function importLayoutFromText(text) {
 
 function bindUi() {
   setupSettingsWorkspace();
+
+  // Common display controls apply to light/heating/weather/etc. They must be
+  // bound once during UI setup, not only while rendering a Sensor inspector.
+  // The old placement made Light Tile controls visually change without
+  // updating the widget model, so Save persisted the previous show_state.
+  bindInspectorAutoApply(el.fCommonShowTitle);
+  bindInspectorAutoApply(el.fCommonShowState);
+  bindInspectorAutoApply(el.fCommonShowIcon, ["change"], { refreshInspector: true });
+  bindInspectorAutoApply(el.fCommonIconMode, ["change"], { refreshInspector: true });
+  bindInspectorAutoApply(el.fCommonCustomIcon);
+
   for (const button of el.settingsNavButtons || []) {
     button.onclick = () => setActiveSettingsSection(button.dataset.settingsSection);
   }
