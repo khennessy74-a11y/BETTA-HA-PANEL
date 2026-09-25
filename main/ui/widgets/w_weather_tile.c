@@ -1875,7 +1875,10 @@ static void weather_set_3day_rows_layout(lv_obj_t *card, w_weather_tile_ctx_t *c
     lv_coord_t card_h = lv_obj_get_height(card);
 #if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
     lv_coord_t left = (card_w < 320) ? 12 : 14;
-    lv_coord_t right = left;
+    /* Give the forecast high-temperature column breathing room from the
+     * card edge.  The wide 480 px tile previously left only 14 px, making
+     * values such as 18°C appear clipped against the right border. */
+    lv_coord_t right = (card_w < 320) ? 14 : 26;
 #else
     lv_coord_t left = 16;
     lv_coord_t right = 16;
