@@ -124,7 +124,7 @@ static const widget_domain_rule_t WIDGET_DOMAIN_RULES[] = {
     {"person", "person"}, {"device_tracker", "device_tracker"},
     {"button", NULL}, {"slider", NULL}, {"input_number", NULL},
     {"select", NULL}, {"input_text", "input_text"}, {"input_datetime", "input_datetime"},
-    {"alarm_control_panel", "alarm_control_panel"}, {"update", "update"}, {"calendar", "calendar"}, {"image", "image"},
+    {"alarm_control_panel", "alarm_control_panel"}, {"update", "update"}, {"calendar", "calendar"}, {"image", NULL},
     {"graph", "sensor"}, {"empty_tile", NULL}, {"light_tile", "light"},
     {"fan_tile", "fan"}, {"heating_tile", "climate"}, {"weather_tile", "weather"},
     {"weather_3day", "weather"}, {"todo_list", "todo"}, {"media_player", "media_player"},
@@ -423,6 +423,10 @@ static bool widget_entity_domain_valid(
         return
             entity_in_domain(entity_id, "sensor") ||
             entity_in_domain(entity_id, "binary_sensor");
+    }
+
+    if (strcmp(type, "image") == 0) {
+        return entity_in_domain(entity_id, "image") || entity_in_domain(entity_id, "camera");
     }
 
     if (strcmp(type, "input_number") == 0) {

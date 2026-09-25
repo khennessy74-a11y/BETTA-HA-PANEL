@@ -296,11 +296,11 @@ const ENTITY_PICKER_CONFIGS = {
     itemsFallback: "vacuum robots",
   },
   image: {
-    domain: "image",
-    titleFallback: "Choose Image",
+    domain: "image,camera",
+    titleFallback: "Choose Image / Camera",
     blankFallback: "Blank Image Tile",
     widgetFallback: "Image tile",
-    itemsFallback: "images",
+    itemsFallback: "images and cameras",
   },
   calendar: {
     domain: "calendar",
@@ -4158,7 +4158,7 @@ const WIDGET_ENTITY_DOMAINS = Object.freeze({
   alarm_control_panel: ["alarm_control_panel"],
   update: ["update"],
   calendar: ["calendar"],
-  image: ["image"],
+  image: ["image", "camera"],
   person: ["person"],
   device_tracker: ["device_tracker"],
   light_tile: ["light"],
