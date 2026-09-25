@@ -670,7 +670,7 @@ static void button_layout_icon(
     
 static void button_apply_visual(lv_obj_t *card, w_button_ctx_t *ctx, bool is_on, bool unavailable, const char *status_text)
 {
-    if (card == NULL || ctx == NULL || ctx->title_label == NULL || ctx->state_label == NULL) {
+    if (card == NULL || ctx == NULL || ctx->title_label == NULL) {
         return;
     }
 
@@ -691,11 +691,13 @@ static void button_apply_visual(lv_obj_t *card, w_button_ctx_t *ctx, bool is_on,
     } else {
         lv_obj_add_flag(ctx->title_label, LV_OBJ_FLAG_HIDDEN);
     }
-    if (ctx->show_status) {
-        lv_obj_clear_flag(ctx->state_label, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_set_style_text_color(ctx->state_label, state_color, LV_PART_MAIN);
-    } else {
-        lv_obj_add_flag(ctx->state_label, LV_OBJ_FLAG_HIDDEN);
+    if (ctx->state_label != NULL) {
+        if (ctx->show_status) {
+            lv_obj_clear_flag(ctx->state_label, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_set_style_text_color(ctx->state_label, state_color, LV_PART_MAIN);
+        } else {
+            lv_obj_add_flag(ctx->state_label, LV_OBJ_FLAG_HIDDEN);
+        }
     }
 
     if (button_visual_uses_switch(ctx)) {
@@ -795,7 +797,7 @@ static void button_apply_visual(lv_obj_t *card, w_button_ctx_t *ctx, bool is_on,
 }
     }
 
-    if (ctx->show_status) {
+    if (ctx->show_status && ctx->state_label != NULL) {
         lv_label_set_text(
             ctx->state_label,
             button_translate_status_text(status_text != NULL ? status_text : (is_on ? "ON" : "OFF")));
@@ -1067,7 +1069,13 @@ ctx->card = card;
         lv_obj_add_flag(title, LV_OBJ_FLAG_HIDDEN);
     }
     if (!ctx->show_status) {
-        lv_obj_add_flag(state_label, LV_OBJ_FLAG_HIDDEN);
+        /* A hidden state label has repeatedly resurfaced on hardware after
+         * later LVGL layout/style passes. Remove it entirely when the saved
+         * widget explicitly disables state display. Layout helpers already
+         * treat a NULL label as absent. */
+        lv_obj_del(state_label);
+        state_label = NULL;
+        ctx->state_label = NULL;
     }
 
     lv_obj_add_event_cb(card, w_button_card_event_cb, LV_EVENT_CLICKED, ctx);
