@@ -65,6 +65,6 @@ esp_err_t w_input_text_create(const ui_widget_def_t *d,lv_obj_t *p,ui_widget_ins
 void w_input_text_apply_state(ui_widget_instance_t *i,const ha_state_t *s){
     if (!i || !s || !i->ctx) return;
     w_input_text_ctx_t *c=i->ctx;c->unavailable=!strcmp(s->state,"unavailable")||!strcmp(s->state,"unknown");if(!c->unavailable)snprintf(c->current,sizeof(c->current),"%s",s->state);
-    cJSON *a=cJSON_Parse(s->attributes_json);if(a){cJSON *mn=cJSON_GetObjectItemCaseSensitive(a,"min");cJSON *mx=cJSON_GetObjectItemCaseSensitive(a,"max");if(cJSON_IsNumber(mn)&&mn->valueint>=0)c->min_len=mn->valueint>255?255:mn->valueint;if(cJSON_IsNumber(mx)&&mx->valueint>0)c->max_len=mx->valueint>255?255:mx->valueint;if(c->min_len>c->max_len)c->min_len=c->max_len;cJSON_Delete(a);}apply_visual(c);
+    c->min_len=0;c->max_len=255;cJSON *a=cJSON_Parse(s->attributes_json);if(a){cJSON *mn=cJSON_GetObjectItemCaseSensitive(a,"min");cJSON *mx=cJSON_GetObjectItemCaseSensitive(a,"max");if(cJSON_IsNumber(mn)&&mn->valueint>=0)c->min_len=mn->valueint>255?255:mn->valueint;if(cJSON_IsNumber(mx)&&mx->valueint>0)c->max_len=mx->valueint>255?255:mx->valueint;if(c->min_len>c->max_len)c->min_len=c->max_len;cJSON_Delete(a);}apply_visual(c);
 }
 void w_input_text_mark_unavailable(ui_widget_instance_t *i){if(i&&i->ctx){w_input_text_ctx_t *c=i->ctx;c->unavailable=true;apply_visual(c);}}
