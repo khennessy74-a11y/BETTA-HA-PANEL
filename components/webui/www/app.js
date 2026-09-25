@@ -137,7 +137,8 @@ const ENTITY_PICKER_CONFIGS = {
   },
   input_number: {
     widgetType: "input_number",
-    domain: "input_number,number",
+    domain: "input_number",
+    domains: ["input_number", "number"],
     titleFallback: "Choose Input Number",
     blankFallback: "Blank Input Number",
     widgetFallback: "Input Number control",
@@ -4754,6 +4755,7 @@ async function fetchLightEntityPicker(options = {}) {
   const pollCount = Number(options.pollCount || 0);
   const config = entityPickerConfig();
   const domain = config.domain;
+  const domains = Array.isArray(config.domains) && config.domains.length ? config.domains : [domain];
   const search = entityPickerSearchValue();
   const itemsLabel = entityPickerItemsLabel(config);
   if (!entityPickerSearchReady(config)) {
@@ -4782,7 +4784,28 @@ async function fetchLightEntityPicker(options = {}) {
   if (refresh) params.set("refresh", "1");
 
   try {
-    const data = await apiGet(`/api/ha/light_entities${params.toString() ? `?${params.toString()}` : ""}`);
+    let data;
+    if (domains.length === 1) {
+      data = await apiGet(`/api/ha/light_entities${params.toString() ? `?${params.toString()}` : ""}`);
+    } else {
+      const results = await Promise.all(domains.map(async (pickerDomain) => {
+        const domainParams = new URLSearchParams(params);
+        domainParams.set("domain", pickerDomain);
+        return apiGet(`/api/ha/light_entities?${domainParams.toString()}`);
+      }));
+      const merged = new Map();
+      for (const result of results) {
+        for (const item of (Array.isArray(result.items) ? result.items : [])) {
+          const key = item.entity_id || JSON.stringify(item);
+          merged.set(key, item);
+        }
+      }
+      data = {
+        ...results[0],
+        items: Array.from(merged.values()),
+        pending: results.some((result) => result.pending === true),
+      };
+    }
     if (requestSeq !== editor.lightPicker.requestSeq) return;
     editor.lightPicker.loading = data.pending === true;
     renderLightEntityPicker(data);
