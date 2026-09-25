@@ -1388,9 +1388,23 @@ static bool ha_client_discovery_domain_supported(const char *domain)
            strcmp(domain, "media_player") == 0 ||
            strcmp(domain, "vacuum") == 0 ||
            strcmp(domain, "image") == 0 ||
+           strcmp(domain, "camera") == 0 ||
            strcmp(domain, "script") == 0 ||
            strcmp(domain, "scene") == 0 ||
-           strcmp(domain, "timer") == 0;
+           strcmp(domain, "automation") == 0 ||
+           strcmp(domain, "timer") == 0 ||
+           strcmp(domain, "person") == 0 ||
+           strcmp(domain, "device_tracker") == 0 ||
+           strcmp(domain, "button") == 0 ||
+           strcmp(domain, "lock") == 0 ||
+           strcmp(domain, "input_boolean") == 0 ||
+           strcmp(domain, "input_number") == 0 ||
+           strcmp(domain, "number") == 0 ||
+           strcmp(domain, "fan") == 0 ||
+           strcmp(domain, "cover") == 0 ||
+           strcmp(domain, "update") == 0 ||
+           strcmp(domain, "calendar") == 0 ||
+           strcmp(domain, "alarm_control_panel") == 0;
 }
 
 static const char *ha_client_discovery_domain_or_default(const char *domain)
