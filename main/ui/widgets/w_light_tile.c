@@ -554,7 +554,7 @@ static void light_apply_visual(lv_obj_t *card, const w_light_tile_ctx_t *ctx, bo
 
     if (can_dim) {
         lv_obj_clear_flag(w.slider, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_clear_flag(w.value_label, LV_OBJ_FLAG_HIDDEN);
+        widget_display_set_visible(w.value_label, ctx == NULL || ctx->show_state);
         lv_obj_set_style_bg_color(
             w.slider, is_on ? lv_color_hex(APP_UI_COLOR_LIGHT_TRACK_ON) : lv_color_hex(APP_UI_COLOR_LIGHT_TRACK_OFF), LV_PART_MAIN);
         lv_obj_set_style_bg_opa(w.slider, LV_OPA_COVER, LV_PART_MAIN);
