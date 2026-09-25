@@ -22,7 +22,7 @@ typedef struct {
     char entity_id[APP_MAX_ENTITY_ID_LEN];
     char installed[UPDATE_VERSION_LEN];
     char latest[UPDATE_VERSION_LEN];
-    bool unavailable, update_available, in_progress, show_title, show_state;
+    bool unavailable, update_available, in_progress, skipped, show_title, show_state;
 } w_update_ctx_t;
 
 static void install_cb(lv_event_t *e)
@@ -37,7 +37,7 @@ static void refresh(w_update_ctx_t *c)
 {
     if (c == NULL) return;
     const char *state = c->unavailable ? ui_i18n_get("common.unavailable", "Unavailable") :
-        (c->in_progress ? "Installing..." : (c->update_available ? "Update available" : "Up to date"));
+        (c->in_progress ? "Installing..." : (c->update_available ? (c->skipped ? "Update skipped" : "Update available") : "Up to date"));
     lv_label_set_text(c->state_label, state);
     char versions[144];
     if (c->installed[0] && c->latest[0]) {
@@ -92,14 +92,17 @@ void w_update_apply_state(ui_widget_instance_t *i, const ha_state_t *s)
     c->unavailable = strcmp(s->state, "unavailable") == 0 || strcmp(s->state, "unknown") == 0;
     c->update_available = strcmp(s->state, "on") == 0;
     c->in_progress = false;
+    c->skipped = false;
     c->installed[0] = '\0'; c->latest[0] = '\0';
     cJSON *a = cJSON_Parse(s->attributes_json);
     if (a != NULL) {
         cJSON *installed = cJSON_GetObjectItemCaseSensitive(a, "installed_version");
         cJSON *latest = cJSON_GetObjectItemCaseSensitive(a, "latest_version");
         cJSON *progress = cJSON_GetObjectItemCaseSensitive(a, "in_progress");
+        cJSON *skipped = cJSON_GetObjectItemCaseSensitive(a, "skipped_version");
         if (cJSON_IsString(installed) && installed->valuestring) snprintf(c->installed, sizeof(c->installed), "%s", installed->valuestring);
         if (cJSON_IsString(latest) && latest->valuestring) snprintf(c->latest, sizeof(c->latest), "%s", latest->valuestring);
+        c->skipped = cJSON_IsString(skipped) && skipped->valuestring != NULL && c->latest[0] != '\\0' && strcmp(skipped->valuestring, c->latest) == 0;
         if (cJSON_IsBool(progress)) {
             if (cJSON_IsBool(progress)) {
             c->in_progress = cJSON_IsTrue(progress);
