@@ -27,7 +27,7 @@ typedef struct {
     char entity_id[APP_MAX_ENTITY_ID_LEN];
     char options[SELECT_MAX_OPTIONS][SELECT_OPTION_LEN];
     int option_count, current_index;
-    bool unavailable;
+    bool unavailable, show_title, show_state;
 } w_select_ctx_t;
 
 static void apply_visual(w_select_ctx_t *c)
@@ -78,12 +78,14 @@ esp_err_t w_select_create(const ui_widget_def_t *d, lv_obj_t *p, ui_widget_insta
     w_select_ctx_t *c = ui_calloc_prefer_psram(1, sizeof(*c));
     if (c == NULL) { lv_obj_del(card); return ESP_ERR_NO_MEM; }
     c->card = card; c->current_index = -1;
+    c->show_title = d->show_title; c->show_state = d->show_state;
     snprintf(c->entity_id, sizeof(c->entity_id), "%s", d->entity_id);
 
     c->title = lv_label_create(card);
     lv_label_set_text(c->title, d->title[0] ? d->title : d->id);
     lv_obj_set_style_text_font(c->title, APP_FONT_TEXT_20, LV_PART_MAIN);
     lv_obj_align(c->title, LV_ALIGN_TOP_MID, 0, 2);
+    if (!c->show_title) lv_obj_add_flag(c->title, LV_OBJ_FLAG_HIDDEN);
 
     c->value = lv_label_create(card);
     lv_obj_set_width(c->value, d->w > 100 ? d->w - 100 : d->w - 20);
@@ -91,6 +93,7 @@ esp_err_t w_select_create(const ui_widget_def_t *d, lv_obj_t *p, ui_widget_insta
     lv_obj_set_style_text_align(c->value, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     lv_obj_set_style_text_font(c->value, APP_FONT_TEXT_20, LV_PART_MAIN);
     lv_obj_align(c->value, LV_ALIGN_CENTER, 0, 8);
+    if (!c->show_state) lv_obj_add_flag(c->value, LV_OBJ_FLAG_HIDDEN);
 
     c->prev_btn = lv_btn_create(card);
     lv_obj_set_size(c->prev_btn, 42, 42); lv_obj_align(c->prev_btn, LV_ALIGN_LEFT_MID, 0, 8);
