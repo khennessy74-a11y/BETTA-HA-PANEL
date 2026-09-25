@@ -122,8 +122,12 @@ static void apply_visual(w_alarm_control_ctx_t *c, const char *state)
 {
     if (c == NULL) return;
     lv_label_set_text(c->state_label, c->unavailable ? ui_i18n_get("common.unavailable", "unavailable") : state);
-    if (c->unavailable) lv_obj_add_state(c->actions, LV_STATE_DISABLED);
-    else lv_obj_remove_state(c->actions, LV_STATE_DISABLED);
+    uint32_t count = lv_obj_get_child_count(c->actions);
+    for (uint32_t idx = 0; idx < count; ++idx) {
+        lv_obj_t *btn = lv_obj_get_child(c->actions, idx);
+        if (c->unavailable) lv_obj_add_state(btn, LV_STATE_DISABLED);
+        else lv_obj_remove_state(btn, LV_STATE_DISABLED);
+    }
 }
 
 static void delete_cb(lv_event_t *e)
