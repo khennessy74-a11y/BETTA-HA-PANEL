@@ -9,6 +9,7 @@
 #include <string.h>
 
 #include "cJSON.h"
+#include "ha/ha_model.h"
 
 #include "ui/fonts/app_text_fonts.h"
 #include "ui/theme/theme_default.h"
@@ -1095,7 +1096,18 @@ void w_button_apply_state(ui_widget_instance_t *instance, const ha_state_t *stat
     const bool is_on = state_is_on(state->state);
     if (ctx->icon[0] == '\0') {
         ctx->entity_icon[0] = '\0';
-        if (state->attributes_json[0] != '\0') {
+
+        /* Prefer the entity registry: HA exposes the configured icon there
+         * even when compact state attributes intentionally omit it. */
+        ha_entity_info_t entities[1] = {0};
+        if (ha_model_list_entities(NULL, ctx->entity_id, entities, 1) == 1 &&
+            strncmp(entities[0].id, ctx->entity_id, sizeof(entities[0].id)) == 0 &&
+            entities[0].icon[0] != '\0') {
+            snprintf(ctx->entity_icon, sizeof(ctx->entity_icon), "%s", entities[0].icon);
+        }
+
+        /* Keep state attributes as a fallback for older/partial model data. */
+        if (ctx->entity_icon[0] == '\0' && state->attributes_json[0] != '\0') {
             cJSON *attrs = cJSON_Parse(state->attributes_json);
             if (attrs != NULL) {
                 const cJSON *icon = cJSON_GetObjectItemCaseSensitive(attrs, "icon");
