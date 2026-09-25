@@ -8,6 +8,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "cJSON.h"
+
 #include "ui/fonts/app_text_fonts.h"
 #include "ui/theme/theme_default.h"
 #include "ui/ui_i18n.h"
@@ -27,6 +29,7 @@ typedef enum {
 typedef struct {
     char entity_id[APP_MAX_ENTITY_ID_LEN];
     char icon[APP_MAX_ICON_LEN];
+    char entity_icon[APP_MAX_ICON_LEN];
     lv_obj_t *card;
     lv_obj_t *title_label;
     lv_obj_t *state_label;
@@ -253,15 +256,19 @@ static bool button_apply_custom_mdi_icon(
     w_button_ctx_t *ctx)
 {
     if (ctx == NULL ||
-        ctx->action_icon == NULL ||
-        ctx->icon[0] == '\0') {
+        ctx->action_icon == NULL) {
+        return false;
+    }
+
+    const char *icon_name = ctx->icon[0] != '\0' ? ctx->icon : ctx->entity_icon;
+    if (icon_name == NULL || icon_name[0] == '\0') {
         return false;
     }
 
     uint32_t codepoint = 0;
 
     if (!mdi_icon_lookup(
-            ctx->icon,
+            icon_name,
             &codepoint)) {
         return false;
     }
@@ -1085,6 +1092,19 @@ void w_button_apply_state(ui_widget_instance_t *instance, const ha_state_t *stat
 
     const bool unavailable = state_is_unavailable(state->state);
     const bool is_on = state_is_on(state->state);
+    if (ctx->icon[0] == '\0') {
+        ctx->entity_icon[0] = '\0';
+        if (state->attributes_json[0] != '\0') {
+            cJSON *attrs = cJSON_Parse(state->attributes_json);
+            if (attrs != NULL) {
+                const cJSON *icon = cJSON_GetObjectItemCaseSensitive(attrs, "icon");
+                if (cJSON_IsString(icon) && icon->valuestring != NULL) {
+                    snprintf(ctx->entity_icon, sizeof(ctx->entity_icon), "%s", icon->valuestring);
+                }
+                cJSON_Delete(attrs);
+            }
+        }
+    }
     const char *status_text = button_status_text_for_state(ctx, state, is_on, unavailable);
     button_apply_visual(instance->obj, ctx, is_on, unavailable, status_text);
 }
