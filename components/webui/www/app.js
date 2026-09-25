@@ -705,8 +705,8 @@ const WEB_I18N_BUILTIN = {
     "wifi.scan.option_select": "Select network ({count} found)",
     "settings.time.info": "Applied after reboot. Time sync starts when Wi-Fi is connected.",
     "settings.ui.info": "Preview switches immediately. Saved language applies after reboot.",
-    "settings.ap.active": "Setup AP active: {ssid}<br>Open http://192.168.4.1 while connected to this AP.",
-    "settings.ap.inactive": "Setup AP inactive.<br>Use the panel IP in your home Wi-Fi network.",
+    "settings.ap.active": "Setup AP active: {ssid}\nOpen http://192.168.4.1 while connected to this AP.",
+    "settings.ap.inactive": "Setup AP inactive.\nUse the panel IP in your home Wi-Fi network.",
     "settings.translation.info": "Upload a JSON file to add or update a language.",
     "settings.translation.upload_ok": "Language \"{lang}\" uploaded.",
     "settings.translation.upload_fail": "Upload failed: {error}",
@@ -2999,7 +2999,17 @@ function renderSettings() {
     el.settingsHaRestEnabled.checked = ha.rest_enabled === true;
   }
   el.settingsNtpServer.value = time.ntp_server || "";
-  el.settingsTimezone.value = time.timezone || "";
+  if (el.settingsTimezone) {
+    const timezone = time.timezone || "";
+    const hasTimezone = Array.from(el.settingsTimezone.options).some((option) => option.value === timezone);
+    if (timezone && !hasTimezone) {
+      const customOption = document.createElement("option");
+      customOption.value = timezone;
+      customOption.textContent = `Custom / Existing (${timezone})`;
+      el.settingsTimezone.appendChild(customOption);
+    }
+    el.settingsTimezone.value = timezone || "UTC0";
+  }
   if (el.settingsLanguage) {
     el.settingsLanguage.value = normalizeUiLanguage(ui.language);
   }
