@@ -270,6 +270,9 @@ static bool button_apply_custom_mdi_icon(
     if (!mdi_icon_lookup(
             icon_name,
             &codepoint)) {
+        /* HA may expose an MDI name that is newer than BETTA's curated
+         * registry. Keep the automatic fallback safe, but do not silently
+         * replace a known entity icon with the power symbol. */
         return false;
     }
 
@@ -762,11 +765,19 @@ static void button_apply_visual(lv_obj_t *card, w_button_ctx_t *ctx, bool is_on,
         button_apply_custom_mdi_icon(ctx);
 
     if (!custom_mdi) {
-        lv_label_set_text(
-            ctx->action_icon,
-            button_icon_symbol(
-                ctx->mode,
-                is_on && !unavailable));
+        /* Only use the generic action symbol when HA did not supply an icon.
+         * If HA supplied one but BETTA cannot render it, show its name rather
+         * than misleadingly presenting the power icon as the entity icon. */
+        if (ctx->icon[0] == '\0' && ctx->entity_icon[0] != '\0') {
+            lv_obj_set_style_text_font(ctx->action_icon, APP_FONT_TEXT_14, LV_PART_MAIN);
+            lv_label_set_text(ctx->action_icon, ctx->entity_icon);
+        } else {
+            lv_label_set_text(
+                ctx->action_icon,
+                button_icon_symbol(
+                    ctx->mode,
+                    is_on && !unavailable));
+        }
     }
 
     lv_obj_set_style_text_color(
