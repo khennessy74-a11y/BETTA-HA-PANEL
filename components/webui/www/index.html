@@ -728,7 +728,17 @@
               <input id="settingsNtpServer" type="text" placeholder="pool.ntp.org" maxlength="127" />
             </label>
             <label><span id="settingsTimezoneLabel">Timezone (POSIX TZ)</span>
-              <input id="settingsTimezone" type="text" placeholder="CET-1CEST,M3.5.0/2,M10.5.0/3" maxlength="127" />
+              <select id="settingsTimezone">
+                <option value="GMT0BST,M3.5.0/1,M10.5.0">Europe/London (UK)</option>
+                <option value="IST-1GMT0,M10.5.0,M3.5.0/1">Europe/Dublin (Ireland)</option>
+                <option value="CET-1CEST,M3.5.0/2,M10.5.0/3">Europe/Paris (Central Europe)</option>
+                <option value="EET-2EEST,M3.5.0/3,M10.5.0/4">Europe/Helsinki (Eastern Europe)</option>
+                <option value="EST5EDT,M3.2.0/2,M11.1.0/2">America/New_York (Eastern)</option>
+                <option value="CST6CDT,M3.2.0/2,M11.1.0/2">America/Chicago (Central)</option>
+                <option value="MST7MDT,M3.2.0/2,M11.1.0/2">America/Denver (Mountain)</option>
+                <option value="PST8PDT,M3.2.0/2,M11.1.0/2">America/Los_Angeles (Pacific)</option>
+                <option value="UTC0">UTC</option>
+              </select>
             </label>
             <div id="settingsTimeInfo" class="meta"></div>
           </div>
