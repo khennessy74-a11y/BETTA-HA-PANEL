@@ -11,7 +11,7 @@
 #include "esp_littlefs.h"
 #include "esp_netif.h"
 #include "nvs_flash.h"
-#include "soc/soc_caps.h"
+#include "soc/soc_caps.h"\n#include "freertos/FreeRTOS.h"\n#include "freertos/task.h"
 
 #include "api/http_server.h"
 #include "app_config.h"
@@ -143,11 +143,30 @@ void app_main(void)
     ESP_ERROR_CHECK(app_events_init());
     ESP_ERROR_CHECK(ha_model_init());
     ESP_ERROR_CHECK(ha_energy_model_init());
-    ESP_ERROR_CHECK(runtime_settings_init());
-
-    esp_err_t settings_err = runtime_settings_load(&s_runtime_settings);
+    /* Load persisted settings without mutating storage on a read failure.
+     * runtime_settings_init() historically wrote defaults whenever a boot-time
+     * LittleFS/NVS read failed, which could turn a transient storage error into
+     * a false "HA credentials missing" setup boot.  Retry reads first and only
+     * fall back in memory; the editor/save path remains responsible for writes. */
+    esp_err_t settings_err = ESP_FAIL;
+    for (int attempt = 1; attempt <= 3; attempt++) {
+        settings_err = runtime_settings_load(&s_runtime_settings);
+        if (settings_err == ESP_OK) {
+            if (attempt > 1) {
+                ESP_LOGI(TAG_APP, "Runtime settings loaded on retry %d", attempt);
+            }
+            break;
+        }
+        ESP_LOGW(TAG_APP, "Runtime settings load attempt %d/3 failed: %s",
+            attempt, esp_err_to_name(settings_err));
+        if (attempt < 3) {
+            vTaskDelay(pdMS_TO_TICKS(150));
+        }
+    }
     if (settings_err != ESP_OK) {
-        ESP_LOGW(TAG_APP, "Failed to load runtime settings (%s), continuing with defaults", esp_err_to_name(settings_err));
+        ESP_LOGE(TAG_APP,
+            "Runtime settings unavailable after retries (%s); using defaults in memory without overwriting persisted settings",
+            esp_err_to_name(settings_err));
         runtime_settings_set_defaults(&s_runtime_settings);
     }
     (void)ui_i18n_init(s_runtime_settings.ui_language);
