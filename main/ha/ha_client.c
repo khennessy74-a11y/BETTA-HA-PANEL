@@ -325,6 +325,20 @@ typedef struct {
 
 static ha_client_state_t s_client = {0};
 
+/* Boot-relative HA connection trace.  These messages use TAG_HA_CLIENT so
+ * they appear in the existing HA log UI.  Never include URLs, tokens or
+ * other credentials in this trace. */
+static int64_t s_ha_trace_start_ms = 0;
+static uint32_t s_ha_ws_attempt_no = 0;
+
+static int64_t ha_client_trace_elapsed_ms(void)
+{
+    int64_t now_ms = esp_timer_get_time() / 1000;
+    return (s_ha_trace_start_ms > 0 && now_ms >= s_ha_trace_start_ms)
+        ? (now_ms - s_ha_trace_start_ms)
+        : 0;
+}
+
 /* ---- Central WS/TLS send gate helpers (caller must hold s_client.mutex) --- */
 
 static inline bool ha_client_heavy_in_flight_locked(void)
@@ -6145,6 +6159,9 @@ static void ha_client_handle_text_message(const char *data, int len)
         if (queue_weather_bootstrap) {
             ha_client_queue_weather_priority_sync_from_layout(now_ms);
         }
+        ESP_LOGI(TAG_HA_CLIENT,
+            "HA-CONNECT stage=auth_ok attempt=%" PRIu32 " elapsed=%" PRId64 "ms",
+            s_ha_ws_attempt_no, ha_client_trace_elapsed_ms());
         ha_client_log_mem_snapshot("auth_ok", false);
         if (!APP_HA_SUBSCRIBE_STATE_CHANGED) {
             ESP_LOGW(TAG_HA_CLIENT, "Skipping state_changed subscription (APP_HA_SUBSCRIBE_STATE_CHANGED=0)");
@@ -6205,7 +6222,9 @@ static void ha_client_ws_event_cb(const ha_ws_event_t *event, void *user_ctx)
     switch (event->type) {
     case HA_WS_EVENT_CONNECTED:
         UBaseType_t ws_hwm_connected = uxTaskGetStackHighWaterMark(NULL);
-        ESP_LOGI(TAG_HA_CLIENT, "WebSocket connected (ws_task_hwm=%u words)", (unsigned)ws_hwm_connected);
+        ESP_LOGI(TAG_HA_CLIENT,
+            "HA-CONNECT stage=ws_connected attempt=%" PRIu32 " elapsed=%" PRId64 "ms ws_task_hwm=%u",
+            s_ha_ws_attempt_no, ha_client_trace_elapsed_ms(), (unsigned)ws_hwm_connected);
         ha_client_log_mem_snapshot("ws_connected", false);
         ha_client_reset_ws_rx_assembly();
         ha_client_flush_ws_rx_queue();
@@ -6248,7 +6267,9 @@ static void ha_client_ws_event_cb(const ha_ws_event_t *event, void *user_ctx)
         break;
     case HA_WS_EVENT_DISCONNECTED:
         UBaseType_t ws_hwm_disconnected = uxTaskGetStackHighWaterMark(NULL);
-        ESP_LOGW(TAG_HA_CLIENT, "WebSocket disconnected (ws_task_hwm=%u words)", (unsigned)ws_hwm_disconnected);
+        ESP_LOGW(TAG_HA_CLIENT,
+            "HA-CONNECT stage=ws_disconnected attempt=%" PRIu32 " elapsed=%" PRId64 "ms ws_task_hwm=%u",
+            s_ha_ws_attempt_no, ha_client_trace_elapsed_ms(), (unsigned)ws_hwm_disconnected);
         ha_client_log_mem_snapshot("ws_disconnected", false);
         ha_client_reset_ws_rx_assembly();
         ha_client_flush_ws_rx_queue();
@@ -6333,7 +6354,9 @@ static void ha_client_ws_event_cb(const ha_ws_event_t *event, void *user_ctx)
     case HA_WS_EVENT_ERROR:
         UBaseType_t ws_hwm_error = uxTaskGetStackHighWaterMark(NULL);
         ESP_LOGE(TAG_HA_CLIENT,
-            "WebSocket error event (tls_esp=%s tls_stack=%d sock_errno=%d ws_task_hwm=%u words)",
+            "HA-CONNECT stage=ws_error attempt=%" PRIu32 " elapsed=%" PRId64
+            "ms tls_esp=%s tls_stack=%d sock_errno=%d ws_task_hwm=%u",
+            s_ha_ws_attempt_no, ha_client_trace_elapsed_ms(),
             esp_err_to_name(event->tls_esp_err),
             event->tls_stack_err,
             event->sock_errno,
@@ -6776,6 +6799,11 @@ static void ha_client_task(void *arg)
                 .event_cb = ha_client_ws_event_cb,
                 .user_ctx = NULL,
             };
+            s_ha_ws_attempt_no++;
+            ESP_LOGI(TAG_HA_CLIENT,
+                "HA-CONNECT stage=ws_start attempt=%" PRIu32 " elapsed=%" PRId64
+                "ms error_streak=%" PRIu32 " backoff=%" PRId64 "ms",
+                s_ha_ws_attempt_no, ha_client_trace_elapsed_ms(), ws_error_streak, ws_restart_wait_ms);
             ha_client_log_mem_snapshot("ws_restart_attempt", false);
             esp_err_t ws_err = ha_ws_start(&ws_cfg);
             if (ws_err != ESP_OK) {
@@ -7372,8 +7400,11 @@ static void ha_client_task(void *arg)
                 xSemaphoreGive(s_client.mutex);
 
                 if (done) {
-                    ESP_LOGI(TAG_HA_CLIENT, "Initial layout state sync: imported %u/%u entities", (unsigned)imported,
-                        (unsigned)entity_count);
+                    ESP_LOGI(TAG_HA_CLIENT,
+                        "HA-CONNECT stage=initial_sync_done attempt=%" PRIu32 " elapsed=%" PRId64
+                        "ms imported=%u/%u",
+                        s_ha_ws_attempt_no, ha_client_trace_elapsed_ms(),
+                        (unsigned)imported, (unsigned)entity_count);
                     ha_client_publish_event(EV_HA_CONNECTED, NULL);
                     if (!rest_enabled && layout_needs_weather_forecast) {
                         ha_client_queue_weather_priority_sync_from_layout(now_ms);
@@ -7621,6 +7652,10 @@ esp_err_t ha_client_start(const ha_client_config_t *cfg)
         .event_cb = ha_client_ws_event_cb,
         .user_ctx = NULL,
     };
+    s_ha_trace_start_ms = ha_client_now_ms();
+    s_ha_ws_attempt_no = 1;
+    ESP_LOGI(TAG_HA_CLIENT, "HA-CONNECT stage=client_start elapsed=0ms");
+    ESP_LOGI(TAG_HA_CLIENT, "HA-CONNECT stage=ws_start attempt=1 elapsed=0ms error_streak=0 backoff=0ms");
     ha_client_log_mem_snapshot("ws_start_initial", false);
     esp_err_t err = ha_ws_start(&ws_cfg);
     if (err != ESP_OK) {
