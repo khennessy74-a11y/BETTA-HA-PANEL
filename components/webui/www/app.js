@@ -1636,7 +1636,7 @@ const editor = {
   appProject: "",
   appScreenW: 0,
   appScreenH: 0,
-  haDiagnostics: { total: 0, listed: 0, updatedUnixMs: 0, names: [], dismissedSignature: "" },
+  haDiagnostics: { total: 0, listed: 0, updatedUnixMs: 0, names: [], connectionLog: [], dismissedSignature: "" },
   wifiScanItems: [],
   wifiScanHasRun: false,
   wifiScanInProgress: false,
@@ -2314,10 +2314,19 @@ async function loadHaDiagnostics() {
     editor.haDiagnostics.listed = Number(payload.missing_listed) || names.length;
     editor.haDiagnostics.updatedUnixMs = Number(payload.updated_unix_ms) || 0;
     editor.haDiagnostics.names = names;
+    editor.haDiagnostics.connectionLog = Array.isArray(payload.connection_log)
+      ? payload.connection_log
+          .filter((entry) => entry && typeof entry.message === "string")
+          .map((entry) => ({
+            elapsedMs: Number(entry.elapsed_ms) || 0,
+            message: entry.message,
+          }))
+      : [];
   } catch (_) {
     /* keep previous state */
   }
   renderHaDiagnosticsBanner();
+  if (editor.settings) recordHaConnectionStatus(editor.settings.ha || editor.settings.home_assistant || {});
 }
 
 function haDiagnosticsSignature() {
@@ -3094,7 +3103,17 @@ function recordHaConnectionStatus(ha) {
     haLastConnectionSignature = signature;
   }
   if (el.settingsHaConnectionLog) {
-    el.settingsHaConnectionLog.textContent = haConnectionHistory.length ? haConnectionHistory.join("\n") : "Waiting for connection status...";
+    const diagnosticHistory = Array.isArray(editor.haDiagnostics?.connectionLog)
+      ? editor.haDiagnostics.connectionLog
+      : [];
+    const lines = diagnosticHistory.length
+      ? diagnosticHistory.map((entry) => {
+          const elapsed = Math.max(0, Number(entry.elapsedMs) || 0);
+          const seconds = (elapsed / 1000).toFixed(3);
+          return `[+${seconds}s] ${entry.message}`;
+        })
+      : haConnectionHistory;
+    el.settingsHaConnectionLog.textContent = lines.length ? lines.join("\n") : "Waiting for connection status...";
     el.settingsHaConnectionLog.scrollTop = el.settingsHaConnectionLog.scrollHeight;
   }
 }
