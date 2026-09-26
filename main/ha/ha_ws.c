@@ -425,8 +425,10 @@ esp_err_t ha_ws_send_text(const char *text)
         return ESP_OK;
     }
 
-    /* Mark as disconnected on send failure so upper layers can recover. */
-    s_connected = false;
+    /* A timed-out/failed write does not prove the websocket transport has
+     * disconnected.  Keep transport state event-driven so callers can retry the
+     * send on the still-running session.  DISCONNECTED/ERROR events remain the
+     * authority for clearing s_connected. */
     return ESP_FAIL;
 #else
     (void)text;
