@@ -411,7 +411,7 @@ bool ha_ws_get_cached_resolved_ipv4(char *host_out, size_t host_out_sz, char *ip
     return true;
 }
 
-esp_err_t ha_ws_send_text(const char *text)
+esp_err_t ha_ws_send_text_wait(const char *text, uint32_t timeout_ms)
 {
 #if HA_WS_HAS_ESP_WS_CLIENT
     if (text == NULL || s_ws_client == NULL) {
@@ -420,18 +420,22 @@ esp_err_t ha_ws_send_text(const char *text)
     if (!ha_ws_is_connected()) {
         return ESP_ERR_INVALID_STATE;
     }
-    int written = esp_websocket_client_send_text(s_ws_client, text, strlen(text), pdMS_TO_TICKS(150));
+    int written = esp_websocket_client_send_text(
+        s_ws_client, text, strlen(text), pdMS_TO_TICKS(timeout_ms));
     if (written > 0) {
         return ESP_OK;
     }
-
-    /* A timed-out/failed write does not prove the websocket transport has
-     * disconnected.  Keep transport state event-driven so callers can retry the
-     * send on the still-running session.  DISCONNECTED/ERROR events remain the
-     * authority for clearing s_connected. */
+    ESP_LOGW(TAG_HA_WS, "Text send failed: written=%d timeout_ms=%" PRIu32 " connected=%d",
+        written, timeout_ms, esp_websocket_client_is_connected(s_ws_client) ? 1 : 0);
     return ESP_FAIL;
 #else
     (void)text;
+    (void)timeout_ms;
     return ESP_ERR_NOT_SUPPORTED;
 #endif
+}
+
+esp_err_t ha_ws_send_text(const char *text)
+{
+    return ha_ws_send_text_wait(text, 150);
 }
