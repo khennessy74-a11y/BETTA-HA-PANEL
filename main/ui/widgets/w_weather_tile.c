@@ -1731,15 +1731,12 @@ static void weather_build_3day_rows(const weather_values_t *values, weather_3day
         current->high_temp = values->today_high_temp;
     }
 
-    if (!current->has_low && values->has_temp) {
-        current->has_low = true;
-        current->low_temp = values->temp;
-    }
-    if (!current->has_high && values->has_temp) {
-        current->has_high = true;
-        current->high_temp = values->temp;
-    }
-
+    /* Do not invent today's low/high from the live temperature.  Some HA
+     * weather providers (including Met Eireann) return a daily forecast
+     * beginning with tomorrow, so there is no genuine today range to draw.
+     * Falling back to the current value produced a misleading 16C..16C
+     * "range".  Keep the live temperature marker, but leave unavailable
+     * range endpoints unset until the provider supplies today's summary. */
     if (current->has_low && !current->has_high) {
         current->has_high = true;
         current->high_temp = current->low_temp;
