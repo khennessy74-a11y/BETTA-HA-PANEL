@@ -26,6 +26,7 @@ static void *s_ws_client = NULL;
 #endif
 static ha_ws_config_t s_cfg = {0};
 static volatile bool s_connected = false;
+static ha_ws_send_diag_t s_last_send_diag = {0};
 static char *s_uri_owned = NULL;
 static char s_uri_runtime[320] = {0};
 static char s_tls_common_name[128] = {0};
@@ -420,8 +421,13 @@ esp_err_t ha_ws_send_text_wait(const char *text, uint32_t timeout_ms)
     if (!ha_ws_is_connected()) {
         return ESP_ERR_INVALID_STATE;
     }
+    s_last_send_diag.client_connected_before = esp_websocket_client_is_connected(s_ws_client);
+    s_last_send_diag.free_heap = esp_get_free_heap_size();
+    s_last_send_diag.largest_free_block = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
     int written = esp_websocket_client_send_text(
         s_ws_client, text, strlen(text), pdMS_TO_TICKS(timeout_ms));
+    s_last_send_diag.written = written;
+    s_last_send_diag.client_connected_after = esp_websocket_client_is_connected(s_ws_client);
     if (written > 0) {
         return ESP_OK;
     }
@@ -442,4 +448,13 @@ esp_err_t ha_ws_send_text_wait(const char *text, uint32_t timeout_ms)
 esp_err_t ha_ws_send_text(const char *text)
 {
     return ha_ws_send_text_wait(text, 150);
+}
+
+bool ha_ws_get_last_send_diag(ha_ws_send_diag_t *out)
+{
+    if (out == NULL) {
+        return false;
+    }
+    *out = s_last_send_diag;
+    return true;
 }
