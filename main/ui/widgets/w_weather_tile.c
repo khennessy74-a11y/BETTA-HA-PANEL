@@ -83,7 +83,7 @@
 #if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
 /* The 480 px forecast header shares one row with the large temperature.
  * Keep condition/humidity compact enough to stay inside its right column. */
-#define WEATHER_3DAY_SUBMETA_FONT APP_FONT_TEXT_18
+#define WEATHER_3DAY_SUBMETA_FONT APP_FONT_TEXT_20
 #else
 #define WEATHER_3DAY_SUBMETA_FONT APP_FONT_TEXT_22
 #endif
