@@ -5997,11 +5997,13 @@ static void ha_client_handle_text_message(const char *data, int len)
 
     cJSON *root = cJSON_ParseWithLength(data, (size_t)len);
     if (root == NULL) {
+        ha_client_trace_recordf("rx_parse_failed len=%d", len);
         return;
     }
 
     cJSON *type = cJSON_GetObjectItemCaseSensitive(root, "type");
     if (!cJSON_IsString(type) || type->valuestring == NULL) {
+        ha_client_trace_recordf("rx_missing_type len=%d", len);
         cJSON_Delete(root);
         return;
     }
@@ -6014,6 +6016,7 @@ static void ha_client_handle_text_message(const char *data, int len)
     ESP_LOGD(TAG_HA_CLIENT, "HA message type=%s", type->valuestring);
 
     if (strcmp(type->valuestring, "auth_required") == 0) {
+        ha_client_trace_recordf("auth_required rx len=%d", len);
         ESP_LOGI(TAG_HA_CLIENT, "HA auth requested, sending token");
         xSemaphoreTake(s_client.mutex, portMAX_DELAY);
         s_client.pending_send_auth = true;
@@ -6872,14 +6875,25 @@ static void ha_client_task(void *arg)
                 xSemaphoreTake(s_client.mutex, portMAX_DELAY);
                 s_client.next_auth_retry_unix_ms = now_ms + HA_AUTH_RETRY_INTERVAL_MS;
                 xSemaphoreGive(s_client.mutex);
-            } else if (ha_client_send_auth() == ESP_OK) {
+            } else {
+                esp_err_t auth_err = ha_client_send_auth();
+                ha_client_trace_recordf("auth_send result=%s", esp_err_to_name(auth_err));
+                if (auth_err == ESP_OK) {
+                    xSemaphoreTake(s_client.mutex, portMAX_DELAY);
+                    s_client.pending_send_auth = false;
+                    s_client.next_auth_retry_unix_ms = 0;
+                    xSemaphoreGive(s_client.mutex);
+                } else {
+                    xSemaphoreTake(s_client.mutex, portMAX_DELAY);
+                    s_client.next_auth_retry_unix_ms = now_ms + HA_AUTH_RETRY_INTERVAL_MS;
+                    xSemaphoreGive(s_client.mutex);
+                }
+            }
+            /* auth send handled above */
+            if (false) {
                 xSemaphoreTake(s_client.mutex, portMAX_DELAY);
                 s_client.pending_send_auth = false;
                 s_client.next_auth_retry_unix_ms = 0;
-                xSemaphoreGive(s_client.mutex);
-            } else {
-                xSemaphoreTake(s_client.mutex, portMAX_DELAY);
-                s_client.next_auth_retry_unix_ms = now_ms + HA_AUTH_RETRY_INTERVAL_MS;
                 xSemaphoreGive(s_client.mutex);
             }
         }
