@@ -1731,29 +1731,11 @@ static void weather_build_3day_rows(const weather_values_t *values, weather_3day
         current->high_temp = values->today_high_temp;
     }
 
-    /* Today's daily forecast is not guaranteed to be present (some HA
-     * providers start the returned daily array at tomorrow).  Keep the live
-     * current temperature as today's point, and preserve the previous
-     * endpoint fallback so the Today row remains populated rather than
-     * disappearing completely.  A later change can source genuine today's
-     * low/high separately when the provider omits them. */
-    if (!current->has_low && values->has_temp) {
-        current->has_low = true;
-        current->low_temp = values->temp;
-    }
-    if (!current->has_high && values->has_temp) {
-        current->has_high = true;
-        current->high_temp = values->temp;
-    }
-
-    if (current->has_low && !current->has_high) {
-        current->has_high = true;
-        current->high_temp = current->low_temp;
-    } else if (!current->has_low && current->has_high) {
-        current->has_low = true;
-        current->low_temp = current->high_temp;
-    }
-
+    /* A provider may legitimately omit today's daily forecast or one of
+     * its endpoints.  Never manufacture a daily low/high from the live
+     * temperature (or mirror the one endpoint into the other): that turns
+     * "unknown" into misleading values such as 18 / 18.  The live
+     * temperature is represented independently by the point marker. */
     if (values->has_temp) {
         current->has_point = true;
         current->point_temp = values->temp;
@@ -1775,13 +1757,8 @@ static void weather_build_3day_rows(const weather_values_t *values, weather_3day
         weather_copy_text(dst->condition_key, sizeof(dst->condition_key),
             src->condition_key[0] != '\0' ? src->condition_key : values->condition_key);
 
-        if (dst->has_low && !dst->has_high) {
-            dst->has_high = true;
-            dst->high_temp = dst->low_temp;
-        } else if (!dst->has_low && dst->has_high) {
-            dst->has_low = true;
-            dst->low_temp = dst->high_temp;
-        }
+        /* Preserve missing endpoints as unknown.  HA weather providers are
+         * not required to supply both daily high and low values. */
     }
 }
 
