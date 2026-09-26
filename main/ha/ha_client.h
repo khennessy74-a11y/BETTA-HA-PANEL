@@ -88,12 +88,21 @@ bool ha_client_heavy_gate_is_busy(void);
  * 0 until the watchdog has produced a snapshot at least once.  `total`
  * drops back to 0 once a clean sync completes (user fixed the typo). */
 #define HA_DIAGNOSTICS_MISSING_ENTITIES_CAP 16
+#define HA_DIAGNOSTICS_CONNECTION_LOG_CAP 32
+#define HA_DIAGNOSTICS_CONNECTION_LOG_MSG_LEN 112
+
+typedef struct {
+    int64_t elapsed_ms;
+    char message[HA_DIAGNOSTICS_CONNECTION_LOG_MSG_LEN];
+} ha_connection_log_entry_t;
 
 typedef struct {
     int64_t updated_unix_ms;
     uint16_t total;   /* Total missing count (may exceed `listed`). */
     uint16_t listed;  /* Number of entries actually populated in `names`. */
     char names[HA_DIAGNOSTICS_MISSING_ENTITIES_CAP][APP_MAX_ENTITY_ID_LEN];
+    uint16_t connection_log_count;
+    ha_connection_log_entry_t connection_log[HA_DIAGNOSTICS_CONNECTION_LOG_CAP];
 } ha_client_diagnostics_t;
 
 /* Fill `out` with the current diagnostics snapshot.  Safe to call from any
