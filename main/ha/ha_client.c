@@ -6908,8 +6908,13 @@ static void ha_client_task(void *arg)
                     ha_ws_is_connected() ? 1 : 0, ha_ws_is_running() ? 1 : 0,
                     ws_last_connected_unix_ms > 0 ? (now_ms - ws_last_connected_unix_ms) : -1);
                 esp_err_t auth_err = ha_client_send_auth();
-                ha_client_trace_recordf("auth_send result=%s ws_connected=%d ws_running=%d",
-                    esp_err_to_name(auth_err), ha_ws_is_connected() ? 1 : 0, ha_ws_is_running() ? 1 : 0);
+                ha_ws_send_diag_t tx_diag = {0};
+                (void)ha_ws_get_last_send_diag(&tx_diag);
+                ha_client_trace_recordf("auth_send result=%s raw=%d native=%d>%d heap=%" PRIu32 " largest=%" PRIu32,
+                    esp_err_to_name(auth_err), tx_diag.written,
+                    tx_diag.client_connected_before ? 1 : 0,
+                    tx_diag.client_connected_after ? 1 : 0,
+                    tx_diag.free_heap, tx_diag.largest_free_block);
                 if (auth_err == ESP_OK) {
                     xSemaphoreTake(s_client.mutex, portMAX_DELAY);
                     s_client.pending_send_auth = false;
