@@ -6851,6 +6851,7 @@ static void ha_client_task(void *arg)
              * deliver auth_required right on the generic restart boundary; recycling
              * the transport at that instant makes the auth send fail. */
             bool auth_handshake_active =
+                connected &&
                 auth_handshake_started_unix_ms > 0 &&
                 (now_ms - auth_handshake_started_unix_ms) < 15000;
             if (auth_handshake_active) {
