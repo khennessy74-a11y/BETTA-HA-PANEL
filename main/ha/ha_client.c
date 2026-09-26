@@ -235,6 +235,7 @@ typedef struct {
     int64_t ping_sent_unix_ms;
     int64_t last_rx_unix_ms;
     int64_t ws_last_connected_unix_ms;
+    int64_t auth_handshake_started_unix_ms;
     int64_t next_auth_retry_unix_ms;
     int64_t next_initial_layout_sync_unix_ms;
     int64_t next_periodic_layout_sync_unix_ms;
@@ -6020,6 +6021,7 @@ static void ha_client_handle_text_message(const char *data, int len)
         ESP_LOGI(TAG_HA_CLIENT, "HA auth requested, sending token");
         xSemaphoreTake(s_client.mutex, portMAX_DELAY);
         s_client.pending_send_auth = true;
+        s_client.auth_handshake_started_unix_ms = now_ms;
         s_client.next_auth_retry_unix_ms = now_ms;
         xSemaphoreGive(s_client.mutex);
     } else if (strcmp(type->valuestring, "ping") == 0) {
@@ -6060,6 +6062,7 @@ static void ha_client_handle_text_message(const char *data, int len)
         layout_needs_weather_forecast = s_client.layout_needs_weather_forecast;
         s_client.pending_get_states = false;
         s_client.pending_send_auth = false;
+        s_client.auth_handshake_started_unix_ms = 0;
         s_client.next_auth_retry_unix_ms = 0;
         s_client.ping_inflight = false;
         s_client.ping_inflight_id = 0;
@@ -6486,6 +6489,7 @@ static void ha_client_task(void *arg)
         int64_t ping_sent_unix_ms = 0;
         int64_t last_rx_unix_ms = 0;
         int64_t ws_last_connected_unix_ms = 0;
+        int64_t auth_handshake_started_unix_ms = 0;
         int64_t next_auth_retry_unix_ms = 0;
         int64_t next_initial_layout_sync_unix_ms = 0;
         int64_t next_periodic_layout_sync_unix_ms = 0;
@@ -6557,6 +6561,7 @@ static void ha_client_task(void *arg)
         ping_sent_unix_ms = s_client.ping_sent_unix_ms;
         last_rx_unix_ms = s_client.last_rx_unix_ms;
         ws_last_connected_unix_ms = s_client.ws_last_connected_unix_ms;
+        auth_handshake_started_unix_ms = s_client.auth_handshake_started_unix_ms;
         next_auth_retry_unix_ms = s_client.next_auth_retry_unix_ms;
         next_initial_layout_sync_unix_ms = s_client.next_initial_layout_sync_unix_ms;
         next_periodic_layout_sync_unix_ms = s_client.next_periodic_layout_sync_unix_ms;
@@ -6833,12 +6838,16 @@ static void ha_client_task(void *arg)
         ws_restart_wait_ms += (int64_t)(esp_random() % (uint32_t)(HA_WS_RESTART_JITTER_MS + 1));
 
         if (!connected && wifi_up && (now_ms - last_ws_restart_ms) >= ws_restart_wait_ms) {
-            /* A websocket client may already be STARTED and completing its HTTP/WS
-             * handshake even though HA_WS_EVENT_CONNECTED has not fired yet.  Never
-             * destroy a running client just because the generic connect grace elapsed:
-             * doing so races HA's auth_required greeting on slower starts.  Transport
-             * error/disconnect callbacks and the existing recovery paths are responsible
-             * for stopping a genuinely failed client. */
+            /* Protect an authentication exchange that has actually started.  HA can
+             * deliver auth_required right on the generic restart boundary; recycling
+             * the transport at that instant makes the auth send fail. */
+            bool auth_handshake_active =
+                auth_handshake_started_unix_ms > 0 &&
+                (now_ms - auth_handshake_started_unix_ms) < 15000;
+            if (auth_handshake_active) {
+                vTaskDelay(HA_CLIENT_TASK_DELAY_TICKS);
+                continue;
+            }
             if (ws_running && (now_ms - last_ws_restart_ms) < HA_WS_CONNECT_GRACE_MS) {
                 vTaskDelay(HA_CLIENT_TASK_DELAY_TICKS);
                 continue;
