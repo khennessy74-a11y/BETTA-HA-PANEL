@@ -44,4 +44,12 @@ bool ha_ws_is_connected(void);
 bool ha_ws_is_running(void);
 esp_err_t ha_ws_send_text(const char *text);
 esp_err_t ha_ws_send_text_wait(const char *text, uint32_t timeout_ms);
+typedef struct {
+    int written;
+    bool client_connected_before;
+    bool client_connected_after;
+    uint32_t free_heap;
+    uint32_t largest_free_block;
+} ha_ws_send_diag_t;
+bool ha_ws_get_last_send_diag(ha_ws_send_diag_t *out);
 bool ha_ws_get_cached_resolved_ipv4(char *host_out, size_t host_out_sz, char *ip_out, size_t ip_out_sz);
