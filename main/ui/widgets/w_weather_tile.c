@@ -2101,6 +2101,10 @@ static void weather_set_3day_row_values(weather_3day_row_widgets_t *widgets, con
         lv_coord_t marker_y = (track_h - marker_size) / 2;
         lv_obj_set_pos(widgets->bar_marker, marker_x, marker_y);
         lv_obj_set_size(widgets->bar_marker, marker_size, marker_size);
+        /* Today's live-temperature marker must remain above the range fill.
+         * Reassert foreground order on every render because the row can be
+         * relaid out repeatedly as forecast/state updates arrive. */
+        lv_obj_move_foreground(widgets->bar_marker);
         lv_obj_clear_flag(widgets->bar_marker, LV_OBJ_FLAG_HIDDEN);
     } else {
         lv_obj_add_flag(widgets->bar_marker, LV_OBJ_FLAG_HIDDEN);
