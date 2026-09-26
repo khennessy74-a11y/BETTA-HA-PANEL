@@ -6839,7 +6839,7 @@ static void ha_client_task(void *arg)
              * doing so races HA's auth_required greeting on slower starts.  Transport
              * error/disconnect callbacks and the existing recovery paths are responsible
              * for stopping a genuinely failed client. */
-            if (ws_running) {
+            if (ws_running && (now_ms - last_ws_restart_ms) < HA_WS_CONNECT_GRACE_MS) {
                 vTaskDelay(HA_CLIENT_TASK_DELAY_TICKS);
                 continue;
             }
