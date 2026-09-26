@@ -386,7 +386,15 @@ void ha_ws_stop(void)
 
 bool ha_ws_is_connected(void)
 {
+#if HA_WS_HAS_ESP_WS_CLIENT
+    /* The ESP websocket client's native state is authoritative.  The event
+     * callback flag can briefly remain true after the transport has already
+     * left CONNECTED, which otherwise creates a zombie session that accepts
+     * RX history but rejects every TX with -1. */
+    return s_ws_client != NULL && esp_websocket_client_is_connected(s_ws_client);
+#else
     return s_connected;
+#endif
 }
 
 bool ha_ws_is_running(void)
