@@ -427,7 +427,11 @@ esp_err_t ha_ws_send_text_wait(const char *text, uint32_t timeout_ms)
     }
     ESP_LOGW(TAG_HA_WS, "Text send failed: written=%d timeout_ms=%" PRIu32 " connected=%d",
         written, timeout_ms, esp_websocket_client_is_connected(s_ws_client) ? 1 : 0);
-    return ESP_FAIL;
+    /* Preserve the raw websocket-client result for diagnostics.  ESP-IDF
+     * returns -1 for a rejected/failed send; map that distinct condition to
+     * ESP_ERR_INVALID_RESPONSE so the existing HA trace exposes it without
+     * requiring a serial console. */
+    return (written < 0) ? ESP_ERR_INVALID_RESPONSE : ESP_FAIL;
 #else
     (void)text;
     (void)timeout_ms;
