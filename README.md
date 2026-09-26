@@ -73,6 +73,38 @@ Full history: [release-notes.md](release-notes.md).
 
 ---
 
+## New features & fixes in this fork
+
+Development on this fork extends the v0.8.2 baseline with a growing set of Home Assistant, editor, layout, weather, and reliability improvements.
+
+### New features
+
+- **Home Assistant script execution** — dashboard buttons can run Home Assistant scripts directly from the panel.
+- **Expanded button modes** — button widgets can be configured for the appropriate Home Assistant action/entity behaviour.
+- **Dynamic page sizing** — dashboard pages adapt more naturally to their content and available panel space.
+- **Improved entity picker** — domain-aware discovery and search for lights, sensors, switches, weather, climate, todo, media players, vacuums, images, and other supported entities.
+- **Enhanced widget configuration** — additional slider, graph, heating, button, and accent/style options in the web editor.
+- **Graph improvements** — configurable line colour, time window, display mode, bar buckets, and point counts.
+- **Heating tile variants** — additional heating display styles including semi/open arc layouts.
+- **Weather improvements** — current conditions plus multi-day forecasts using Home Assistant's weather data, with provider-neutral handling of available high/low temperatures.
+- **HA connection diagnostics** — the Settings page now exposes a rolling firmware-side Home Assistant connection history to make startup and reconnect problems easier to diagnose.
+- **Improved save/reboot handling** — network and runtime state are cleaned up more carefully before rebooting after settings changes.
+
+### Reliability fixes
+
+- **WebSocket connection-state recovery** — BETTA now uses the ESP WebSocket client's native connection state as the source of truth, preventing a stale local state from trapping the panel in repeated failed authentication attempts.
+- **Dead authentication-session recovery** — a failed native WebSocket is no longer protected as though an authentication handshake were still active; BETTA can tear it down and reconnect automatically.
+- **Authentication TX diagnostics** — connection logs can report raw WebSocket send results, native connection state, free heap, and largest free memory block when diagnosing transport failures.
+- **Safer boot settings loading** — runtime settings are no longer destructively reinitialised during normal startup retries.
+- **Weather data correctness** — missing forecast highs/lows are no longer fabricated from the current temperature, and current-temperature handling has been hardened.
+- **HTTP route and handler hardening** — improved robustness around web/API handlers used by the editor and diagnostics.
+
+### Currently under investigation
+
+- **Cold power-cycle HA startup delay on ESP32-P4/C6** — HA now self-recovers and connects, but a true cold boot can require several WebSocket reconnect attempts before the ESP-Hosted network path becomes fully usable. Warm starts connect immediately. Additional native transport-state diagnostics are being used to isolate the remaining startup delay.
+
+---
+
 ## Building from source
 
 Prerequisites: **ESP-IDF v5.5.2**, Python 3.11+, the Smart86 / Waveshare BSP components (pulled automatically via the component manager).
