@@ -4810,17 +4810,27 @@ static esp_err_t ha_client_send_weather_daily_forecast_ws(const char *entity_id,
         return ESP_ERR_NO_MEM;
     }
 
+    cJSON *service_data = cJSON_CreateObject();
+    cJSON *target = cJSON_CreateObject();
+    if (service_data == NULL || target == NULL) {
+        cJSON_Delete(service_data);
+        cJSON_Delete(target);
+        cJSON_Delete(root);
+        return ESP_ERR_NO_MEM;
+    }
+
     uint32_t req_id = ha_client_next_message_id();
     cJSON_AddNumberToObject(root, "id", (double)req_id);
-    /* Use HA's native forecast subscription request, matching modern
-     * Lovelace weather cards.  Besides avoiding a heavyweight call_service
-     * roundtrip, this returns the provider's forecast array directly and
-     * preserves today's entry when HA exposes it. */
-    cJSON_AddStringToObject(root, "type", "weather/subscribe_forecast");
-    cJSON_AddStringToObject(root, "forecast_type", "daily");
-    cJSON_AddStringToObject(root, "entity_id", entity_id);
+    cJSON_AddStringToObject(root, "type", "call_service");
+    cJSON_AddStringToObject(root, "domain", "weather");
+    cJSON_AddStringToObject(root, "service", "get_forecasts");
+    cJSON_AddBoolToObject(root, "return_response", true);
+    cJSON_AddStringToObject(service_data, "type", "daily");
+    cJSON_AddStringToObject(target, "entity_id", entity_id);
+    cJSON_AddItemToObject(root, "service_data", service_data);
+    cJSON_AddItemToObject(root, "target", target);
 
-    ESP_LOGI(TAG_HA_CLIENT, "Subscribing to WS daily weather forecast for %s", entity_id);
+    ESP_LOGI(TAG_HA_CLIENT, "Requesting WS weather forecast for %s", entity_id);
     esp_err_t err = ha_client_send_json(root);
     if (err != ESP_OK) {
         ESP_LOGW(TAG_HA_CLIENT, "Failed to request weather forecast via WS for '%s': %s",
