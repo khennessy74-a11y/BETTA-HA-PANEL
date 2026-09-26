@@ -4407,7 +4407,15 @@ static esp_err_t ha_client_send_auth(void)
     }
     cJSON_AddStringToObject(root, "type", "auth");
     cJSON_AddStringToObject(root, "access_token", s_client.access_token);
-    esp_err_t err = ha_client_send_json(root);
+    char *payload = cJSON_PrintUnformatted(root);
+    esp_err_t err = ESP_ERR_NO_MEM;
+    if (payload != NULL) {
+        /* Authentication is the first application TX and can contend with the
+         * websocket client's startup/RX lock.  Give this handshake write a
+         * longer lock/write window than normal runtime messages. */
+        err = ha_ws_send_text_wait(payload, 2000);
+        cJSON_free(payload);
+    }
     if (err != ESP_OK && err != ESP_ERR_INVALID_STATE) {
         ESP_LOGW(TAG_HA_CLIENT, "Failed to send auth");
     }
