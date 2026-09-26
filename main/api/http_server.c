@@ -138,7 +138,7 @@ esp_err_t http_server_start(void)
         http_task_prio = 1;
     }
     cfg.task_priority = http_task_prio;
-    cfg.max_uri_handlers = 32;
+    /* Route count has grown beyond ESP-IDF's conservative default.  Keep\n     * headroom for editor/API additions so handler registration cannot fail\n     * part-way through boot with ESP_ERR_HTTPD_HANDLERS_FULL. */\n    cfg.max_uri_handlers = 64;
 #if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
     cfg.max_open_sockets = 4;
 #else
