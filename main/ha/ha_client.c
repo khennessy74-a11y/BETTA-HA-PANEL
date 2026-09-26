@@ -6457,6 +6457,8 @@ static void ha_client_task(void *arg)
     int64_t wifi_down_since_ms = 0;
     int64_t last_wifi_force_recover_ms = 0;
     bool wifi_seen_connected_once = false;
+    bool last_native_ws_connected = false;
+    bool native_ws_state_initialized = false;
     while (true) {
         if (s_client.ws_rx_queue != NULL) {
             ha_ws_rx_msg_t msg = {0};
@@ -6474,6 +6476,13 @@ static void ha_client_task(void *arg)
         }
 
         bool connected = ha_ws_is_connected();
+        if (!native_ws_state_initialized || connected != last_native_ws_connected) {
+            ha_client_trace_recordf("ws_native_state %d>%d running=%d",
+                native_ws_state_initialized && last_native_ws_connected ? 1 : 0,
+                connected ? 1 : 0, ha_ws_is_running() ? 1 : 0);
+            last_native_ws_connected = connected;
+            native_ws_state_initialized = true;
+        }
         bool authenticated = false;
         bool published_disconnect = false;
         bool pending_send_auth = false;
