@@ -262,6 +262,8 @@ typedef struct {
     bool weather_ws_req_inflight;
     uint32_t weather_ws_req_id;
     char weather_ws_req_entity_id[APP_MAX_ENTITY_ID_LEN];
+    uint32_t weather_hourly_ws_req_id;
+    char weather_hourly_ws_req_entity_id[APP_MAX_ENTITY_ID_LEN];
     bool layout_needs_ha_energy;
     bool pending_energy_prefs;
     bool pending_energy_stats;
@@ -611,7 +613,8 @@ static bool ha_client_capture_layout_snapshot(
     uint32_t *out_signature, uint16_t *out_count, bool *out_need_weather_forecast);
 static bool ha_client_rest_enabled(void);
 static esp_err_t ha_client_send_subscribe_single_entity(const char *entity_id, uint32_t *out_req_id);
-static esp_err_t ha_client_send_weather_daily_forecast_ws(const char *entity_id, uint32_t *out_req_id);
+static esp_err_t ha_client_send_weather_forecast_ws(
+    const char *entity_id, const char *forecast_type, uint32_t *out_req_id);
 static esp_err_t ha_client_send_energy_prefs_ws(uint32_t *out_req_id);
 static esp_err_t ha_client_send_energy_stats_ws(uint32_t *out_req_id);
 static esp_err_t ha_client_send_light_discovery_request(ha_light_discovery_phase_t phase);
@@ -2866,6 +2869,31 @@ static bool ha_client_append_compact_forecast_to_attrs_json(char *attrs_json, si
     return fits;
 }
 
+static bool ha_client_append_named_forecast_to_attrs_json(
+    char *attrs_json, size_t attrs_json_size, const char *name, cJSON *forecast)
+{
+    if (attrs_json == NULL || attrs_json_size == 0 || name == NULL || !cJSON_IsArray(forecast)) {
+        cJSON_Delete(forecast);
+        return false;
+    }
+    cJSON *attrs = cJSON_Parse(attrs_json);
+    if (!cJSON_IsObject(attrs)) {
+        cJSON_Delete(attrs);
+        cJSON_Delete(forecast);
+        return false;
+    }
+    cJSON_DeleteItemFromObjectCaseSensitive(attrs, name);
+    cJSON_AddItemToObject(attrs, name, forecast);
+    char *merged = cJSON_PrintUnformatted(attrs);
+    cJSON_Delete(attrs);
+    if (merged == NULL) return false;
+    size_t len = strlen(merged);
+    bool fits = len < attrs_json_size;
+    if (fits) memcpy(attrs_json, merged, len + 1U);
+    cJSON_free(merged);
+    return fits;
+}
+
 static bool ha_client_priority_sync_queue_contains_locked(const char *entity_id)
 {
     if (entity_id == NULL || entity_id[0] == '\0') {
@@ -4855,35 +4883,22 @@ static esp_err_t ha_client_send_light_discovery_request(ha_light_discovery_phase
     return err;
 }
 
-static esp_err_t ha_client_send_weather_daily_forecast_ws(const char *entity_id, uint32_t *out_req_id)
+static esp_err_t ha_client_send_weather_forecast_ws(
+    const char *entity_id, const char *forecast_type, uint32_t *out_req_id)
 {
-    if (entity_id == NULL || entity_id[0] == '\0') {
+    if (entity_id == NULL || entity_id[0] == '\0' || forecast_type == NULL || forecast_type[0] == '\0') {
         return ESP_ERR_INVALID_ARG;
     }
-
     cJSON *root = cJSON_CreateObject();
-    if (root == NULL) {
-        return ESP_ERR_NO_MEM;
-    }
-
+    if (root == NULL) return ESP_ERR_NO_MEM;
     uint32_t req_id = ha_client_next_message_id();
     cJSON_AddNumberToObject(root, "id", (double)req_id);
-    /* Use HA's native forecast subscription request, matching modern
-     * Lovelace weather cards.  Besides avoiding a heavyweight call_service
-     * roundtrip, this returns the provider's forecast array directly and
-     * preserves today's entry when HA exposes it. */
     cJSON_AddStringToObject(root, "type", "weather/subscribe_forecast");
-    cJSON_AddStringToObject(root, "forecast_type", "daily");
+    cJSON_AddStringToObject(root, "forecast_type", forecast_type);
     cJSON_AddStringToObject(root, "entity_id", entity_id);
-
-    ESP_LOGI(TAG_HA_CLIENT, "Subscribing to WS daily weather forecast for %s", entity_id);
+    ESP_LOGI(TAG_HA_CLIENT, "Subscribing to WS %s weather forecast for %s", forecast_type, entity_id);
     esp_err_t err = ha_client_send_json(root);
-    if (err != ESP_OK) {
-        ESP_LOGW(TAG_HA_CLIENT, "Failed to request weather forecast via WS for '%s': %s",
-            entity_id, esp_err_to_name(err));
-    } else if (out_req_id != NULL) {
-        *out_req_id = req_id;
-    }
+    if (err == ESP_OK && out_req_id != NULL) *out_req_id = req_id;
     cJSON_Delete(root);
     return err;
 }
@@ -5901,6 +5916,38 @@ static void ha_client_handle_event_message(cJSON *root)
 
     cJSON *event = cJSON_GetObjectItemCaseSensitive(root, "event");
     if (!cJSON_IsObject(event)) {
+        return;
+    }
+
+    /* Hourly forecast is retained separately and is used only to derive
+     * today's extrema when the provider's daily feed starts at tomorrow. */
+    bool is_weather_hourly_event = false;
+    char weather_hourly_entity_id[APP_MAX_ENTITY_ID_LEN] = {0};
+    xSemaphoreTake(s_client.mutex, portMAX_DELAY);
+    if (msg_id != 0 && msg_id == s_client.weather_hourly_ws_req_id &&
+        s_client.weather_hourly_ws_req_entity_id[0] != '\0') {
+        is_weather_hourly_event = true;
+        safe_copy_cstr(weather_hourly_entity_id, sizeof(weather_hourly_entity_id),
+            s_client.weather_hourly_ws_req_entity_id);
+    }
+    xSemaphoreGive(s_client.mutex);
+    if (is_weather_hourly_event) {
+        cJSON *hourly = ha_client_find_compact_weather_forecast(event, weather_hourly_entity_id);
+        if (hourly != NULL) {
+            ha_state_t state = {0};
+            if (ha_model_get_state(weather_hourly_entity_id, &state)) {
+                if (state.attributes_json[0] == '\0') snprintf(state.attributes_json, sizeof(state.attributes_json), "{}");
+                if (ha_client_append_named_forecast_to_attrs_json(
+                        state.attributes_json, sizeof(state.attributes_json), "forecast_hourly", hourly)) {
+                    state.last_changed_unix_ms = ha_client_now_ms();
+                    ha_model_upsert_state(&state);
+                    ha_client_publish_event(EV_HA_STATE_CHANGED, weather_hourly_entity_id);
+                    ESP_LOGI(TAG_HA_CLIENT, "WS hourly weather forecast updated for %s", weather_hourly_entity_id);
+                }
+            } else {
+                cJSON_Delete(hourly);
+            }
+        }
         return;
     }
 
@@ -7487,13 +7534,19 @@ static void ha_client_task(void *arg)
                             xSemaphoreGive(s_client.mutex);
                         } else {
                             uint32_t ws_req_id = 0;
-                            esp_err_t ws_req_err = ha_client_send_weather_daily_forecast_ws(entity_id, &ws_req_id);
+                            esp_err_t ws_req_err = ha_client_send_weather_forecast_ws(entity_id, "daily", &ws_req_id);
                             xSemaphoreTake(s_client.mutex, portMAX_DELAY);
                             if (ws_req_err == ESP_OK) {
                                 s_client.weather_ws_req_inflight = true;
                                 s_client.weather_ws_req_id = ws_req_id;
                                 safe_copy_cstr(
                                     s_client.weather_ws_req_entity_id, sizeof(s_client.weather_ws_req_entity_id), entity_id);
+                                uint32_t hourly_req_id = 0;
+                                if (ha_client_send_weather_forecast_ws(entity_id, "hourly", &hourly_req_id) == ESP_OK) {
+                                    s_client.weather_hourly_ws_req_id = hourly_req_id;
+                                    safe_copy_cstr(s_client.weather_hourly_ws_req_entity_id,
+                                        sizeof(s_client.weather_hourly_ws_req_entity_id), entity_id);
+                                }
                                 s_client.next_priority_sync_unix_ms = now_ms + ha_client_interval_priority_step_ms(bg_budget_level);
                             } else {
                                 ha_client_priority_sync_queue_push_locked(entity_id);
