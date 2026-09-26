@@ -10,7 +10,7 @@
 
 #include "cJSON.h"
 #include "esp_system.h"
-#include "esp_timer.h"
+#include "esp_timer.h"\n#include "freertos/FreeRTOS.h"\n#include "freertos/task.h"
 
 #include "app_config.h"
 #include "bsp/display.h"
@@ -154,6 +154,24 @@ static bool normalize_ui_language(char *language, size_t language_len)
 static void restart_timer_cb(void *arg)
 {
     (void)arg;
+
+    /* Save + Reboot is a warm software reset.  On the S3 panel the hosted
+     * Wi-Fi/C6 transport can survive that reset in a stale state even though
+     * the STA still reports connected, leaving HA WebSocket reconnect stuck
+     * until a power cycle.  Tear down HA first, then explicitly recover the
+     * hosted transport before restarting so the next boot starts from the
+     * same clean network state seen after flash/power-on. */
+    ha_client_stop();
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+    esp_err_t recover_err = wifi_mgr_force_transport_recover();
+    if (recover_err != ESP_OK) {
+        /* A normal Wi-Fi reconnect is still better than carrying the stale
+         * session into the software reboot if full transport recovery fails. */
+        (void)wifi_mgr_force_reconnect();
+    }
+#endif
+    vTaskDelay(pdMS_TO_TICKS(250));
+
     /* Avoid random panel colors during software reset. */
     (void)bsp_display_backlight_off();
     esp_restart();
