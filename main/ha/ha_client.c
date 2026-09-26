@@ -6017,7 +6017,8 @@ static void ha_client_handle_text_message(const char *data, int len)
     ESP_LOGD(TAG_HA_CLIENT, "HA message type=%s", type->valuestring);
 
     if (strcmp(type->valuestring, "auth_required") == 0) {
-        ha_client_trace_recordf("auth_required rx len=%d", len);
+        ha_client_trace_recordf("auth_required rx len=%d ws_connected=%d ws_running=%d",
+            len, ha_ws_is_connected() ? 1 : 0, ha_ws_is_running() ? 1 : 0);
         ESP_LOGI(TAG_HA_CLIENT, "HA auth requested, sending token");
         xSemaphoreTake(s_client.mutex, portMAX_DELAY);
         s_client.pending_send_auth = true;
@@ -6852,6 +6853,10 @@ static void ha_client_task(void *arg)
                 vTaskDelay(HA_CLIENT_TASK_DELAY_TICKS);
                 continue;
             }
+            ha_client_trace_recordf(
+                "ws_restart decision connected=%d running=%d age=%" PRId64 "ms auth_active=%d",
+                connected ? 1 : 0, ws_running ? 1 : 0,
+                now_ms - last_ws_restart_ms, auth_handshake_active ? 1 : 0);
             ha_ws_stop();
             ha_ws_config_t ws_cfg = {
                 .uri = s_client.ws_url,
@@ -6891,8 +6896,12 @@ static void ha_client_task(void *arg)
                 s_client.next_auth_retry_unix_ms = now_ms + HA_AUTH_RETRY_INTERVAL_MS;
                 xSemaphoreGive(s_client.mutex);
             } else {
+                ha_client_trace_recordf("auth_send begin ws_connected=%d ws_running=%d age=%" PRId64 "ms",
+                    ha_ws_is_connected() ? 1 : 0, ha_ws_is_running() ? 1 : 0,
+                    ws_last_connected_unix_ms > 0 ? (now_ms - ws_last_connected_unix_ms) : -1);
                 esp_err_t auth_err = ha_client_send_auth();
-                ha_client_trace_recordf("auth_send result=%s", esp_err_to_name(auth_err));
+                ha_client_trace_recordf("auth_send result=%s ws_connected=%d ws_running=%d",
+                    esp_err_to_name(auth_err), ha_ws_is_connected() ? 1 : 0, ha_ws_is_running() ? 1 : 0);
                 if (auth_err == ESP_OK) {
                     xSemaphoreTake(s_client.mutex, portMAX_DELAY);
                     s_client.pending_send_auth = false;
@@ -6903,13 +6912,6 @@ static void ha_client_task(void *arg)
                     s_client.next_auth_retry_unix_ms = now_ms + HA_AUTH_RETRY_INTERVAL_MS;
                     xSemaphoreGive(s_client.mutex);
                 }
-            }
-            /* auth send handled above */
-            if (false) {
-                xSemaphoreTake(s_client.mutex, portMAX_DELAY);
-                s_client.pending_send_auth = false;
-                s_client.next_auth_retry_unix_ms = 0;
-                xSemaphoreGive(s_client.mutex);
             }
         }
         if (connected && pending_send_pong) {
