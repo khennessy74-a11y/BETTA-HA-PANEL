@@ -6833,7 +6833,13 @@ static void ha_client_task(void *arg)
         ws_restart_wait_ms += (int64_t)(esp_random() % (uint32_t)(HA_WS_RESTART_JITTER_MS + 1));
 
         if (!connected && wifi_up && (now_ms - last_ws_restart_ms) >= ws_restart_wait_ms) {
-            if (ws_running && (now_ms - last_ws_restart_ms) < HA_WS_CONNECT_GRACE_MS) {
+            /* A websocket client may already be STARTED and completing its HTTP/WS
+             * handshake even though HA_WS_EVENT_CONNECTED has not fired yet.  Never
+             * destroy a running client just because the generic connect grace elapsed:
+             * doing so races HA's auth_required greeting on slower starts.  Transport
+             * error/disconnect callbacks and the existing recovery paths are responsible
+             * for stopping a genuinely failed client. */
+            if (ws_running) {
                 vTaskDelay(HA_CLIENT_TASK_DELAY_TICKS);
                 continue;
             }
