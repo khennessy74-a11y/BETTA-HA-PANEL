@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
+#include <stdarg.h>
 
 #include "cJSON.h"
 #include "esp_crt_bundle.h"
@@ -321,6 +322,9 @@ typedef struct {
     QueueHandle_t ws_rx_queue;
     TaskHandle_t task_handle;
     SemaphoreHandle_t mutex;
+    ha_connection_log_entry_t connection_log[HA_DIAGNOSTICS_CONNECTION_LOG_CAP];
+    uint16_t connection_log_head;
+    uint16_t connection_log_count;
 } ha_client_state_t;
 
 static ha_client_state_t s_client = {0};
@@ -337,6 +341,31 @@ static int64_t ha_client_trace_elapsed_ms(void)
     return (s_ha_trace_start_ms > 0 && now_ms >= s_ha_trace_start_ms)
         ? (now_ms - s_ha_trace_start_ms)
         : 0;
+}
+
+static void ha_client_trace_record(const char *message)
+{
+    if (message == NULL || s_client.mutex == NULL) return;
+    xSemaphoreTake(s_client.mutex, portMAX_DELAY);
+    uint16_t idx = s_client.connection_log_head;
+    s_client.connection_log[idx].elapsed_ms = ha_client_trace_elapsed_ms();
+    safe_copy_cstr(s_client.connection_log[idx].message,
+        sizeof(s_client.connection_log[idx].message), message);
+    s_client.connection_log_head = (uint16_t)((idx + 1U) % HA_DIAGNOSTICS_CONNECTION_LOG_CAP);
+    if (s_client.connection_log_count < HA_DIAGNOSTICS_CONNECTION_LOG_CAP) {
+        s_client.connection_log_count++;
+    }
+    xSemaphoreGive(s_client.mutex);
+}
+
+static void ha_client_trace_recordf(const char *fmt, ...)
+{
+    char buf[HA_DIAGNOSTICS_CONNECTION_LOG_MSG_LEN];
+    va_list ap;
+    va_start(ap, fmt);
+    vsnprintf(buf, sizeof(buf), fmt, ap);
+    va_end(ap);
+    ha_client_trace_record(buf);
 }
 
 /* ---- Central WS/TLS send gate helpers (caller must hold s_client.mutex) --- */
@@ -6162,6 +6191,7 @@ static void ha_client_handle_text_message(const char *data, int len)
         ESP_LOGI(TAG_HA_CLIENT,
             "HA-CONNECT stage=auth_ok attempt=%" PRIu32 " elapsed=%" PRId64 "ms",
             s_ha_ws_attempt_no, ha_client_trace_elapsed_ms());
+        ha_client_trace_recordf("auth_ok attempt=%" PRIu32, s_ha_ws_attempt_no);
         ha_client_log_mem_snapshot("auth_ok", false);
         if (!APP_HA_SUBSCRIBE_STATE_CHANGED) {
             ESP_LOGW(TAG_HA_CLIENT, "Skipping state_changed subscription (APP_HA_SUBSCRIBE_STATE_CHANGED=0)");
@@ -6225,6 +6255,8 @@ static void ha_client_ws_event_cb(const ha_ws_event_t *event, void *user_ctx)
         ESP_LOGI(TAG_HA_CLIENT,
             "HA-CONNECT stage=ws_connected attempt=%" PRIu32 " elapsed=%" PRId64 "ms ws_task_hwm=%u",
             s_ha_ws_attempt_no, ha_client_trace_elapsed_ms(), (unsigned)ws_hwm_connected);
+        ha_client_trace_recordf("ws_connected attempt=%" PRIu32 " hwm=%u",
+            s_ha_ws_attempt_no, (unsigned)ws_hwm_connected);
         ha_client_log_mem_snapshot("ws_connected", false);
         ha_client_reset_ws_rx_assembly();
         ha_client_flush_ws_rx_queue();
@@ -6270,6 +6302,8 @@ static void ha_client_ws_event_cb(const ha_ws_event_t *event, void *user_ctx)
         ESP_LOGW(TAG_HA_CLIENT,
             "HA-CONNECT stage=ws_disconnected attempt=%" PRIu32 " elapsed=%" PRId64 "ms ws_task_hwm=%u",
             s_ha_ws_attempt_no, ha_client_trace_elapsed_ms(), (unsigned)ws_hwm_disconnected);
+        ha_client_trace_recordf("ws_disconnected attempt=%" PRIu32 " hwm=%u",
+            s_ha_ws_attempt_no, (unsigned)ws_hwm_disconnected);
         ha_client_log_mem_snapshot("ws_disconnected", false);
         ha_client_reset_ws_rx_assembly();
         ha_client_flush_ws_rx_queue();
@@ -6361,6 +6395,9 @@ static void ha_client_ws_event_cb(const ha_ws_event_t *event, void *user_ctx)
             event->tls_stack_err,
             event->sock_errno,
             (unsigned)ws_hwm_error);
+        ha_client_trace_recordf("ws_error attempt=%" PRIu32 " tls=%s stack=%d sock=%d",
+            s_ha_ws_attempt_no, esp_err_to_name(event->tls_esp_err),
+            event->tls_stack_err, event->sock_errno);
         int64_t ws_error_now_ms = ha_client_now_ms();
         bool tls_bad_input = ha_client_is_tls_bad_input_data(event->tls_stack_err);
         xSemaphoreTake(s_client.mutex, portMAX_DELAY);
@@ -6804,6 +6841,8 @@ static void ha_client_task(void *arg)
                 "HA-CONNECT stage=ws_start attempt=%" PRIu32 " elapsed=%" PRId64
                 "ms error_streak=%" PRIu32 " backoff=%" PRId64 "ms",
                 s_ha_ws_attempt_no, ha_client_trace_elapsed_ms(), ws_error_streak, ws_restart_wait_ms);
+            ha_client_trace_recordf("ws_start attempt=%" PRIu32 " streak=%" PRIu32 " backoff=%" PRId64 "ms",
+                s_ha_ws_attempt_no, ws_error_streak, ws_restart_wait_ms);
             ha_client_log_mem_snapshot("ws_restart_attempt", false);
             esp_err_t ws_err = ha_ws_start(&ws_cfg);
             if (ws_err != ESP_OK) {
@@ -7405,6 +7444,8 @@ static void ha_client_task(void *arg)
                         "ms imported=%u/%u",
                         s_ha_ws_attempt_no, ha_client_trace_elapsed_ms(),
                         (unsigned)imported, (unsigned)entity_count);
+                    ha_client_trace_recordf("initial_sync_done imported=%u/%u",
+                        (unsigned)imported, (unsigned)entity_count);
                     ha_client_publish_event(EV_HA_CONNECTED, NULL);
                     if (!rest_enabled && layout_needs_weather_forecast) {
                         ha_client_queue_weather_priority_sync_from_layout(now_ms);
@@ -7655,7 +7696,9 @@ esp_err_t ha_client_start(const ha_client_config_t *cfg)
     s_ha_trace_start_ms = ha_client_now_ms();
     s_ha_ws_attempt_no = 1;
     ESP_LOGI(TAG_HA_CLIENT, "HA-CONNECT stage=client_start elapsed=0ms");
+    ha_client_trace_record("client_start");
     ESP_LOGI(TAG_HA_CLIENT, "HA-CONNECT stage=ws_start attempt=1 elapsed=0ms error_streak=0 backoff=0ms");
+    ha_client_trace_record("ws_start attempt=1 streak=0 backoff=0ms");
     ha_client_log_mem_snapshot("ws_start_initial", false);
     esp_err_t err = ha_ws_start(&ws_cfg);
     if (err != ESP_OK) {
@@ -8035,6 +8078,15 @@ void ha_client_get_diagnostics(ha_client_diagnostics_t *out)
     out->listed = listed;
     for (uint16_t i = 0; i < listed; i++) {
         safe_copy_cstr(out->names[i], APP_MAX_ENTITY_ID_LEN, s_client.missing_entities[i]);
+    }
+    out->connection_log_count = s_client.connection_log_count;
+    uint16_t start = (uint16_t)((s_client.connection_log_head + HA_DIAGNOSTICS_CONNECTION_LOG_CAP -
+        s_client.connection_log_count) % HA_DIAGNOSTICS_CONNECTION_LOG_CAP);
+    for (uint16_t i = 0; i < s_client.connection_log_count; i++) {
+        uint16_t src = (uint16_t)((start + i) % HA_DIAGNOSTICS_CONNECTION_LOG_CAP);
+        out->connection_log[i].elapsed_ms = s_client.connection_log[src].elapsed_ms;
+        safe_copy_cstr(out->connection_log[i].message,
+            sizeof(out->connection_log[i].message), s_client.connection_log[src].message);
     }
     xSemaphoreGive(s_client.mutex);
 }
