@@ -335,6 +335,10 @@ static ha_client_state_t s_client = {0};
 static int64_t s_ha_trace_start_ms = 0;
 static uint32_t s_ha_ws_attempt_no = 0;
 
+/* Used by the early connection-trace helpers below; the main declaration
+ * block appears later with the rest of the client-private prototypes. */
+static void safe_copy_cstr(char *dst, size_t dst_size, const char *src);
+
 static int64_t ha_client_trace_elapsed_ms(void)
 {
     int64_t now_ms = esp_timer_get_time() / 1000;
