@@ -5570,18 +5570,11 @@ static void ha_client_handle_result_message(cJSON *root)
     if (s_client.weather_ws_req_inflight && msg_id == s_client.weather_ws_req_id) {
         is_weather_ws_req = true;
         safe_copy_cstr(weather_entity_id, sizeof(weather_entity_id), s_client.weather_ws_req_entity_id);
-        /* weather/subscribe_forecast returns a small result ACK first, then
-         * delivers forecast data as event messages using this same id.
-         * Release the HEAVY send gate on the ACK, but keep the subscription
-         * id/entity alive so ha_client_handle_event_message() can recognise
-         * and import the later forecast event.  Only discard the identity
-         * when HA rejects the subscription. */
+        /* Heavy response fully received: arm cooldown before clearing flag. */
         ha_client_ws_send_gate_mark_heavy_done_locked(ha_client_now_ms());
         s_client.weather_ws_req_inflight = false;
-        if (cJSON_IsBool(success_item) && !cJSON_IsTrue(success_item)) {
-            s_client.weather_ws_req_id = 0;
-            s_client.weather_ws_req_entity_id[0] = '\0';
-        }
+        s_client.weather_ws_req_id = 0;
+        s_client.weather_ws_req_entity_id[0] = '\0';
     }
     if (s_client.energy_prefs_req_inflight && msg_id == s_client.energy_prefs_req_id) {
         is_energy_prefs_req = true;
@@ -5847,49 +5840,6 @@ static void ha_client_handle_event_message(cJSON *root)
 
     cJSON *event = cJSON_GetObjectItemCaseSensitive(root, "event");
     if (!cJSON_IsObject(event)) {
-        return;
-    }
-
-    /* Native weather/subscribe_forecast is a persistent subscription.  Its
-     * result message is only an acknowledgement; the useful forecast array
-     * arrives here later as an event with the same subscription id. */
-    bool is_weather_forecast_event = false;
-    char weather_entity_id[APP_MAX_ENTITY_ID_LEN] = {0};
-    xSemaphoreTake(s_client.mutex, portMAX_DELAY);
-    if (msg_id != 0 && msg_id == s_client.weather_ws_req_id &&
-        s_client.weather_ws_req_entity_id[0] != '\0') {
-        is_weather_forecast_event = true;
-        safe_copy_cstr(weather_entity_id, sizeof(weather_entity_id), s_client.weather_ws_req_entity_id);
-    }
-    xSemaphoreGive(s_client.mutex);
-
-    if (is_weather_forecast_event) {
-        cJSON *compact_forecast = ha_client_find_compact_weather_forecast(event, weather_entity_id);
-        if (compact_forecast != NULL) {
-            ha_state_t state = {0};
-            if (ha_model_get_state(weather_entity_id, &state)) {
-                if (state.attributes_json[0] == '\0') {
-                    snprintf(state.attributes_json, sizeof(state.attributes_json), "{}");
-                }
-                if (ha_client_append_compact_forecast_to_attrs_json(
-                        state.attributes_json, sizeof(state.attributes_json), compact_forecast)) {
-                    state.last_changed_unix_ms = ha_client_now_ms();
-                    ha_model_upsert_state(&state);
-                    ha_client_publish_event(EV_HA_STATE_CHANGED, weather_entity_id);
-                    ESP_LOGI(TAG_HA_CLIENT, "WS weather forecast event updated for %s", weather_entity_id);
-                } else {
-                    ESP_LOGW(TAG_HA_CLIENT,
-                        "WS weather forecast event merge failed for %s (attrs buffer too small or invalid)",
-                        weather_entity_id);
-                }
-            } else {
-                cJSON_Delete(compact_forecast);
-                ESP_LOGD(TAG_HA_CLIENT,
-                    "WS weather forecast event arrived before state model existed for %s", weather_entity_id);
-            }
-        } else {
-            ESP_LOGW(TAG_HA_CLIENT, "WS weather forecast event had no usable forecast for %s", weather_entity_id);
-        }
         return;
     }
 
