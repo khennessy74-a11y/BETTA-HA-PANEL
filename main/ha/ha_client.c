@@ -366,10 +366,13 @@ static const int HA_WEATHER_COMPACT_FORECAST_MAX_ITEMS = 6;
 #else
 static const int HA_WEATHER_COMPACT_FORECAST_MAX_ITEMS = 6;
 #endif
-static const int64_t HA_WS_RESTART_INTERVAL_MS = 12000;
-static const int64_t HA_WS_RESTART_INTERVAL_MAX_MS = 30000;
-static const int64_t HA_WS_RESTART_JITTER_MS = 1000;
-static const int64_t HA_WS_CONNECT_GRACE_MS = 15000;
+/* Reconnect quickly after a dropped HA socket.  A wall panel should recover
+ * locally before asking the user for a power cycle.  Keep a modest capped
+ * backoff so genuine HA downtime still does not create a reconnect storm. */
+static const int64_t HA_WS_RESTART_INTERVAL_MS = 3000;
+static const int64_t HA_WS_RESTART_INTERVAL_MAX_MS = 15000;
+static const int64_t HA_WS_RESTART_JITTER_MS = 500;
+static const int64_t HA_WS_CONNECT_GRACE_MS = 8000;
 static const int64_t HA_WS_SHORT_SESSION_MS = 180000;
 static const uint8_t HA_WS_SHORT_SESSION_STRIKES_TO_WIFI_RECOVER = 4;
 static const uint8_t HA_WS_SHORT_SESSION_STRIKES_TO_TRANSPORT_RECOVER = 6;
@@ -422,7 +425,15 @@ static const int64_t HA_WS_GET_STATES_POST_SUBSCRIBE_DELAY_MS = 1200;
 static const int64_t HA_WS_GET_STATES_BAD_INPUT_COOLDOWN_MS = 60000;
 /* If true, repeated WS failures while Wi-Fi is up can escalate to Wi-Fi/C6 recover.
    Keep disabled so intentional HA downtime does not trigger transport recovery loops. */
+/* The S3/C6 transport can occasionally remain wedged while Wi-Fi still
+ * reports connected.  Repeated short WS sessions/connect failures are
+ * therefore allowed to escalate through the existing guarded recovery path.
+ * TLS BAD_INPUT_DATA remains explicitly excluded below. */
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+static const bool HA_WS_ESCALATE_RECOVER_WHEN_WIFI_UP = true;
+#else
 static const bool HA_WS_ESCALATE_RECOVER_WHEN_WIFI_UP = false;
+#endif
 /* Per-entity subscribe step cadence.  Subscribes are LIGHT sends (tiny
  * request + tiny ack), so this is only about not flooding the WS send
  * queue, not about TLS heap pressure.  150 ms paces ~6 subscribes/s which
