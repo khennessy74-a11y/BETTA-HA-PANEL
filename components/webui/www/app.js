@@ -4148,7 +4148,7 @@ const COMMON_DISPLAY_WIDGET_TYPES = new Set([
  * deliberately stay out because their primary visual is not an icon. */
 const COMMON_ICON_WIDGET_TYPES = new Set([
   "graph", "heating_tile", "light_tile", "fan_tile", "media_player",
-  "roborock", "roborock_tile", "todo", "todo_list", "weather_tile", "weather_3day",
+  "roborock", "roborock_tile", "todo", "todo_list",
   "binary_sensor", "input_number", "select", "input_text", "input_datetime",
   "alarm_control_panel", "update", "calendar", "person", "device_tracker"
 ]);
