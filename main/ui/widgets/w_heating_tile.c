@@ -16,6 +16,7 @@
 #include "ui/ui_memory.h"
 #include "ui/widgets/widget_display_options.h"
 #include "ui/theme/theme_default.h"
+#include "ui/widgets/tile_layout_shared.h"
 
 #define HEATING_ACTUAL_FONT APP_FONT_DISPLAY_38
 
@@ -751,7 +752,7 @@ esp_err_t w_heating_tile_create(const ui_widget_def_t *def, lv_obj_t *parent, ui
 #else
     lv_obj_set_style_border_width(card, 0, LV_PART_MAIN);
 #endif
-    lv_obj_set_style_pad_all(card, 16, LV_PART_MAIN);
+    lv_obj_set_style_pad_all(card, app_tile_card_padding(false), LV_PART_MAIN);
 
     lv_obj_t *icon = lv_label_create(card);
     lv_label_set_text(icon, heating_icon_text());
@@ -767,11 +768,7 @@ esp_err_t w_heating_tile_create(const ui_widget_def_t *def, lv_obj_t *parent, ui
     lv_obj_set_width(title, def->w - 32);
     lv_obj_set_style_text_font(title, APP_FONT_TEXT_16, LV_PART_MAIN);
     lv_obj_set_style_text_align(title, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
-#if APP_UI_TILE_LAYOUT_TUNED
-    lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 2);
-#else
-    lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 0);
-#endif
+lv_obj_align(title, LV_ALIGN_TOP_MID, 0, app_tile_state_top_y(false));
 
     lv_obj_t *arc = lv_arc_create(card);
     lv_obj_set_size(arc, HEATING_ARC_SIZE_MIN, HEATING_ARC_SIZE_MIN);
