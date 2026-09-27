@@ -1554,6 +1554,52 @@ static void weather_extract_values(const ha_state_t *state, bool want_forecast, 
                 out_idx++;
             }
         }
+
+        /* Some integrations begin daily at tomorrow. Use the separate hourly
+         * subscription only for missing Today extrema; daily remains the
+         * source for Tomorrow and later rows. */
+        if (!out->today_has_high || !out->today_has_low) {
+            cJSON *hourly = cJSON_GetObjectItemCaseSensitive(attrs, "forecast_hourly");
+            if (cJSON_IsArray(hourly)) {
+                bool have_hourly = false;
+                float hourly_min = 0.0f;
+                float hourly_max = 0.0f;
+                int hourly_count = cJSON_GetArraySize(hourly);
+                for (int i = 0; i < hourly_count; i++) {
+                    cJSON *item = cJSON_GetArrayItem(hourly, i);
+                    if (!cJSON_IsObject(item)) continue;
+                    cJSON *datetime = cJSON_GetObjectItemCaseSensitive(item, "datetime");
+                    cJSON *date = cJSON_GetObjectItemCaseSensitive(item, "date");
+                    const char *when = NULL;
+                    if (cJSON_IsString(datetime) && datetime->valuestring != NULL) {
+                        when = datetime->valuestring;
+                    } else if (cJSON_IsString(date) && date->valuestring != NULL) {
+                        when = date->valuestring;
+                    }
+                    if (when == NULL || !weather_datetime_is_today(when)) continue;
+
+                    float temp = 0.0f;
+                    cJSON *temp_item = cJSON_GetObjectItemCaseSensitive(item, "temperature");
+                    if (!weather_json_item_to_float(temp_item, &temp)) {
+                        temp_item = cJSON_GetObjectItemCaseSensitive(item, "native_temperature");
+                    }
+                    if (!weather_json_item_to_float(temp_item, &temp)) continue;
+                    if (!have_hourly || temp < hourly_min) hourly_min = temp;
+                    if (!have_hourly || temp > hourly_max) hourly_max = temp;
+                    have_hourly = true;
+                }
+                if (have_hourly) {
+                    if (!out->today_has_low) {
+                        out->today_low_temp = hourly_min;
+                        out->today_has_low = true;
+                    }
+                    if (!out->today_has_high) {
+                        out->today_high_temp = hourly_max;
+                        out->today_has_high = true;
+                    }
+                }
+            }
+        }
     }
 
     if (attrs != NULL) {
