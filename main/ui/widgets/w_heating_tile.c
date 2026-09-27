@@ -17,6 +17,7 @@
 #include "ui/widgets/widget_display_options.h"
 #include "ui/theme/theme_default.h"
 #include "ui/widgets/tile_layout_shared.h"
+#include "ui/widgets/state_icon_color.h"
 
 #define HEATING_ACTUAL_FONT APP_FONT_DISPLAY_38
 
@@ -40,6 +41,10 @@ typedef struct {
     float current_temp;
     bool has_current_temp;
     bool show_state;
+    lv_color_t state_off_color;
+    lv_color_t state_on_color;
+    bool has_state_off_color;
+    bool has_state_on_color;
     char status_text[32];
     lv_obj_t *icon_label;
     lv_obj_t *title_label;
@@ -454,7 +459,11 @@ static void heating_apply_visual(lv_obj_t *card, w_heating_tile_ctx_t *ctx, bool
         card, is_on ? lv_color_hex(APP_UI_COLOR_CARD_BG_ON) : lv_color_hex(APP_UI_COLOR_CARD_BG_OFF), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(card, LV_OPA_COVER, LV_PART_MAIN);
     lv_obj_set_style_text_color(
-        icon, is_on ? lv_color_hex(APP_UI_COLOR_HEAT_ICON_ON) : lv_color_hex(APP_UI_COLOR_CARD_ICON_OFF), LV_PART_MAIN);
+        icon,
+        is_on
+            ? (ctx->has_state_on_color ? ctx->state_on_color : lv_color_hex(APP_UI_COLOR_HEAT_ICON_ON))
+            : (ctx->has_state_off_color ? ctx->state_off_color : lv_color_hex(APP_UI_COLOR_CARD_ICON_OFF)),
+        LV_PART_MAIN);
     lv_obj_set_style_text_color(title, lv_color_hex(APP_UI_COLOR_TEXT_PRIMARY), LV_PART_MAIN);
     lv_obj_set_style_text_color(target_label, lv_color_hex(APP_UI_COLOR_TEXT_SOFT), LV_PART_MAIN);
     lv_obj_set_style_text_color(actual_label, lv_color_hex(APP_UI_COLOR_TEXT_PRIMARY), LV_PART_MAIN);
@@ -818,6 +827,8 @@ lv_obj_align(title, LV_ALIGN_TOP_MID, 0, app_tile_state_top_y(false));
     ctx->current_temp = 20.0f;
     ctx->has_current_temp = false;
     ctx->show_state = def->show_state;
+    ctx->has_state_off_color = state_icon_parse_color(def->state_icon_off_color, &ctx->state_off_color);
+    ctx->has_state_on_color = state_icon_parse_color(def->state_icon_on_color, &ctx->state_on_color);
     snprintf(ctx->status_text, sizeof(ctx->status_text), "OFF");
     ctx->icon_label = icon;
     ctx->title_label = title;
