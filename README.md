@@ -96,9 +96,10 @@ Development on this fork extends the v0.8.2 baseline with a growing set of Home 
 - **Configurable state icon colours** — supported tiles can use separate ON and OFF icon colours while preserving theme defaults and Home Assistant light RGB behaviour where appropriate.
 - **Sensor precision control** — sensor tiles can configure the number of decimal places shown on the panel.
 - **Cover controls** — cover sliders support position and tilt where Home Assistant exposes those capabilities, with open/stop/close actions and movement-aware control states.
-- **Responsive compact tiles** — button geometry and controls for Select, Input Number, Fan, and Update tiles have been tightened so smaller dashboard cards remain usable without changing normal-size layouts.
+- **Responsive compact tiles** — button geometry and controls for Select, Input Number, Fan, Update, Input Text, Input Date/Time, and Heating tiles have been tightened so smaller dashboard cards remain usable without changing normal-size layouts.
+- **Night Mode and idle dimming** — configurable day/night brightness, automatic scheduled transitions, wake-time schedule refresh, and inactivity dimming now work together without allowing idle mode to brighten an already-dimmer night display.
 - **Editor parity cleanup** — widget options now better match runtime capabilities; unsupported generic custom-icon controls are hidden for Weather while its dynamic weather icons remain intact.
-- **Hardware validation** — the current development line has been repeatedly built, flashed, and exercised on-panel; the latest confirmed hardware-green checkpoint is commit `b95f290`.
+- **Hardware validation** — the current development line has been repeatedly built, flashed, and exercised on-panel; the latest confirmed hardware-green checkpoint is commit `7bd95d7`.
 
 ### Reliability fixes
 
