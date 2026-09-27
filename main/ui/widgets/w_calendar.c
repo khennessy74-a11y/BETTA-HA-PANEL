@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: LicenseRef-FNCL-1.1 */
 #include "ui/ui_widget_factory.h"
+#include "ui/widgets/widget_display_options.h"
 
 #include <stdbool.h>
 #include <stdio.h>
@@ -15,6 +16,7 @@
 typedef struct {
     lv_obj_t *card;
     lv_obj_t *title;
+    lv_obj_t *icon;
     lv_obj_t *message;
     lv_obj_t *time;
     bool show_title;
@@ -39,6 +41,11 @@ esp_err_t w_calendar_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_wid
     w_calendar_ctx_t *ctx = ui_calloc_prefer_psram(1, sizeof(*ctx));
     if (ctx == NULL) { lv_obj_del(card); return ESP_ERR_NO_MEM; }
     ctx->card = card; ctx->show_title = def->show_title; ctx->show_state = def->show_state;
+
+    ctx->icon = lv_label_create(card);
+    lv_obj_align(ctx->icon, LV_ALIGN_TOP_RIGHT, 0, 0);
+    widget_display_set_visible(ctx->icon, def->show_icon);
+    if (def->show_icon && !widget_display_apply_mdi(ctx->icon, def->icon[0] ? def->icon : "mdi:calendar")) widget_display_set_visible(ctx->icon, false);
 
     ctx->title = lv_label_create(card);
     lv_label_set_text(ctx->title, def->title[0] ? def->title : def->id);
