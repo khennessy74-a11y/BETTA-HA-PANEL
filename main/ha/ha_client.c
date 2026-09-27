@@ -2872,6 +2872,50 @@ static bool ha_client_append_compact_forecast_to_attrs_json(char *attrs_json, si
     return fits;
 }
 
+static cJSON *ha_client_reduce_hourly_forecast_to_extrema(cJSON *hourly)
+{
+    if (!cJSON_IsArray(hourly) || cJSON_GetArraySize(hourly) == 0) return NULL;
+
+    char day_key[11] = {0};
+    bool have = false;
+    float min_temp = 0.0f, max_temp = 0.0f;
+    int count = cJSON_GetArraySize(hourly);
+    for (int i = 0; i < count; i++) {
+        cJSON *item = cJSON_GetArrayItem(hourly, i);
+        if (!cJSON_IsObject(item)) continue;
+        cJSON *dt = cJSON_GetObjectItemCaseSensitive(item, "datetime");
+        if (!cJSON_IsString(dt) || dt->valuestring == NULL || strlen(dt->valuestring) < 10) continue;
+        if (day_key[0] == '\0') {
+            memcpy(day_key, dt->valuestring, 10);
+            day_key[10] = '\0';
+        } else if (strncmp(day_key, dt->valuestring, 10) != 0) {
+            break;
+        }
+        cJSON *temp_item = cJSON_GetObjectItemCaseSensitive(item, "temperature");
+        if (!cJSON_IsNumber(temp_item)) continue;
+        float temp = (float)temp_item->valuedouble;
+        if (!have || temp < min_temp) min_temp = temp;
+        if (!have || temp > max_temp) max_temp = temp;
+        have = true;
+    }
+    if (!have) return NULL;
+
+    cJSON *summary = cJSON_CreateArray();
+    cJSON *lo = cJSON_CreateObject();
+    cJSON *hi = cJSON_CreateObject();
+    if (summary == NULL || lo == NULL || hi == NULL) {
+        cJSON_Delete(summary); cJSON_Delete(lo); cJSON_Delete(hi);
+        return NULL;
+    }
+    cJSON_AddStringToObject(lo, "datetime", day_key);
+    cJSON_AddNumberToObject(lo, "temperature", min_temp);
+    cJSON_AddStringToObject(hi, "datetime", day_key);
+    cJSON_AddNumberToObject(hi, "temperature", max_temp);
+    cJSON_AddItemToArray(summary, lo);
+    cJSON_AddItemToArray(summary, hi);
+    return summary;
+}
+
 static bool ha_client_append_named_forecast_to_attrs_json(
     char *attrs_json, size_t attrs_json_size, const char *name, cJSON *forecast)
 {
@@ -5961,6 +6005,11 @@ static void ha_client_handle_event_message(cJSON *root)
     if (is_weather_hourly_event) {
         cJSON *hourly = ha_client_find_compact_weather_forecast(event, weather_hourly_entity_id);
         if (hourly != NULL) {
+            cJSON *hourly_extrema = ha_client_reduce_hourly_forecast_to_extrema(hourly);
+            cJSON_Delete(hourly);
+            hourly = hourly_extrema;
+        }
+        if (hourly != NULL) {
             ha_state_t state = {0};
             if (ha_model_get_state(weather_hourly_entity_id, &state)) {
                 if (state.attributes_json[0] == '\0') snprintf(state.attributes_json, sizeof(state.attributes_json), "{}");
@@ -5969,7 +6018,10 @@ static void ha_client_handle_event_message(cJSON *root)
                     state.last_changed_unix_ms = ha_client_now_ms();
                     ha_model_upsert_state(&state);
                     ha_client_publish_event(EV_HA_STATE_CHANGED, weather_hourly_entity_id);
-                    ESP_LOGI(TAG_HA_CLIENT, "WS hourly weather forecast updated for %s", weather_hourly_entity_id);
+                    ESP_LOGI(TAG_HA_CLIENT, "WS hourly weather extrema updated for %s", weather_hourly_entity_id);
+                } else {
+                    ESP_LOGW(TAG_HA_CLIENT, "WS hourly weather extrema merge failed for %s (attrs cap=%u)",
+                        weather_hourly_entity_id, (unsigned)sizeof(state.attributes_json));
                 }
             } else {
                 cJSON_Delete(hourly);
