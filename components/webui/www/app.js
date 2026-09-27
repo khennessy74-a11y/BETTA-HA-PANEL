@@ -4153,6 +4153,24 @@ function updateCommonIconControls() {
   el.fCommonCustomIconWrap.classList.toggle("hidden", !showIcon || el.fCommonIconMode.value !== "custom");
 }
 
+if (el.fCommonShowIcon) {
+  el.fCommonShowIcon.addEventListener("change", () => {
+    updateCommonIconControls();
+    autoApplyInspector();
+  });
+}
+if (el.fCommonIconMode) {
+  el.fCommonIconMode.addEventListener("change", () => {
+    updateCommonIconControls();
+    autoApplyInspector();
+  });
+}
+if (el.fCommonCustomIcon) {
+  el.fCommonCustomIcon.addEventListener("change", () => {
+    autoApplyInspector();
+  });
+}
+
 function updateButtonIconControls() {
   if (
     !el.fButtonAppearance ||
