@@ -6226,10 +6226,6 @@ if (isButton) {
     String(widget.entity_id || "").startsWith("scene.") ||
     String(widget.entity_id || "").startsWith("automation.");
   if (runnableButton) appearance = "icon";
-  const accent = normalizeHexColor(
-    widget.button_accent_color,
-    DEFAULT_BUTTON_ACCENT_COLOR
-  );
   const buttonMode = normalizeButtonMode(
     widget.button_mode
   );
@@ -6251,7 +6247,6 @@ if (isButton) {
     widget.show_state !== false;
 
   widget.button_appearance = appearance;
-  widget.button_accent_color = accent;
   widget.button_mode = buttonMode;
   widget.show_title = showTitle;
   widget.show_state = showState;
@@ -6268,10 +6263,6 @@ if (isButton) {
 
   if (el.fButtonAppearance) {
     el.fButtonAppearance.value = appearance;
-  }
-
-  if (el.fButtonAccentColor) {
-    el.fButtonAccentColor.value = accent;
   }
 
   if (el.fButtonMode) {
@@ -6828,10 +6819,6 @@ function applyInspector(options = {}) {
 
   widget.button_mode = buttonMode;
 
-  widget.button_accent_color = normalizeHexColor(
-    el.fButtonAccentColor?.value,
-    DEFAULT_BUTTON_ACCENT_COLOR
-  );
   widget.show_title =
     el.fButtonShowTitle?.value !== "false";
 
