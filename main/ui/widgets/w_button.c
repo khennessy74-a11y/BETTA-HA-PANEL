@@ -686,17 +686,22 @@ static void button_layout_icon(
         icon_h = 20;
     }
 
-    lv_coord_t y =
-        top + (area_h - icon_h) / 2;
-
-    if (y < 0) {
-        y = 0;
-    }
-
-    lv_obj_set_pos(
+    /* Use the exact same state/title corridor as the light tile.
+     * On the S3 480 compact cards the light tile carries a small upward
+     * optical bias, so mirror it here instead of independently centring the
+     * button icon. */
+    app_tile_position_icon_between_labels(
+        card,
         ctx->action_icon,
-        0,
-        y);
+        ctx->state_label,
+        ctx->title_label,
+        matched_gap,
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+        compact ? -2 : 2
+#else
+        compact ? 0 : 2
+#endif
+    );
 }
     
 static void button_apply_visual(lv_obj_t *card, w_button_ctx_t *ctx, bool is_on, bool unavailable, const char *status_text)
@@ -1002,7 +1007,8 @@ esp_err_t w_button_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widge
 #else
     lv_obj_set_style_border_width(card, 0, LV_PART_MAIN);
 #endif
-    lv_obj_set_style_pad_all(card, 16, LV_PART_MAIN);
+    const bool compact_layout = button_card_is_compact(card);
+    lv_obj_set_style_pad_all(card, app_tile_card_padding(compact_layout), LV_PART_MAIN);
 
     const bool is_media_player = button_entity_is_media_player(def->entity_id);
     const bool is_runnable = button_entity_is_runnable(def->entity_id);
@@ -1021,20 +1027,12 @@ esp_err_t w_button_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widge
     lv_obj_set_width(title, def->w - 32);
     lv_obj_set_style_text_font(title, APP_FONT_TEXT_20, LV_PART_MAIN);
     lv_obj_set_style_text_align(title, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
-#if APP_UI_TILE_LAYOUT_TUNED
-    lv_obj_align(title, LV_ALIGN_BOTTOM_MID, 0, -12);
-#else
-    lv_obj_align(title, LV_ALIGN_BOTTOM_MID, 0, -10);
-#endif
+    lv_obj_align(title, LV_ALIGN_BOTTOM_MID, 0, app_tile_title_bottom_y(compact_layout));
 
     lv_obj_t *state_label = lv_label_create(card);
     lv_label_set_text(state_label, ui_i18n_get("common.off", "OFF"));
     lv_obj_set_style_text_font(state_label, APP_FONT_TEXT_20, LV_PART_MAIN);
-#if APP_UI_TILE_LAYOUT_TUNED
-    lv_obj_align(state_label, LV_ALIGN_TOP_LEFT, 0, 2);
-#else
-    lv_obj_align(state_label, LV_ALIGN_TOP_LEFT, 0, 0);
-#endif
+    lv_obj_align(state_label, LV_ALIGN_TOP_LEFT, 0, app_tile_state_top_y(compact_layout));
 
     lv_obj_t *action_switch = lv_switch_create(card);
     lv_obj_clear_flag(action_switch, LV_OBJ_FLAG_EVENT_BUBBLE);
