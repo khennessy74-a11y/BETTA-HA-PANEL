@@ -4153,24 +4153,6 @@ function updateCommonIconControls() {
   el.fCommonCustomIconWrap.classList.toggle("hidden", !showIcon || el.fCommonIconMode.value !== "custom");
 }
 
-if (el.fCommonShowIcon) {
-  el.fCommonShowIcon.addEventListener("change", () => {
-    updateCommonIconControls();
-    autoApplyInspector();
-  });
-}
-if (el.fCommonIconMode) {
-  el.fCommonIconMode.addEventListener("change", () => {
-    updateCommonIconControls();
-    autoApplyInspector();
-  });
-}
-if (el.fCommonCustomIcon) {
-  el.fCommonCustomIcon.addEventListener("change", () => {
-    autoApplyInspector();
-  });
-}
-
 function updateButtonIconControls() {
   if (
     !el.fButtonAppearance ||
@@ -7005,8 +6987,18 @@ function bindUi() {
   bindInspectorAutoApply(el.fCommonShowTitle);
   bindInspectorAutoApply(el.fCommonShowState);
   bindInspectorAutoApply(el.fCommonShowIcon, ["change"], { refreshInspector: true });
-  bindInspectorAutoApply(el.fCommonIconMode, ["change"], { refreshInspector: true });
-  bindInspectorAutoApply(el.fCommonCustomIcon);
+  if (el.fCommonIconMode) {
+    el.fCommonIconMode.addEventListener("change", () => {
+      /* Do not apply/re-render when entering custom mode: until an icon is
+       * chosen widget.icon is empty, and renderInspector() would immediately
+       * collapse the mode back to Automatic. */
+      updateCommonIconControls();
+      if (el.fCommonIconMode.value !== "custom") {
+        autoApplyInspector({ refreshInspector: true });
+      }
+    });
+  }
+  bindInspectorAutoApply(el.fCommonCustomIcon, ["change"], { refreshInspector: true });
 
   for (const button of el.settingsNavButtons || []) {
     button.onclick = () => setActiveSettingsSection(button.dataset.settingsSection);
