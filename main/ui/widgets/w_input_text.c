@@ -15,11 +15,12 @@
 #include "ui/ui_i18n.h"
 #include "ui/ui_memory.h"
 #include "ui/ui_widget_factory.h"
+#include "ui/widgets/widget_display_options.h"
 
 #define INPUT_TEXT_VALUE_LEN 256
 
 typedef struct {
-    lv_obj_t *card, *title, *value, *edit_btn;
+    lv_obj_t *card, *title, *icon, *value, *edit_btn;
     lv_obj_t *overlay, *textarea, *keyboard;
     char entity_id[APP_MAX_ENTITY_ID_LEN], current[INPUT_TEXT_VALUE_LEN];
     int min_len, max_len;
@@ -58,7 +59,7 @@ esp_err_t w_input_text_create(const ui_widget_def_t *d,lv_obj_t *p,ui_widget_ins
     if (!d || !p || !o) return ESP_ERR_INVALID_ARG;
     lv_obj_t *card=lv_obj_create(p);lv_obj_set_pos(card,d->x,d->y);lv_obj_set_size(card,d->w,d->h);lv_obj_clear_flag(card,LV_OBJ_FLAG_SCROLLABLE);lv_obj_set_style_radius(card,APP_UI_CARD_RADIUS,LV_PART_MAIN);lv_obj_set_style_pad_all(card,12,LV_PART_MAIN);
     w_input_text_ctx_t *c=ui_calloc_prefer_psram(1,sizeof(*c));if(!c){lv_obj_delete(card);return ESP_ERR_NO_MEM;}c->card=card;c->min_len=0;c->max_len=255;c->show_title=d->show_title;c->show_state=d->show_state;snprintf(c->entity_id,sizeof(c->entity_id),"%s",d->entity_id);
-    c->title=lv_label_create(card);lv_label_set_text(c->title,d->title[0]?d->title:d->id);lv_obj_set_style_text_font(c->title,APP_FONT_TEXT_20,LV_PART_MAIN);lv_obj_align(c->title,LV_ALIGN_TOP_MID,0,2);if(!c->show_title)lv_obj_add_flag(c->title,LV_OBJ_FLAG_HIDDEN);
+    c->icon=lv_label_create(card);lv_obj_align(c->icon,LV_ALIGN_TOP_LEFT,0,2);widget_display_set_visible(c->icon,d->show_icon);if(d->show_icon&&!widget_display_apply_mdi(c->icon,d->icon[0]?d->icon:"mdi:form-textbox"))widget_display_set_visible(c->icon,false);\n    c->title=lv_label_create(card);lv_label_set_text(c->title,d->title[0]?d->title:d->id);lv_obj_set_style_text_font(c->title,APP_FONT_TEXT_20,LV_PART_MAIN);lv_obj_align(c->title,LV_ALIGN_TOP_MID,0,2);if(!c->show_title)lv_obj_add_flag(c->title,LV_OBJ_FLAG_HIDDEN);
     c->value=lv_label_create(card);lv_obj_set_width(c->value,d->w>48?d->w-48:d->w-12);lv_label_set_long_mode(c->value,LV_LABEL_LONG_DOT);lv_obj_set_style_text_align(c->value,LV_TEXT_ALIGN_CENTER,LV_PART_MAIN);lv_obj_set_style_text_font(c->value,APP_FONT_TEXT_20,LV_PART_MAIN);lv_obj_align(c->value,LV_ALIGN_CENTER,0,0);if(!c->show_state)lv_obj_add_flag(c->value,LV_OBJ_FLAG_HIDDEN);
     c->edit_btn=lv_btn_create(card);lv_obj_set_size(c->edit_btn,d->w>130?92:72,38);lv_obj_align(c->edit_btn,LV_ALIGN_BOTTOM_MID,0,-2);lv_obj_t *label=lv_label_create(c->edit_btn);lv_label_set_text(label,"Edit");lv_obj_center(label);lv_obj_add_event_cb(c->edit_btn,open_editor_cb,LV_EVENT_CLICKED,c);lv_obj_add_event_cb(card,delete_cb,LV_EVENT_DELETE,c);apply_visual(c);o->obj=card;o->ctx=c;return ESP_OK;
 }
