@@ -403,6 +403,14 @@ static void slider_apply_layout(lv_obj_t *card, w_slider_ctx_t *ctx)
         return;
     }
 
+    const lv_coord_t card_w = lv_obj_get_width(card);
+    const lv_coord_t card_h = lv_obj_get_height(card);
+    const lv_coord_t min_dim = card_w < card_h ? card_w : card_h;
+    const lv_font_t *text_font = app_font_text_for_min_dim(min_dim);
+    lv_obj_set_style_text_font(ctx->title_label, text_font, LV_PART_MAIN);
+    lv_obj_set_style_text_font(ctx->state_label, text_font, LV_PART_MAIN);
+    lv_obj_set_style_text_font(ctx->value_label, text_font, LV_PART_MAIN);
+
     const lv_coord_t tuned_top =
         APP_UI_TILE_LAYOUT_TUNED ? 2 : 0;
 
