@@ -1947,7 +1947,7 @@ function syncMdiIconPickers() {
   const source = el.fButtonCustomIcon;
   if (!source) return;
 
-  for (const target of [el.fSensorCustomIcon, el.fSliderCustomIcon]) {
+  for (const target of [el.fSensorCustomIcon, el.fSliderCustomIcon, el.fCommonCustomIcon]) {
     if (!target) continue;
     const previousValue = target.value;
     target.innerHTML = source.innerHTML;
@@ -4139,11 +4139,18 @@ function updateSensorIconControls() {
 }
 
 const COMMON_DISPLAY_WIDGET_TYPES = new Set([
-  "graph", "heating_tile", "light_tile", "media_player",
-  "roborock", "todo", "weather_3day"
+  "graph", "heating_tile", "light_tile", "fan_tile", "media_player",
+  "roborock", "roborock_tile", "todo", "todo_list", "weather_tile", "weather_3day",
+  "binary_sensor", "input_number", "select", "input_text", "input_datetime",
+  "alarm_control_panel", "update", "calendar", "person", "device_tracker"
 ]);
+/* All normal entity-backed tiles share the same MDI registry. Image/empty tiles
+ * deliberately stay out because their primary visual is not an icon. */
 const COMMON_ICON_WIDGET_TYPES = new Set([
-  "heating_tile", "light_tile"
+  "graph", "heating_tile", "light_tile", "fan_tile", "media_player",
+  "roborock", "roborock_tile", "todo", "todo_list", "weather_tile", "weather_3day",
+  "binary_sensor", "input_number", "select", "input_text", "input_datetime",
+  "alarm_control_panel", "update", "calendar", "person", "device_tracker"
 ]);
 const STATE_ICON_COLOR_WIDGET_TYPES = new Set([
   "button", "light_tile", "heating_tile"
