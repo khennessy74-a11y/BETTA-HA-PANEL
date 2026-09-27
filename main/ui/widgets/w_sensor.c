@@ -83,6 +83,7 @@ typedef struct {
     bool show_title;
     bool show_icon;
     bool show_state;
+    int decimal_places;
     lv_timer_t *age_timer;
 } w_sensor_ctx_t;
 
@@ -492,6 +493,7 @@ esp_err_t w_sensor_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widge
     ctx->show_title = def->show_title;
     ctx->show_icon = def->show_icon;
     ctx->show_state = def->show_state;
+    ctx->decimal_places = def->sensor_decimal_places;
 
     ctx->last_update_ms = 0;
     ctx->has_timestamp = false;
@@ -577,10 +579,24 @@ void w_sensor_apply_state(ui_widget_instance_t *instance, const ha_state_t *stat
                 lv_obj_clear_flag(ctx->icon_label, LV_OBJ_FLAG_HIDDEN);
             }
         }
-    } else if (unit != NULL && unit[0] != '\0') {
-        snprintf(value_text, sizeof(value_text), "%s %s", state->state, unit);
     } else {
-        snprintf(value_text, sizeof(value_text), "%s", state->state);
+        const char *display_state = state->state;
+        char rounded_state[48] = {0};
+
+        if (ctx->decimal_places >= 0 && ctx->decimal_places <= 6) {
+            char *end = NULL;
+            double numeric_value = strtod(state->state, &end);
+            if (end != state->state && end != NULL && *end == '\0') {
+                snprintf(rounded_state, sizeof(rounded_state), "%.*f", ctx->decimal_places, numeric_value);
+                display_state = rounded_state;
+            }
+        }
+
+        if (unit != NULL && unit[0] != '\0') {
+            snprintf(value_text, sizeof(value_text), "%s %s", display_state, unit);
+        } else {
+            snprintf(value_text, sizeof(value_text), "%s", display_state);
+        }
     }
 
     if (attrs != NULL) {
