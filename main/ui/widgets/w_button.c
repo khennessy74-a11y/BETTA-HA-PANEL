@@ -824,11 +824,14 @@ static void button_apply_visual(lv_obj_t *card, w_button_ctx_t *ctx, bool is_on,
         }
     }
 
+    /* Match Light tile colour semantics exactly:
+     * OFF uses the theme's normal icon/text colour; ON uses the configured
+     * accent (or the button's theme default accent). */
     lv_obj_set_style_text_color(
         ctx->action_icon,
         unavailable
             ? lv_color_hex(APP_UI_COLOR_TEXT_MUTED)
-            : ctx->accent_color,
+            : (is_on ? ctx->accent_color : lv_color_hex(APP_UI_COLOR_TEXT_PRIMARY)),
         LV_PART_MAIN);
 
     button_layout_icon(
