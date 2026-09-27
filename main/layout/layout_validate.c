@@ -287,14 +287,17 @@ static widget_size_limits_t widget_size_limits_for_type(
 
     } else if (strcmp(type, "weather_tile") == 0) {
 
+        /* Weather is information-dense and becomes unreadable when squeezed
+         * narrower than a full 480 px panel.  APP_CONTENT_BOX_WIDTH clamps
+         * this safely on any smaller target. */
+        limits.min_w = 480;
+
 #if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
 
-        limits.min_w = 160;
         limits.min_h = 150;
 
 #else
 
-        limits.min_w = 220;
         limits.min_h = 200;
 
 #endif
@@ -304,14 +307,14 @@ static widget_size_limits_t widget_size_limits_for_type(
 
     } else if (strcmp(type, "weather_3day") == 0) {
 
+        limits.min_w = 480;
+
 #if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
 
-        limits.min_w = 280;
         limits.min_h = 180;
 
 #else
 
-        limits.min_w = 260;
         limits.min_h = 220;
 
 #endif
