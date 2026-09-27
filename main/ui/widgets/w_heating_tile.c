@@ -300,6 +300,30 @@ static void heating_apply_layout(lv_obj_t *card, w_heating_tile_ctx_t *ctx)
 
     int card_w = lv_obj_get_width(card);
     int card_h = lv_obj_get_height(card);
+    lv_coord_t min_dim = card_w < card_h ? card_w : card_h;
+
+    /* Scale heating typography from the same geometry that drives the arc.
+     * Keep the visual hierarchy: current temperature is the headline,
+     * target/title are secondary, and status/range labels remain compact. */
+    const lv_font_t *title_font = app_font_text_for_min_dim(min_dim);
+    const lv_font_t *target_font = app_font_text_for_min_dim(min_dim);
+    const lv_font_t *actual_font = app_font_display_for_min_dim(min_dim);
+    const lv_font_t *meta_font =
+        min_dim >= 230 ? APP_FONT_TEXT_18 :
+        (min_dim >= 170 ? APP_FONT_TEXT_16 : APP_FONT_TEXT_14);
+
+    if (ctx->title_label != NULL) {
+        lv_obj_set_style_text_font(ctx->title_label, title_font, LV_PART_MAIN);
+    }
+    lv_obj_set_style_text_font(ctx->target_label, target_font, LV_PART_MAIN);
+    lv_obj_set_style_text_font(ctx->actual_label, actual_font, LV_PART_MAIN);
+    lv_obj_set_style_text_font(ctx->status_label, meta_font, LV_PART_MAIN);
+    if (ctx->min_label != NULL) {
+        lv_obj_set_style_text_font(ctx->min_label, meta_font, LV_PART_MAIN);
+    }
+    if (ctx->max_label != NULL) {
+        lv_obj_set_style_text_font(ctx->max_label, meta_font, LV_PART_MAIN);
+    }
 
     if (ctx->arc_semi) {
         /* Semi arc variant: big semicircle filling card with opening on one side. */
