@@ -15,6 +15,7 @@
 #include "ui/ui_i18n.h"
 #include "ui/ui_memory.h"
 #include "ui/ui_widget_factory.h"
+#include "ui/widgets/widget_display_options.h"
 
 #define ALARM_CODE_LEN 32
 #define ALARM_SUPPORT_ARM_HOME 1
@@ -25,7 +26,7 @@
 #define ALARM_SUPPORT_ARM_VACATION 32
 
 typedef struct {
-    lv_obj_t *card, *title, *state_label, *actions;
+    lv_obj_t *card, *title, *icon, *state_label, *actions;
     lv_obj_t *overlay, *code_area, *keyboard;
     char entity_id[APP_MAX_ENTITY_ID_LEN];
     char pending_service[32];
@@ -149,7 +150,7 @@ esp_err_t w_alarm_control_create(const ui_widget_def_t *d, lv_obj_t *p, ui_widge
     if (c == NULL) { lv_obj_delete(card); return ESP_ERR_NO_MEM; }
     c->card = card; c->show_title = d->show_title; c->show_state = d->show_state;
     snprintf(c->entity_id, sizeof(c->entity_id), "%s", d->entity_id);
-    c->title = lv_label_create(card); lv_label_set_text(c->title, d->title[0] ? d->title : d->id);
+    c->icon = lv_label_create(card); lv_obj_align(c->icon, LV_ALIGN_TOP_LEFT, 0, 0); widget_display_set_visible(c->icon, d->show_icon); if (d->show_icon && !widget_display_apply_mdi(c->icon, d->icon[0] ? d->icon : "mdi:shield-home")) widget_display_set_visible(c->icon, false);\n    c->title = lv_label_create(card); lv_label_set_text(c->title, d->title[0] ? d->title : d->id);
     lv_obj_set_style_text_font(c->title, APP_FONT_TEXT_20, LV_PART_MAIN); lv_obj_align(c->title, LV_ALIGN_TOP_MID, 0, 0);
     if (!c->show_title) lv_obj_add_flag(c->title, LV_OBJ_FLAG_HIDDEN);
     c->state_label = lv_label_create(card); lv_label_set_text(c->state_label, "");
