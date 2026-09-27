@@ -1808,6 +1808,7 @@ const el = {
   fSensorCustomIcon: document.getElementById("fSensorCustomIcon"),
   fSensorCustomIconWrap: document.getElementById("fSensorCustomIconWrap"),
   fSensorShowState: document.getElementById("fSensorShowState"),
+  fSensorDecimalPlaces: document.getElementById("fSensorDecimalPlaces"),
   fButtonAccentColor: document.getElementById("fButtonAccentColor"),
  sliderOptions: document.getElementById("sliderOptions"),
 fSliderEntityDomain: document.getElementById("fSliderEntityDomain"),
@@ -2094,6 +2095,14 @@ function normalizeLayoutWidgets(layout) {
         widget.show_title = typeof widget.show_title === "boolean" ? widget.show_title : true;
         widget.show_icon = typeof widget.show_icon === "boolean" ? widget.show_icon : true;
         widget.show_state = typeof widget.show_state === "boolean" ? widget.show_state : true;
+      }
+      if (widget.type === "sensor") {
+        const precision = Number(widget.sensor_decimal_places);
+        if (Number.isInteger(precision) && precision >= 0 && precision <= 6) {
+          widget.sensor_decimal_places = precision;
+        } else {
+          delete widget.sensor_decimal_places;
+        }
       }
       if (widget.type === "timer") {
         /*
@@ -6150,6 +6159,14 @@ if (el.fSensorShowIcon) {
       widget.show_state !== false ? "true" : "false";
   }
 
+  if (el.fSensorDecimalPlaces) {
+    const precision = Number(widget.sensor_decimal_places);
+    el.fSensorDecimalPlaces.value =
+      Number.isInteger(precision) && precision >= 0 && precision <= 6
+        ? String(precision)
+        : "";
+  }
+
   if (el.fSensorIconMode) {
     el.fSensorIconMode.value =
       configuredIcon ? "custom" : "automatic";
@@ -6721,6 +6738,16 @@ function applyInspector(options = {}) {
 
   widget.show_state =
     el.fSensorShowState?.value !== "false";
+
+  const precisionText = el.fSensorDecimalPlaces?.value ?? "";
+  if (precisionText === "") {
+    delete widget.sensor_decimal_places;
+  } else {
+    const precision = Number(precisionText);
+    if (Number.isInteger(precision) && precision >= 0 && precision <= 6) {
+      widget.sensor_decimal_places = precision;
+    }
+  }
 
   const sensorIconMode =
     el.fSensorIconMode?.value === "custom"
@@ -7415,6 +7442,12 @@ if (el.fSliderShowState) {
 
 bindInspectorAutoApply(
   el.fSensorShowState,
+  ["change"],
+  { refreshInspector: true, softEntityValidation: true }
+);
+
+bindInspectorAutoApply(
+  el.fSensorDecimalPlaces,
   ["change"],
   { refreshInspector: true, softEntityValidation: true }
 );
