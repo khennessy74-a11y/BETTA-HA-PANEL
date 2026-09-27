@@ -277,8 +277,26 @@ static bool button_apply_custom_mdi_icon(
         return false;
     }
 
+    lv_coord_t card_w = lv_obj_get_width(ctx->card);
+    lv_coord_t card_h = lv_obj_get_height(ctx->card);
+    lv_coord_t min_dim = card_w < card_h ? card_w : card_h;
     const lv_font_t *font = NULL;
-    const lv_font_t *candidates[] = {mdi_font_icon_56(), mdi_font_icon_42(), mdi_font_icon_72(), mdi_font_large()};
+    const lv_font_t *candidates[4] = {0};
+    if (min_dim >= 260) {
+        candidates[0] = mdi_font_icon_72();
+        candidates[1] = mdi_font_icon_56();
+        candidates[2] = mdi_font_icon_42();
+    } else if (min_dim >= 170) {
+        candidates[0] = mdi_font_icon_56();
+        candidates[1] = mdi_font_icon_42();
+        candidates[2] = mdi_font_icon_72();
+    } else {
+        candidates[0] = mdi_font_icon_42();
+        candidates[1] = mdi_font_icon_56();
+        candidates[2] = mdi_font_icon_72();
+    }
+    candidates[3] = mdi_font_large();
+
     lv_font_glyph_dsc_t glyph_dsc = {0};
     for (size_t i = 0; i < sizeof(candidates) / sizeof(candidates[0]); i++) {
         if (candidates[i] != NULL && lv_font_get_glyph_dsc(candidates[i], &glyph_dsc, codepoint, 0)) {
@@ -451,6 +469,26 @@ static void button_calc_action_area(lv_obj_t *card, w_button_ctx_t *ctx, lv_coor
     *out_area_h = area_h;
 }
 
+static void button_apply_responsive_typography(lv_obj_t *card, w_button_ctx_t *ctx)
+{
+    if (card == NULL || ctx == NULL) {
+        return;
+    }
+
+    lv_coord_t card_w = lv_obj_get_width(card);
+    lv_coord_t card_h = lv_obj_get_height(card);
+    lv_coord_t min_dim = card_w < card_h ? card_w : card_h;
+    const lv_font_t *text_font = app_font_text_for_min_dim(min_dim);
+
+    if (ctx->title_label != NULL) {
+        lv_obj_set_style_text_font(ctx->title_label, text_font, LV_PART_MAIN);
+        lv_obj_set_width(ctx->title_label, card_w > 24 ? card_w - 24 : card_w);
+    }
+    if (ctx->state_label != NULL) {
+        lv_obj_set_style_text_font(ctx->state_label, text_font, LV_PART_MAIN);
+    }
+}
+
 static bool button_card_is_compact(lv_obj_t *card)
 {
     if (card == NULL) {
@@ -535,7 +573,12 @@ static void button_layout_switch(lv_obj_t *card, w_button_ctx_t *ctx)
         max_w = 20;
     }
 
-    lv_coord_t switch_h = (area_h < W_BUTTON_SWITCH_HEIGHT_PX) ? area_h : W_BUTTON_SWITCH_HEIGHT_PX;
+    /* Let larger cards breathe while preserving the familiar 40 px switch
+     * around the normal button size. */
+    lv_coord_t desired_switch_h = area_h / 2;
+    if (desired_switch_h < 24) desired_switch_h = 24;
+    if (desired_switch_h > 56) desired_switch_h = 56;
+    lv_coord_t switch_h = (area_h < desired_switch_h) ? area_h : desired_switch_h;
     if (switch_h < 20) {
         switch_h = 20;
     }
@@ -676,6 +719,11 @@ static void button_apply_visual(lv_obj_t *card, w_button_ctx_t *ctx, bool is_on,
 
     ctx->is_on = is_on;
     ctx->unavailable = unavailable;
+
+    /* Keep labels and their available action area proportional to the card.
+     * This is reapplied on every visual/layout refresh so resized buttons do
+     * not retain creation-time typography. */
+    button_apply_responsive_typography(card, ctx);
 
     const lv_color_t card_bg =
         lv_color_hex((is_on && !unavailable) ? APP_UI_COLOR_CARD_BG_ON : APP_UI_COLOR_CARD_BG_OFF);
