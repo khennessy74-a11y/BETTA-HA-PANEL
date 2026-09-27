@@ -31,6 +31,7 @@ typedef struct {
     char entity_id[APP_MAX_ENTITY_ID_LEN];
     lv_obj_t *card;
     lv_obj_t *title_label;    /* widget title (from def->title) */
+    lv_obj_t *icon_label;
     lv_obj_t *now_title;      /* media_title */
     lv_obj_t *now_artist;     /* media_artist / state */
     lv_obj_t *progress_bar;
@@ -947,6 +948,10 @@ esp_err_t w_media_player_create(const ui_widget_def_t *def, lv_obj_t *parent, ui
 
     /* ---- Widget title (always pinned top-left of full card) ---- */
     if (has_widget_title) {
+        lv_obj_t *custom_icon = lv_label_create(card);
+        lv_obj_align(custom_icon, LV_ALIGN_TOP_RIGHT, 0, 0);
+        widget_display_set_visible(custom_icon, def->show_icon);
+        if (def->show_icon && !widget_display_apply_mdi(custom_icon, def->icon[0] ? def->icon : "mdi:play-circle-outline")) widget_display_set_visible(custom_icon, false);
         lv_obj_t *title = lv_label_create(card);
         lv_label_set_text(title, def->title);
         lv_obj_set_width(title, content_w);
@@ -955,6 +960,7 @@ esp_err_t w_media_player_create(const ui_widget_def_t *def, lv_obj_t *parent, ui
         lv_label_set_long_mode(title, LV_LABEL_LONG_DOT);
         lv_obj_align(title, LV_ALIGN_TOP_LEFT, 0, 0);
         ctx->title_label = title;
+    ctx->icon_label = custom_icon;
     }
 
     /* ---- Text + progress + controls + volume stack ----
