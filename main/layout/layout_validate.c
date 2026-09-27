@@ -1233,6 +1233,20 @@ static bool validate_widget(
             type->valuestring,
             "button") == 0) {
 
+        if (sensor_decimal_places != NULL) {
+            if (strcmp(type->valuestring, "sensor") != 0 ||
+                !cJSON_IsNumber(sensor_decimal_places) ||
+                sensor_decimal_places->valuedouble < 0.0 ||
+                sensor_decimal_places->valuedouble > 6.0 ||
+                sensor_decimal_places->valuedouble != (double)sensor_decimal_places->valueint) {
+                snprintf(msg, sizeof(msg),
+                    "widget %s: sensor_decimal_places must be an integer from 0 to 6",
+                    id->valuestring);
+                set_result(result, false, msg);
+                return false;
+            }
+        }
+
         if (button_accent_color != NULL) {
 
             if (!cJSON_IsString(button_accent_color) ||
