@@ -4203,7 +4203,11 @@ function updateButtonIconControls() {
     el.fButtonAppearance.value
   );
 
-  const usesIcon = appearance === "icon";
+  const entityId = String(selectedWidget()?.entity_id || el.fEntity?.value || "");
+  const isRunnable = entityId.startsWith("script.") || entityId.startsWith("scene.") || entityId.startsWith("automation.");
+  /* One-shot runnable entities have no useful switch presentation. Always
+   * expose their icon controls, even when an older layout still says switch. */
+  const usesIcon = appearance === "icon" || isRunnable;
 
   el.fButtonIconModeWrap.classList.toggle(
     "hidden",
@@ -6215,9 +6219,13 @@ if (el.fSensorShowIcon) {
   updateSensorIconControls();
 }
 if (isButton) {
-  const appearance = normalizeButtonAppearance(
+  let appearance = normalizeButtonAppearance(
     widget.button_appearance
   );
+  const runnableButton = String(widget.entity_id || "").startsWith("script.") ||
+    String(widget.entity_id || "").startsWith("scene.") ||
+    String(widget.entity_id || "").startsWith("automation.");
+  if (runnableButton) appearance = "icon";
   const accent = normalizeHexColor(
     widget.button_accent_color,
     DEFAULT_BUTTON_ACCENT_COLOR
@@ -6811,9 +6819,12 @@ function applyInspector(options = {}) {
   }
 }
   if (widgetType === "button") {
-  widget.button_appearance = normalizeButtonAppearance(
-    el.fButtonAppearance?.value
-  );
+  const runnableButton = String(widget.entity_id || "").startsWith("script.") ||
+    String(widget.entity_id || "").startsWith("scene.") ||
+    String(widget.entity_id || "").startsWith("automation.");
+  widget.button_appearance = runnableButton
+    ? "icon"
+    : normalizeButtonAppearance(el.fButtonAppearance?.value);
 
   widget.button_mode = buttonMode;
 
