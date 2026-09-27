@@ -17,6 +17,7 @@
 #include "ui/ui_i18n.h"
 #include "ui/ui_bindings.h"
 #include "ui/ui_memory.h"
+#include "ui/widgets/tile_layout_shared.h"
 
 typedef enum {
     W_SLIDER_DIR_AUTO = 0,
@@ -875,14 +876,14 @@ esp_err_t w_slider_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widge
 #else
     lv_obj_set_style_border_width(card, 0, LV_PART_MAIN);
 #endif
-    lv_obj_set_style_pad_all(card, 16, LV_PART_MAIN);
+    lv_obj_set_style_pad_all(card, app_tile_card_padding(false), LV_PART_MAIN);
 
     lv_obj_t *title = lv_label_create(card);
     lv_label_set_text(title, def->title[0] ? def->title : def->id);
     lv_obj_set_width(title, def->w - 32);
     lv_obj_set_style_text_font(title, APP_FONT_TEXT_20, LV_PART_MAIN);
     lv_obj_set_style_text_align(title, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
-    lv_obj_align(title, LV_ALIGN_BOTTOM_MID, 0, APP_UI_TILE_LAYOUT_TUNED ? -12 : -10);
+    lv_obj_align(title, LV_ALIGN_BOTTOM_MID, 0, app_tile_title_bottom_y(false));
 
     lv_obj_t *icon = lv_label_create(card);
     lv_label_set_text(icon, "");
@@ -892,7 +893,7 @@ esp_err_t w_slider_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widge
     lv_obj_t *state = lv_label_create(card);
     lv_label_set_text(state, ui_i18n_get("common.off", "OFF"));
     lv_obj_set_style_text_font(state, APP_FONT_TEXT_20, LV_PART_MAIN);
-    lv_obj_align(state, LV_ALIGN_TOP_LEFT, 0, APP_UI_TILE_LAYOUT_TUNED ? 2 : 0);
+    lv_obj_align(state, LV_ALIGN_TOP_LEFT, 0, app_tile_state_top_y(false));
 
     lv_obj_t *value = lv_label_create(card);
     slider_set_value_label(value, 0);
