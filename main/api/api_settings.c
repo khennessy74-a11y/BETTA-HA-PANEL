@@ -10,10 +10,11 @@
 
 #include "cJSON.h"
 #include "esp_system.h"
-#include "esp_timer.h"\n#include "freertos/FreeRTOS.h"\n#include "freertos/task.h"
+#include "esp_timer.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 
 #include "app_config.h"
-#include "bsp/display.h"
 #include "drivers/display_init.h"
 #include "ha/ha_client.h"
 #include "net/wifi_mgr.h"
