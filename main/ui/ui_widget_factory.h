@@ -22,6 +22,7 @@ typedef struct {
     bool show_icon;
     bool show_state;
     bool show_title;
+    int sensor_decimal_places;
 
     char slider_direction[APP_MAX_UI_OPTION_LEN];
     char slider_accent_color[APP_MAX_COLOR_STR_LEN];
@@ -61,6 +62,7 @@ typedef struct {
     bool show_icon;
     bool show_state;
     bool show_title;
+    int sensor_decimal_places;
 
     char slider_direction[APP_MAX_UI_OPTION_LEN];
     char slider_accent_color[APP_MAX_COLOR_STR_LEN];
