@@ -748,6 +748,11 @@ static bool ui_runtime_widget_from_json(
             widget_json,
             "show_title");
 
+    cJSON *sensor_decimal_places =
+        cJSON_GetObjectItemCaseSensitive(
+            widget_json,
+            "sensor_decimal_places");
+
     cJSON *timer_show_start =
         cJSON_GetObjectItemCaseSensitive(
             widget_json,
@@ -980,6 +985,8 @@ static bool ui_runtime_widget_from_json(
     out->show_icon = true;
     out->show_state = true;
     out->show_title = true;
+    /* -1 preserves the raw Home Assistant state for existing layouts. */
+    out->sensor_decimal_places = -1;
 
     if (cJSON_IsString(icon) &&
         icon->valuestring != NULL) {
@@ -1001,6 +1008,13 @@ static bool ui_runtime_widget_from_json(
 
     if (cJSON_IsBool(show_title)) {
         out->show_title = cJSON_IsTrue(show_title);
+    }
+
+    if (cJSON_IsNumber(sensor_decimal_places) &&
+        sensor_decimal_places->valuedouble >= 0.0 &&
+        sensor_decimal_places->valuedouble <= 6.0 &&
+        sensor_decimal_places->valuedouble == (double)sensor_decimal_places->valueint) {
+        out->sensor_decimal_places = sensor_decimal_places->valueint;
     }
 
     /*
