@@ -23,6 +23,7 @@ typedef struct {
     lv_obj_t *title;
     lv_obj_t *state;
     lv_obj_t *value;
+    lv_obj_t *icon;
     lv_obj_t *power;
     lv_obj_t *slider;
     lv_obj_t *preset;
@@ -33,6 +34,7 @@ typedef struct {
     int percentage;
     bool show_title;
     bool show_state;
+    bool show_icon;
     char preset_mode[48];
     char preset_modes[16][48];
     int preset_count;
@@ -54,6 +56,10 @@ static void fan_apply_visual(w_fan_ctx_t *ctx)
     lv_obj_set_style_text_color(ctx->state,
         lv_color_hex(ctx->unavailable ? APP_UI_COLOR_TEXT_MUTED :
             (ctx->is_on ? APP_UI_COLOR_STATE_ON : APP_UI_COLOR_STATE_OFF)), LV_PART_MAIN);
+    if (ctx->icon != NULL) {
+        lv_obj_set_style_text_color(ctx->icon,
+            lv_color_hex(ctx->unavailable ? APP_UI_COLOR_TEXT_MUTED : APP_UI_COLOR_TEXT_PRIMARY), LV_PART_MAIN);
+    }
 
     char value[16];
     snprintf(value, sizeof(value), "%d%%", ctx->percentage);
@@ -167,6 +173,7 @@ esp_err_t w_fan_tile_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_wid
     ctx->card = card;
     ctx->show_title = def->show_title;
     ctx->show_state = def->show_state;
+    ctx->show_icon = def->show_icon;
 
     ctx->title = lv_label_create(card);
     lv_label_set_text(ctx->title, def->title[0] ? def->title : def->id);
@@ -181,6 +188,16 @@ esp_err_t w_fan_tile_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_wid
     lv_obj_align(ctx->state, LV_ALIGN_TOP_LEFT, 0, app_tile_state_top_y(false));
     if (!ctx->show_state) {
         lv_obj_add_flag(ctx->state, LV_OBJ_FLAG_HIDDEN);
+    }
+
+    ctx->icon = lv_label_create(card);
+    lv_obj_align(ctx->icon, LV_ALIGN_TOP_MID, 0, 2);
+    widget_display_set_visible(ctx->icon, ctx->show_icon);
+    if (ctx->show_icon) {
+        const char *fan_icon = def->icon[0] != '\0' ? def->icon : "mdi:fan";
+        if (!widget_display_apply_mdi(ctx->icon, fan_icon)) {
+            widget_display_set_visible(ctx->icon, false);
+        }
     }
 
     ctx->value = lv_label_create(card);
