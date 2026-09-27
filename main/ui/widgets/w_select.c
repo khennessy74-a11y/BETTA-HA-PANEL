@@ -102,10 +102,11 @@ esp_err_t w_select_create(const ui_widget_def_t *d, lv_obj_t *p, ui_widget_insta
     if (!c->show_state) lv_obj_add_flag(c->value, LV_OBJ_FLAG_HIDDEN);
 
     c->prev_btn = lv_btn_create(card);
-    lv_obj_set_size(c->prev_btn, 42, 42); lv_obj_align(c->prev_btn, LV_ALIGN_LEFT_MID, 0, 8);
+    lv_coord_t nav_size = d->w < 150 || d->h < 110 ? 34 : 42;
+    lv_obj_set_size(c->prev_btn, nav_size, nav_size); lv_obj_align(c->prev_btn, LV_ALIGN_LEFT_MID, 0, 8);
     lv_obj_t *pl = lv_label_create(c->prev_btn); lv_label_set_text(pl, "<"); lv_obj_center(pl);
     c->next_btn = lv_btn_create(card);
-    lv_obj_set_size(c->next_btn, 42, 42); lv_obj_align(c->next_btn, LV_ALIGN_RIGHT_MID, 0, 8);
+    lv_obj_set_size(c->next_btn, nav_size, nav_size); lv_obj_align(c->next_btn, LV_ALIGN_RIGHT_MID, 0, 8);
     lv_obj_t *nl = lv_label_create(c->next_btn); lv_label_set_text(nl, ">"); lv_obj_center(nl);
     lv_obj_add_event_cb(c->prev_btn, action_cb, LV_EVENT_CLICKED, c);
     lv_obj_add_event_cb(c->next_btn, action_cb, LV_EVENT_CLICKED, c);
