@@ -20,6 +20,7 @@
 #include "ui/ui_memory.h"
 #include "ui/widgets/widget_display_options.h"
 #include "ui/widgets/tile_layout_shared.h"
+#include "ui/widgets/state_icon_color.h"
 #include "ui/theme/theme_default.h"
 
 #ifndef APP_HAVE_LIGHT_COLOR_BUTTON_IMAGES
@@ -60,6 +61,10 @@ typedef struct {
     bool show_title;
     bool show_icon;
     bool show_state;
+    lv_color_t state_off_color;
+    lv_color_t state_on_color;
+    bool has_state_off_color;
+    bool has_state_on_color;
     bool suppress_next_click;
 } w_light_tile_ctx_t;
 
@@ -512,9 +517,11 @@ static void light_apply_visual(lv_obj_t *card, const w_light_tile_ctx_t *ctx, bo
     const bool can_adjust_color = ctx != NULL && !ctx->unavailable && (ctx->can_color || ctx->can_color_temp);
     const bool has_rgb_color = ctx != NULL && ctx->has_rgb_color;
     const uint32_t icon_on_color = (is_on && has_rgb_color) ? ctx->rgb_color : APP_UI_COLOR_LIGHT_ICON_ON;
+    const lv_color_t resolved_icon_color = is_on
+        ? (ctx != NULL && ctx->has_state_on_color ? ctx->state_on_color : lv_color_hex(icon_on_color))
+        : (ctx != NULL && ctx->has_state_off_color ? ctx->state_off_color : lv_color_hex(APP_UI_COLOR_CARD_ICON_OFF));
 
-    lv_obj_set_style_text_color(
-        w.icon, is_on ? lv_color_hex(icon_on_color) : lv_color_hex(APP_UI_COLOR_CARD_ICON_OFF), LV_PART_MAIN);
+    lv_obj_set_style_text_color(w.icon, resolved_icon_color, LV_PART_MAIN);
     lv_obj_set_style_text_color(w.title, lv_color_hex(APP_UI_COLOR_TEXT_PRIMARY), LV_PART_MAIN);
     lv_obj_set_style_text_color(
         w.state_label, is_on ? lv_color_hex(APP_UI_COLOR_STATE_ON) : lv_color_hex(APP_UI_COLOR_STATE_OFF), LV_PART_MAIN);
@@ -1640,6 +1647,8 @@ esp_err_t w_light_tile_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_w
     ctx->can_color_temp = false;
     ctx->has_rgb_color = false;
     ctx->rgb_color = APP_UI_COLOR_LIGHT_ICON_ON;
+    ctx->has_state_off_color = state_icon_parse_color(def->state_icon_off_color, &ctx->state_off_color);
+    ctx->has_state_on_color = state_icon_parse_color(def->state_icon_on_color, &ctx->state_on_color);
     ctx->has_color_temp_kelvin = false;
     ctx->color_temp_kelvin = 3000;
     ctx->min_color_temp_kelvin = 2000;
