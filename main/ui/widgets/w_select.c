@@ -18,12 +18,13 @@
 #include "ui/ui_runtime.h"
 #include "ui/ui_widget_factory.h"
 #include "ui/theme/theme_default.h"
+#include "ui/widgets/widget_display_options.h"
 
 #define SELECT_MAX_OPTIONS 32
 #define SELECT_OPTION_LEN 64
 
 typedef struct {
-    lv_obj_t *card, *title, *value, *prev_btn, *next_btn;
+    lv_obj_t *card, *title, *icon, *value, *prev_btn, *next_btn;
     char entity_id[APP_MAX_ENTITY_ID_LEN];
     char options[SELECT_MAX_OPTIONS][SELECT_OPTION_LEN];
     int option_count, current_index;
@@ -86,6 +87,11 @@ esp_err_t w_select_create(const ui_widget_def_t *d, lv_obj_t *p, ui_widget_insta
     lv_obj_set_style_text_font(c->title, APP_FONT_TEXT_20, LV_PART_MAIN);
     lv_obj_align(c->title, LV_ALIGN_TOP_MID, 0, 2);
     if (!c->show_title) lv_obj_add_flag(c->title, LV_OBJ_FLAG_HIDDEN);
+
+    c->icon = lv_label_create(card);
+    lv_obj_align(c->icon, LV_ALIGN_TOP_RIGHT, 0, 2);
+    widget_display_set_visible(c->icon, d->show_icon);
+    if (d->show_icon && !widget_display_apply_mdi(c->icon, d->icon[0] ? d->icon : "mdi:format-list-bulleted")) widget_display_set_visible(c->icon, false);
 
     c->value = lv_label_create(card);
     lv_obj_set_width(c->value, d->w > 100 ? d->w - 100 : (d->w > 20 ? d->w - 20 : 1));
