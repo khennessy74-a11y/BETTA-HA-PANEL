@@ -319,16 +319,7 @@
                         </select>
                   </label>
 
-                <label>
-                  <span id="fButtonAccentColorLabel">Button accent color</span>
-                    <input
-                      id="fButtonAccentColor"
-                      type="color"
-                      value="#6fe8ff"
-                    />
-               </label>
-
-  <label id="fButtonIconModeWrap">
+   <label id="fButtonIconModeWrap">
     <span>Icon</span>
     <select id="fButtonIconMode">
       <option value="automatic">Automatic</option>
@@ -571,6 +562,20 @@
                     </label>
                     <label id="fCommonCustomIconWrap" class="hidden"><span>Custom MDI icon</span>
                       <select id="fCommonCustomIcon"></select>
+                    </label>
+                  </div>
+                  <div id="stateColorOptions" class="slider-options hidden">
+                    <label><span>OFF / inactive icon colour</span>
+                      <select id="fStateOffColorMode"><option value="default">Default</option><option value="custom">Custom</option></select>
+                    </label>
+                    <label id="fStateOffColorWrap" class="hidden"><span>Custom OFF / inactive colour</span>
+                      <input id="fStateOffColor" type="color" value="#8ea1b4" />
+                    </label>
+                    <label><span>ON / active icon colour</span>
+                      <select id="fStateOnColorMode"><option value="default">Default</option><option value="custom">Custom</option></select>
+                    </label>
+                    <label id="fStateOnColorWrap" class="hidden"><span>Custom ON / active colour</span>
+                      <input id="fStateOnColor" type="color" value="#ffcf6b" />
                     </label>
                   </div>
                   <div id="graphOptions" class="slider-options hidden">
