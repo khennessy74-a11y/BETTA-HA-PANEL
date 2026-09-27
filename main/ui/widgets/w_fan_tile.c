@@ -14,6 +14,7 @@
 #include "ui/ui_bindings.h"
 #include "ui/ui_i18n.h"
 #include "ui/ui_memory.h"
+#include "ui/widgets/tile_layout_shared.h"
 #include "ui/widgets/widget_display_options.h"
 
 typedef struct {
@@ -158,7 +159,7 @@ esp_err_t w_fan_tile_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_wid
     lv_obj_set_size(card, def->w, def->h);
     lv_obj_clear_flag(card, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_style_radius(card, APP_UI_CARD_RADIUS, LV_PART_MAIN);
-    lv_obj_set_style_pad_all(card, 16, LV_PART_MAIN);
+    lv_obj_set_style_pad_all(card, app_tile_card_padding(false), LV_PART_MAIN);
 
     w_fan_ctx_t *ctx = ui_calloc_prefer_psram(1, sizeof(*ctx));
     if (ctx == NULL) { lv_obj_del(card); return ESP_ERR_NO_MEM; }
@@ -170,14 +171,14 @@ esp_err_t w_fan_tile_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_wid
     ctx->title = lv_label_create(card);
     lv_label_set_text(ctx->title, def->title[0] ? def->title : def->id);
     lv_obj_set_style_text_font(ctx->title, APP_FONT_TEXT_20, LV_PART_MAIN);
-    lv_obj_align(ctx->title, LV_ALIGN_BOTTOM_MID, 0, -8);
+    lv_obj_align(ctx->title, LV_ALIGN_BOTTOM_MID, 0, app_tile_title_bottom_y(false));
     if (!ctx->show_title) {
         lv_obj_add_flag(ctx->title, LV_OBJ_FLAG_HIDDEN);
     }
 
     ctx->state = lv_label_create(card);
     lv_obj_set_style_text_font(ctx->state, APP_FONT_TEXT_20, LV_PART_MAIN);
-    lv_obj_align(ctx->state, LV_ALIGN_TOP_LEFT, 0, 2);
+    lv_obj_align(ctx->state, LV_ALIGN_TOP_LEFT, 0, app_tile_state_top_y(false));
     if (!ctx->show_state) {
         lv_obj_add_flag(ctx->state, LV_OBJ_FLAG_HIDDEN);
     }
