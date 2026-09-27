@@ -382,6 +382,7 @@ static void ha_client_trace_recordf(const char *fmt, ...)
 static inline bool ha_client_heavy_in_flight_locked(void)
 {
     return s_client.weather_ws_req_inflight ||
+           s_client.weather_hourly_req_inflight ||
            s_client.energy_prefs_req_inflight ||
            s_client.energy_stats_req_inflight ||
            s_client.light_discovery_inflight ||
@@ -5657,6 +5658,8 @@ static void ha_client_handle_result_message(cJSON *root)
     if (s_client.weather_hourly_req_inflight && msg_id == s_client.weather_hourly_ws_req_id) {
         ha_client_ws_send_gate_mark_heavy_done_locked(ha_client_now_ms());
         s_client.weather_hourly_req_inflight = false;
+        ESP_LOGI(TAG_HA_CLIENT, "WS hourly weather subscribe ACK id=%" PRIu32 " success=%d",
+            msg_id, cJSON_IsTrue(success_item) ? 1 : 0);
         if (cJSON_IsBool(success_item) && !cJSON_IsTrue(success_item)) {
             s_client.weather_hourly_ws_req_id = 0;
             s_client.weather_hourly_ws_req_entity_id[0] = '\0';
@@ -6786,6 +6789,8 @@ static void ha_client_task(void *arg)
             xSemaphoreTake(s_client.mutex, portMAX_DELAY);
             if (hourly_err == ESP_OK) {
                 s_client.weather_hourly_req_inflight = true;
+                ESP_LOGI(TAG_HA_CLIENT, "WS hourly weather subscribe sent id=%" PRIu32 " entity=%s",
+                    hourly_req_id, weather_hourly_entity_id);
                 s_client.weather_hourly_ws_req_id = hourly_req_id;
                 safe_copy_cstr(s_client.weather_hourly_ws_req_entity_id,
                     sizeof(s_client.weather_hourly_ws_req_entity_id), weather_hourly_entity_id);
