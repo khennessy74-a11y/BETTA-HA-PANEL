@@ -9,10 +9,11 @@
 #include "ui/ui_bindings.h"
 #include "ui/ui_memory.h"
 #include "ui/ui_i18n.h"
+#include "ui/widgets/widget_display_options.h"
 
 typedef struct {
     char entity_id[APP_MAX_ENTITY_ID_LEN];
-    lv_obj_t *card, *title, *value_label, *slider, *minus_btn, *plus_btn;
+    lv_obj_t *card, *title, *icon, *value_label, *slider, *minus_btn, *plus_btn;
     double min, max, step, value;
     char unit[24];
     char mode[8];
@@ -108,6 +109,7 @@ esp_err_t w_input_number_create(const ui_widget_def_t *d,lv_obj_t *p,ui_widget_i
     lv_obj_t *card=lv_obj_create(p);lv_obj_set_pos(card,d->x,d->y);lv_obj_set_size(card,d->w,d->h);lv_obj_clear_flag(card,LV_OBJ_FLAG_SCROLLABLE);lv_obj_set_style_radius(card,APP_UI_CARD_RADIUS,LV_PART_MAIN);lv_obj_set_style_pad_all(card,16,LV_PART_MAIN);
     w_input_number_ctx_t *c=ui_calloc_prefer_psram(1,sizeof(*c));if(!c){lv_obj_del(card);return ESP_ERR_NO_MEM;} snprintf(c->entity_id,sizeof(c->entity_id),"%s",d->entity_id);c->card=card;c->min=0;c->max=100;c->step=1;c->precision=0;c->unit[0]='\0';snprintf(c->mode,sizeof(c->mode),"slider");c->show_title=d->show_title;c->show_state=d->show_state;
     c->title=lv_label_create(card);lv_label_set_text(c->title,d->title[0]?d->title:d->id);lv_obj_set_style_text_font(c->title,APP_FONT_TEXT_20,LV_PART_MAIN);lv_obj_align(c->title,LV_ALIGN_BOTTOM_MID,0,-8);if(!c->show_title)lv_obj_add_flag(c->title,LV_OBJ_FLAG_HIDDEN);
+    c->icon=lv_label_create(card);lv_obj_align(c->icon,LV_ALIGN_TOP_LEFT,0,2);widget_display_set_visible(c->icon,d->show_icon);if(d->show_icon&&!widget_display_apply_mdi(c->icon,d->icon[0]?d->icon:"mdi:numeric"))widget_display_set_visible(c->icon,false);
     c->value_label=lv_label_create(card);lv_obj_set_style_text_font(c->value_label,APP_FONT_TEXT_20,LV_PART_MAIN);lv_obj_align(c->value_label,LV_ALIGN_TOP_MID,0,2);if(!c->show_state)lv_obj_add_flag(c->value_label,LV_OBJ_FLAG_HIDDEN);
     c->slider=lv_slider_create(card);lv_slider_set_range(c->slider,0,step_count(c));lv_obj_set_size(c->slider,d->w-44,20);lv_obj_align(c->slider,LV_ALIGN_CENTER,0,0);lv_obj_add_event_cb(c->slider,event_cb,LV_EVENT_VALUE_CHANGED,c);lv_obj_add_event_cb(c->slider,event_cb,LV_EVENT_RELEASED,c);lv_obj_add_event_cb(c->slider,event_cb,LV_EVENT_DELETE,c);
     c->minus_btn=lv_btn_create(card);lv_obj_set_size(c->minus_btn,52,44);lv_obj_align(c->minus_btn,LV_ALIGN_LEFT_MID,4,0);lv_obj_t *minus_label=lv_label_create(c->minus_btn);lv_label_set_text(minus_label,"-");lv_obj_center(minus_label);lv_obj_add_event_cb(c->minus_btn,box_button_cb,LV_EVENT_CLICKED,c);lv_obj_add_flag(c->minus_btn,LV_OBJ_FLAG_HIDDEN);
