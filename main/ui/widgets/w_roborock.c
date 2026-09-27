@@ -80,6 +80,7 @@ typedef struct w_rr_ctx {
     lv_obj_t *card;
     lv_obj_t *controls_panel;
     lv_obj_t *title_label;
+    lv_obj_t *icon_label;
     lv_obj_t *state_label;
     lv_obj_t *detail_label;
     lv_obj_t *battery_chip;
@@ -2766,6 +2767,10 @@ esp_err_t w_roborock_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_wid
 
     ctx->card = card;
 
+    lv_obj_t *custom_icon = lv_label_create(card);
+    lv_obj_align(custom_icon, LV_ALIGN_TOP_RIGHT, 0, 0);
+    widget_display_set_visible(custom_icon, def->show_icon);
+    if (def->show_icon && !widget_display_apply_mdi(custom_icon, def->icon[0] ? def->icon : "mdi:robot-vacuum")) widget_display_set_visible(custom_icon, false);
     lv_obj_t *title = lv_label_create(card);
     lv_label_set_text(title, def->title[0] != '\0' ? def->title : def->entity_id);
     lv_obj_set_style_text_font(title, APP_FONT_TEXT_14, LV_PART_MAIN);
@@ -2774,6 +2779,7 @@ esp_err_t w_roborock_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_wid
     lv_obj_set_width(title, def->w - 120);
     lv_obj_align(title, LV_ALIGN_TOP_LEFT, 0, 0);
     ctx->title_label = title;
+    ctx->icon_label = custom_icon;
     widget_display_set_visible(title, def->show_title);
 
     lv_obj_t *battery_chip = lv_obj_create(card);
