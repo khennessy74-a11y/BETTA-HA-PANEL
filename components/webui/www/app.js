@@ -1810,6 +1810,13 @@ const el = {
   fSensorShowState: document.getElementById("fSensorShowState"),
   fSensorDecimalPlaces: document.getElementById("fSensorDecimalPlaces"),
   fButtonAccentColor: document.getElementById("fButtonAccentColor"),
+  stateColorOptions: document.getElementById("stateColorOptions"),
+  fStateOffColorMode: document.getElementById("fStateOffColorMode"),
+  fStateOffColorWrap: document.getElementById("fStateOffColorWrap"),
+  fStateOffColor: document.getElementById("fStateOffColor"),
+  fStateOnColorMode: document.getElementById("fStateOnColorMode"),
+  fStateOnColorWrap: document.getElementById("fStateOnColorWrap"),
+  fStateOnColor: document.getElementById("fStateOnColor"),
  sliderOptions: document.getElementById("sliderOptions"),
 fSliderEntityDomain: document.getElementById("fSliderEntityDomain"),
 fSliderShowTitle: document.getElementById("fSliderShowTitle"),
@@ -2072,7 +2079,12 @@ function normalizeLayoutWidgets(layout) {
 
       if (widget.type === "button") {
         widget.button_appearance = normalizeButtonAppearance(widget.button_appearance);
-        widget.button_accent_color = normalizeHexColor(widget.button_accent_color, DEFAULT_BUTTON_ACCENT_COLOR);
+        if (!widget.state_icon_off_color && !widget.state_icon_on_color && widget.button_accent_color) {
+          const legacyAccent = normalizeHexColor(widget.button_accent_color, DEFAULT_BUTTON_ACCENT_COLOR);
+          widget.state_icon_off_color = legacyAccent;
+          widget.state_icon_on_color = legacyAccent;
+        }
+        if (widget.button_accent_color) widget.button_accent_color = normalizeHexColor(widget.button_accent_color, DEFAULT_BUTTON_ACCENT_COLOR);
         const entityId = String(widget.entity_id || "");
         const isRunnableEntity = entityId.startsWith("script.") || entityId.startsWith("scene.");
         let buttonMode = normalizeButtonMode(widget.button_mode);
@@ -4133,6 +4145,14 @@ const COMMON_DISPLAY_WIDGET_TYPES = new Set([
 const COMMON_ICON_WIDGET_TYPES = new Set([
   "heating_tile", "light_tile"
 ]);
+const STATE_ICON_COLOR_WIDGET_TYPES = new Set([
+  "button", "light_tile", "heating_tile"
+]);
+
+function updateStateColorControls() {
+  if (el.fStateOffColorWrap) el.fStateOffColorWrap.classList.toggle("hidden", el.fStateOffColorMode?.value !== "custom");
+  if (el.fStateOnColorWrap) el.fStateOnColorWrap.classList.toggle("hidden", el.fStateOnColorMode?.value !== "custom");
+}
 
 function setCommonCustomIconValue(value) {
   const select = el.fCommonCustomIcon;
@@ -6021,6 +6041,7 @@ function renderInspector() {
       el.sliderOptions.classList.add("hidden");
     }
     if (el.commonDisplayOptions) el.commonDisplayOptions.classList.add("hidden");
+    if (el.stateColorOptions) el.stateColorOptions.classList.add("hidden");
     if (el.graphOptions) {
       el.graphOptions.classList.add("hidden");
     }
@@ -6096,6 +6117,17 @@ function renderInspector() {
   const isGraph = widget.type === "graph";
   const isHeating = widget.type === "heating_tile";
   const usesCommonDisplay = COMMON_DISPLAY_WIDGET_TYPES.has(widget.type);
+  const usesStateColors = STATE_ICON_COLOR_WIDGET_TYPES.has(widget.type);
+  if (el.stateColorOptions) el.stateColorOptions.classList.toggle("hidden", !usesStateColors);
+  if (usesStateColors) {
+    const off = typeof widget.state_icon_off_color === "string" ? widget.state_icon_off_color.trim() : "";
+    const on = typeof widget.state_icon_on_color === "string" ? widget.state_icon_on_color.trim() : "";
+    if (el.fStateOffColorMode) el.fStateOffColorMode.value = off ? "custom" : "default";
+    if (el.fStateOnColorMode) el.fStateOnColorMode.value = on ? "custom" : "default";
+    if (el.fStateOffColor) el.fStateOffColor.value = normalizeHexColor(off, "#8ea1b4");
+    if (el.fStateOnColor) el.fStateOnColor.value = normalizeHexColor(on, "#ffcf6b");
+    updateStateColorControls();
+  }
   if (el.commonDisplayOptions) el.commonDisplayOptions.classList.toggle("hidden", !usesCommonDisplay);
   if (usesCommonDisplay) {
     const configuredIcon = typeof widget.icon === "string" ? widget.icon.trim() : "";
@@ -6621,7 +6653,6 @@ function addWidget(type, options = {}) {
   if (type === "button") {
   widget.button_appearance = DEFAULT_BUTTON_APPEARANCE;
   widget.button_mode = resolvedButtonMode;
-  widget.button_accent_color = DEFAULT_BUTTON_ACCENT_COLOR;
 
     // Empty icon means Automatic.
     widget.icon = "";
@@ -6720,6 +6751,15 @@ function applyInspector(options = {}) {
     }
   } else {
     widget.secondary_entity_id = "";
+  }
+  if (STATE_ICON_COLOR_WIDGET_TYPES.has(widgetType)) {
+    if (el.fStateOffColorMode?.value === "custom") widget.state_icon_off_color = normalizeHexColor(el.fStateOffColor?.value, "#8ea1b4");
+    else delete widget.state_icon_off_color;
+    if (el.fStateOnColorMode?.value === "custom") widget.state_icon_on_color = normalizeHexColor(el.fStateOnColor?.value, "#ffcf6b");
+    else delete widget.state_icon_on_color;
+  } else {
+    delete widget.state_icon_off_color;
+    delete widget.state_icon_on_color;
   }
   if (COMMON_DISPLAY_WIDGET_TYPES.has(widgetType)) {
     widget.show_title = el.fCommonShowTitle?.value !== "false";
@@ -7522,6 +7562,10 @@ bindInspectorAutoApply(
 );
 
   bindInspectorAutoApply(el.fButtonAccentColor, ["input", "change"], { softEntityValidation: true });
+  if (el.fStateOffColorMode) el.fStateOffColorMode.addEventListener("change", () => { updateStateColorControls(); autoApplyInspector(); });
+  if (el.fStateOnColorMode) el.fStateOnColorMode.addEventListener("change", () => { updateStateColorControls(); autoApplyInspector(); });
+  bindInspectorAutoApply(el.fStateOffColor, ["input", "change"], { softEntityValidation: true });
+  bindInspectorAutoApply(el.fStateOnColor, ["input", "change"], { softEntityValidation: true });
   bindInspectorAutoApply(el.fSliderDirection, ["change"], { softEntityValidation: true });
   bindInspectorAutoApply(el.fSliderAccentColor, ["input", "change"], { softEntityValidation: true });
   bindInspectorAutoApply(el.fGraphLineColor, ["input", "change"], { softEntityValidation: true });
