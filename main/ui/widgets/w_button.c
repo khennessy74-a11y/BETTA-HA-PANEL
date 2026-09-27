@@ -17,6 +17,7 @@
 #include "ui/ui_bindings.h"
 #include "ui/ui_memory.h"
 #include "ui/fonts/mdi_font_registry.h"
+#include "ui/widgets/tile_layout_shared.h"
 
 typedef enum {
     W_BUTTON_MODE_AUTO = 0,
@@ -622,15 +623,7 @@ static void button_layout_icon(
     const bool compact =
         button_card_is_compact(card);
 
-    /* Match the light tile's icon-to-label rhythm instead of using the
-     * older button-specific larger gaps. Keep the existing button icon size
-     * calculation unchanged; only the vertical breathing room is aligned. */
-    const lv_coord_t matched_gap =
-#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
-        compact ? 4 : 8;
-#else
-        compact ? 4 : 8;
-#endif
+    const lv_coord_t matched_gap = app_tile_icon_gap(compact);
 
     const lv_coord_t min_height =
         compact ? 26 : 30;
