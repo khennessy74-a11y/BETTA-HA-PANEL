@@ -2061,6 +2061,14 @@ function normalizeLayoutWidgets(layout) {
     if (!page || !Array.isArray(page.widgets)) continue;
     for (const widget of page.widgets) {
       if (!widget || typeof widget !== "object") continue;
+
+      /* Reconcile persisted geometry with the current widget rules.  This
+       * keeps older layouts valid when a widget gains a safer minimum size
+       * (for example the 480 px Weather readability floor). */
+      if (widget.rect && typeof widget.rect === "object") {
+        widget.rect = clampRectToCanvas(widget.rect, widget.type);
+      }
+
       if (widget.type === "button") {
         widget.button_appearance = normalizeButtonAppearance(widget.button_appearance);
         widget.button_accent_color = normalizeHexColor(widget.button_accent_color, DEFAULT_BUTTON_ACCENT_COLOR);
