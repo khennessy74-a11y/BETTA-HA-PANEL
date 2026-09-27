@@ -23,6 +23,7 @@
 static bool s_display_ready = false;
 static lv_display_t *s_lv_display = NULL;
 static esp_timer_handle_t s_dim_timer = NULL;
+static esp_timer_handle_t s_night_timer = NULL;
 static int s_display_brightness = -1;
 static bool s_display_idle = false;
 static int s_active_brightness = APP_DISPLAY_ACTIVE_BRIGHTNESS_PERCENT;
@@ -158,6 +159,36 @@ void display_configure_idle(int timeout_seconds, int brightness_percent)
     display_restart_dim_timer();
 }
 
+static void display_night_timer_cb(void *arg)
+{
+    (void)arg;
+    if (!s_display_ready || !s_night_auto) return;
+    const int next = display_is_night_now() ? s_night_brightness : s_day_brightness;
+    if (next == s_active_brightness) return;
+    s_active_brightness = next;
+    (void)display_set_brightness_percent(display_current_target_brightness());
+}
+
+static esp_err_t display_night_timer_init(void)
+{
+    if (s_night_timer != NULL) {
+        if (!esp_timer_is_active(s_night_timer)) {
+            return esp_timer_start_periodic(s_night_timer, 60ULL * 1000000ULL);
+        }
+        return ESP_OK;
+    }
+    const esp_timer_create_args_t args = {
+        .callback = display_night_timer_cb,
+        .arg = NULL,
+        .dispatch_method = ESP_TIMER_TASK,
+        .name = "display_night",
+        .skip_unhandled_events = true,
+    };
+    esp_err_t err = esp_timer_create(&args, &s_night_timer);
+    if (err == ESP_OK) err = esp_timer_start_periodic(s_night_timer, 60ULL * 1000000ULL);
+    return err;
+}
+
 void display_configure_night_mode(int day_percent, int night_percent, int mode, int night_start_hour, int night_start_minute, int day_start_hour, int day_start_minute)
 {
     s_day_brightness = display_clamp_brightness(day_percent);
@@ -171,11 +202,22 @@ void display_configure_night_mode(int day_percent, int night_percent, int mode, 
     s_active_brightness = s_night_mode == 1 ? s_night_brightness :
         (s_night_auto && display_is_night_now() ? s_night_brightness : s_day_brightness);
     (void)display_set_brightness_percent(display_current_target_brightness());
+    if (s_night_auto) {
+        esp_err_t timer_err = display_night_timer_init();
+        if (timer_err != ESP_OK) ESP_LOGW(TAG_DISPLAY, "night timer init failed: %s", esp_err_to_name(timer_err));
+    } else if (s_night_timer != NULL && esp_timer_is_active(s_night_timer)) {
+        (void)esp_timer_stop(s_night_timer);
+    }
 }
 
 bool display_is_idle(void)
 {
     return s_display_ready && s_display_idle;
+}
+
+bool display_is_screen_off(void)
+{
+    return s_display_ready && s_display_brightness == 0;
 }
 
 esp_err_t display_init(void)
