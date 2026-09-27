@@ -1033,14 +1033,20 @@ void w_slider_apply_state(ui_widget_instance_t *instance, const ha_state_t *stat
         if (ctx->cover_open_btn != NULL) {
             if (ctx->cover_supported_features & 1U) lv_obj_clear_flag(ctx->cover_open_btn, LV_OBJ_FLAG_HIDDEN);
             else lv_obj_add_flag(ctx->cover_open_btn, LV_OBJ_FLAG_HIDDEN);
+            if (strcmp(ctx->cover_state, "open") == 0 || strcmp(ctx->cover_state, "opening") == 0) lv_obj_add_state(ctx->cover_open_btn, LV_STATE_DISABLED);
+            else lv_obj_clear_state(ctx->cover_open_btn, LV_STATE_DISABLED);
         }
         if (ctx->cover_close_btn != NULL) {
             if (ctx->cover_supported_features & 2U) lv_obj_clear_flag(ctx->cover_close_btn, LV_OBJ_FLAG_HIDDEN);
             else lv_obj_add_flag(ctx->cover_close_btn, LV_OBJ_FLAG_HIDDEN);
+            if (strcmp(ctx->cover_state, "closed") == 0 || strcmp(ctx->cover_state, "closing") == 0) lv_obj_add_state(ctx->cover_close_btn, LV_STATE_DISABLED);
+            else lv_obj_clear_state(ctx->cover_close_btn, LV_STATE_DISABLED);
         }
         if (ctx->cover_stop_btn != NULL) {
             if (ctx->cover_supported_features & 8U) lv_obj_clear_flag(ctx->cover_stop_btn, LV_OBJ_FLAG_HIDDEN);
             else lv_obj_add_flag(ctx->cover_stop_btn, LV_OBJ_FLAG_HIDDEN);
+            if (strcmp(ctx->cover_state, "opening") == 0 || strcmp(ctx->cover_state, "closing") == 0) lv_obj_clear_state(ctx->cover_stop_btn, LV_STATE_DISABLED);
+            else lv_obj_add_state(ctx->cover_stop_btn, LV_STATE_DISABLED);
         }
         if (ctx->slider != NULL) {
             if (ctx->cover_supported_features & 4U) lv_obj_clear_flag(ctx->slider, LV_OBJ_FLAG_HIDDEN);
