@@ -622,18 +622,14 @@ static void button_layout_icon(
     const bool compact =
         button_card_is_compact(card);
 
-    const lv_coord_t top_gap_base =
-#if APP_UI_TILE_LAYOUT_TUNED
-        compact ? 10 : 14;
+    /* Match the light tile's icon-to-label rhythm instead of using the
+     * older button-specific larger gaps. Keep the existing button icon size
+     * calculation unchanged; only the vertical breathing room is aligned. */
+    const lv_coord_t matched_gap =
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+        compact ? 4 : 8;
 #else
-        12;
-#endif
-
-    const lv_coord_t bottom_gap_base =
-#if APP_UI_TILE_LAYOUT_TUNED
-        compact ? 12 : 16;
-#else
-        14;
+        compact ? 4 : 8;
 #endif
 
     const lv_coord_t min_height =
@@ -641,12 +637,12 @@ static void button_layout_icon(
 
     lv_coord_t top_gap =
         button_label_visible(ctx->state_label)
-            ? top_gap_base
+            ? matched_gap
             : 4;
 
     lv_coord_t bottom_gap =
         button_label_visible(ctx->title_label)
-            ? bottom_gap_base
+            ? matched_gap
             : 4;
 
     lv_coord_t content_w = 24;
