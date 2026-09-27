@@ -19,10 +19,10 @@ jobs:
             sdkconfig_defaults: "sdkconfig.defaults.s3;sdkconfig.defaults.panels3"
             sdkconfig: sdkconfig.panels3
           - variant: panel4
-            sdkconfig_defaults: "sdkconfig.defaults.panel4"
+            sdkconfig_defaults: "sdkconfig.defaults;sdkconfig.defaults.panel4"
             sdkconfig: sdkconfig.panel4
           - variant: panel10
-            sdkconfig_defaults: "sdkconfig.defaults.panel10"
+            sdkconfig_defaults: "sdkconfig.defaults;sdkconfig.defaults.panel10"
             sdkconfig: sdkconfig.panel10
 
     steps:
