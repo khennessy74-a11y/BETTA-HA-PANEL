@@ -27,6 +27,8 @@ typedef struct {
     char slider_direction[APP_MAX_UI_OPTION_LEN];
     char slider_accent_color[APP_MAX_COLOR_STR_LEN];
     char button_accent_color[APP_MAX_COLOR_STR_LEN];
+    char state_icon_off_color[APP_MAX_COLOR_STR_LEN];
+    char state_icon_on_color[APP_MAX_COLOR_STR_LEN];
     char button_mode[APP_MAX_UI_OPTION_LEN];
     char button_appearance[APP_MAX_UI_OPTION_LEN];
 
@@ -67,6 +69,8 @@ typedef struct {
     char slider_direction[APP_MAX_UI_OPTION_LEN];
     char slider_accent_color[APP_MAX_COLOR_STR_LEN];
     char button_accent_color[APP_MAX_COLOR_STR_LEN];
+    char state_icon_off_color[APP_MAX_COLOR_STR_LEN];
+    char state_icon_on_color[APP_MAX_COLOR_STR_LEN];
     char button_mode[APP_MAX_UI_OPTION_LEN];
     char button_appearance[APP_MAX_UI_OPTION_LEN];
 
