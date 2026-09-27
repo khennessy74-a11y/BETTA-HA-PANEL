@@ -93,6 +93,7 @@ typedef struct {
 typedef struct {
     lv_obj_t *card;
     lv_obj_t *title_label;
+    lv_obj_t *icon_label;
     lv_obj_t *value_label;
     lv_obj_t *meta_label;
     lv_obj_t *chart;
@@ -1407,6 +1408,10 @@ esp_err_t w_graph_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widget
     lv_obj_clear_flag(card, LV_OBJ_FLAG_SCROLLABLE);
     theme_default_style_card(card);
 
+    lv_obj_t *custom_icon = lv_label_create(card);
+    lv_obj_align(custom_icon, LV_ALIGN_TOP_RIGHT, 0, 0);
+    widget_display_set_visible(custom_icon, def->show_icon);
+    if (def->show_icon && !widget_display_apply_mdi(custom_icon, def->icon[0] ? def->icon : "mdi:chart-line")) widget_display_set_visible(custom_icon, false);
     lv_obj_t *title = lv_label_create(card);
     lv_label_set_text(title, def->title[0] ? def->title : def->id);
     lv_obj_set_style_text_color(title, theme_default_color_text_muted(), LV_PART_MAIN);
@@ -1445,6 +1450,7 @@ esp_err_t w_graph_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widget
 
     ctx->card = card;
     ctx->title_label = title;
+    ctx->icon_label = custom_icon;
     ctx->value_label = value;
     ctx->meta_label = meta;
     ctx->chart = chart;
