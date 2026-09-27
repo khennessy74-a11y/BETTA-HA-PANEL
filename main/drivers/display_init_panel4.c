@@ -141,8 +141,11 @@ void display_note_activity(void)
     if (!s_display_ready) {
         return;
     }
+    if (s_night_auto) {
+        s_active_brightness = display_is_night_now() ? s_night_brightness : s_day_brightness;
+    }
     s_display_idle = false;
-    (void)display_set_brightness_percent(display_current_target_brightness());
+    (void)display_set_brightness_percent(s_active_brightness);
     display_restart_dim_timer();
 }
 
