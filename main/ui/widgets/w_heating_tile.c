@@ -879,10 +879,11 @@ lv_obj_align(title, LV_ALIGN_TOP_MID, 0, app_tile_state_top_y(false));
         lv_obj_set_style_text_font(ctx->max_label, APP_FONT_TEXT_14, LV_PART_MAIN);
         lv_obj_set_style_text_color(ctx->max_label, lv_color_hex(APP_UI_COLOR_TEXT_MUTED), LV_PART_MAIN);
 
-        /* +/- buttons. */
+        /* +/- buttons scale down with compact semi-arc cards. */
+        lv_coord_t step_btn_size = (def->w < 180 || def->h < 180) ? 38 : 48;
         ctx->minus_btn = lv_btn_create(card);
-        lv_obj_set_size(ctx->minus_btn, 48, 48);
-        lv_obj_set_style_radius(ctx->minus_btn, 24, LV_PART_MAIN);
+        lv_obj_set_size(ctx->minus_btn, step_btn_size, step_btn_size);
+        lv_obj_set_style_radius(ctx->minus_btn, step_btn_size / 2, LV_PART_MAIN);
         lv_obj_t *minus_lbl = lv_label_create(ctx->minus_btn);
         lv_label_set_text(minus_lbl, "-");
         lv_obj_set_style_text_font(minus_lbl, HEATING_TARGET_FONT, LV_PART_MAIN);
@@ -890,8 +891,8 @@ lv_obj_align(title, LV_ALIGN_TOP_MID, 0, app_tile_state_top_y(false));
         lv_obj_add_event_cb(ctx->minus_btn, w_heating_tile_step_event_cb, LV_EVENT_CLICKED, ctx);
 
         ctx->plus_btn = lv_btn_create(card);
-        lv_obj_set_size(ctx->plus_btn, 48, 48);
-        lv_obj_set_style_radius(ctx->plus_btn, 24, LV_PART_MAIN);
+        lv_obj_set_size(ctx->plus_btn, step_btn_size, step_btn_size);
+        lv_obj_set_style_radius(ctx->plus_btn, step_btn_size / 2, LV_PART_MAIN);
         lv_obj_t *plus_lbl = lv_label_create(ctx->plus_btn);
         lv_label_set_text(plus_lbl, "+");
         lv_obj_set_style_text_font(plus_lbl, HEATING_TARGET_FONT, LV_PART_MAIN);
