@@ -205,19 +205,22 @@ esp_err_t w_fan_tile_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_wid
     lv_obj_align(ctx->value, LV_ALIGN_TOP_RIGHT, 0, 2);
 
     ctx->power = lv_switch_create(card);
-    lv_obj_set_size(ctx->power, 70, 34);
+    lv_coord_t power_w = def->w < 150 ? 56 : 70;
+    lv_coord_t power_h = def->h < 130 ? 30 : 34;
+    lv_obj_set_size(ctx->power, power_w, power_h);
     lv_obj_align(ctx->power, LV_ALIGN_CENTER, 0, -20);
     lv_obj_add_event_cb(ctx->power, fan_power_event, LV_EVENT_VALUE_CHANGED, ctx);
 
     ctx->slider = lv_slider_create(card);
     lv_slider_set_range(ctx->slider, 0, 100);
-    lv_obj_set_size(ctx->slider, def->w - 44, 18);
+    lv_coord_t control_w = def->w > 64 ? def->w - 44 : 20;
+    lv_obj_set_size(ctx->slider, control_w, 18);
     lv_obj_align(ctx->slider, LV_ALIGN_CENTER, 0, 30);
     lv_obj_add_event_cb(ctx->slider, fan_slider_event, LV_EVENT_VALUE_CHANGED, ctx);
     lv_obj_add_event_cb(ctx->slider, fan_slider_event, LV_EVENT_RELEASED, ctx);
 
     ctx->preset = lv_dropdown_create(card);
-    lv_obj_set_width(ctx->preset, def->w - 44);
+    lv_obj_set_width(ctx->preset, control_w);
     lv_obj_align(ctx->preset, LV_ALIGN_CENTER, 0, 66);
     lv_obj_add_flag(ctx->preset, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_event_cb(ctx->preset, fan_preset_event, LV_EVENT_VALUE_CHANGED, ctx);
