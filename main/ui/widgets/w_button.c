@@ -18,6 +18,7 @@
 #include "ui/ui_memory.h"
 #include "ui/fonts/mdi_font_registry.h"
 #include "ui/widgets/tile_layout_shared.h"
+#include "ui/widgets/state_icon_color.h"
 
 typedef enum {
     W_BUTTON_MODE_AUTO = 0,
@@ -39,6 +40,10 @@ typedef struct {
     lv_obj_t *action_icon;
     lv_color_t accent_color;
     bool has_custom_accent;
+    lv_color_t state_off_color;
+    lv_color_t state_on_color;
+    bool has_state_off_color;
+    bool has_state_on_color;
     w_button_mode_t mode;
     bool use_icon_appearance;
     bool show_title;
@@ -832,10 +837,9 @@ static void button_apply_visual(lv_obj_t *card, w_button_ctx_t *ctx, bool is_on,
         ctx->action_icon,
         unavailable
             ? lv_color_hex(APP_UI_COLOR_TEXT_MUTED)
-            : (ctx->has_custom_accent
-                   ? ctx->accent_color
-                   : (is_on ? lv_color_hex(APP_UI_COLOR_LIGHT_ICON_ON)
-                            : lv_color_hex(APP_UI_COLOR_CARD_ICON_OFF))),
+            : (is_on
+                   ? (ctx->has_state_on_color ? ctx->state_on_color : lv_color_hex(APP_UI_COLOR_LIGHT_ICON_ON))
+                   : (ctx->has_state_off_color ? ctx->state_off_color : lv_color_hex(APP_UI_COLOR_CARD_ICON_OFF))),
         LV_PART_MAIN);
 
     button_layout_icon(
@@ -1076,6 +1080,8 @@ ctx->card = card;
     ctx->action_icon = action_icon;
     ctx->accent_color = lv_color_hex(W_BUTTON_SWITCH_ACCENT_DEFAULT_HEX);
     ctx->has_custom_accent = false;
+    ctx->has_state_off_color = false;
+    ctx->has_state_on_color = false;
     ctx->mode = button_mode_from_text(def->button_mode);
     ctx->use_icon_appearance =
         strcmp(def->button_appearance, "icon") == 0 || is_lock;
@@ -1110,6 +1116,8 @@ ctx->card = card;
         ctx->accent_color = parsed_color;
         ctx->has_custom_accent = true;
     }
+    ctx->has_state_off_color = state_icon_parse_color(def->state_icon_off_color, &ctx->state_off_color);
+    ctx->has_state_on_color = state_icon_parse_color(def->state_icon_on_color, &ctx->state_on_color);
 
     if (!ctx->show_title) {
         lv_obj_add_flag(title, LV_OBJ_FLAG_HIDDEN);
