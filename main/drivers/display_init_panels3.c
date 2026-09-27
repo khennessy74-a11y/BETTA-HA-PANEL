@@ -322,6 +322,11 @@ void display_configure_night_mode(int day_percent, int night_percent, int mode, 
     }
 }
 
+bool display_is_idle(void)
+{
+    return s_display_ready && s_display_idle;
+}
+
 bool display_is_screen_off(void)
 {
     return s_display_ready && s_display_brightness == 0;

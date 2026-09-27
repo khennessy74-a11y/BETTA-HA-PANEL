@@ -341,6 +341,13 @@ static void ui_runtime_clamp_widget_rect(ui_widget_def_t *def)
 
 static void ui_runtime_refresh_topbar(void)
 {
+    /* Reuse the display driver's inactivity timer as the single source of
+     * truth. When it dims the panel, return navigation to the main page.
+     * The next touch wakes the display before normal page interaction. */
+    if (display_is_idle() && strcmp(ui_pages_current_id(), "main") != 0) {
+        (void)ui_pages_show_index(0);
+    }
+
     time_t now = time(NULL);
     struct tm info = {0};
     localtime_r(&now, &info);

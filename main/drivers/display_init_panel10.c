@@ -23,6 +23,7 @@ static bool s_display_ready = false;
 static lv_display_t *s_lv_display = NULL;
 static esp_timer_handle_t s_dim_timer = NULL;
 static int s_display_brightness = -1;
+static bool s_display_idle = false;
 
 static lvgl_port_cfg_t display_port_cfg(void)
 {
@@ -67,6 +68,7 @@ static void display_dim_timer_cb(void *arg)
     if (!s_display_ready) {
         return;
     }
+    s_display_idle = true;
     (void)display_set_brightness_percent(APP_DISPLAY_DIM_BRIGHTNESS_PERCENT);
 }
 
@@ -106,8 +108,14 @@ void display_note_activity(void)
     if (!s_display_ready) {
         return;
     }
+    s_display_idle = false;
     (void)display_set_brightness_percent(APP_DISPLAY_ACTIVE_BRIGHTNESS_PERCENT);
     display_restart_dim_timer();
+}
+
+bool display_is_idle(void)
+{
+    return s_display_ready && s_display_idle;
 }
 
 esp_err_t display_init(void)
