@@ -19,6 +19,7 @@
 #include "ui/ui_i18n.h"
 #include "ui/ui_memory.h"
 #include "ui/widgets/widget_display_options.h"
+#include "ui/widgets/tile_layout_shared.h"
 #include "ui/theme/theme_default.h"
 
 #ifndef APP_HAVE_LIGHT_COLOR_BUTTON_IMAGES
@@ -484,42 +485,8 @@ static void light_position_icon_between_state_and_title(lv_obj_t *card, lv_coord
         return;
     }
 
-    /* Layout once so child coordinates/heights are valid before calculating placement. */
-    lv_obj_update_layout(card);
-
-    if (gap < 0) {
-        gap = 0;
-    }
-    lv_coord_t top = lv_obj_get_y(state_label) + lv_obj_get_height(state_label) + gap;
-    lv_coord_t bottom = lv_obj_get_y(title) - gap;
-    lv_coord_t icon_h = lv_obj_get_height(icon);
-
-    if (icon_h < 1) {
-        const lv_font_t *font = lv_obj_get_style_text_font(icon, LV_PART_MAIN);
-        if (font != NULL) {
-            icon_h = font->line_height;
-        }
-    }
-
-    lv_coord_t y = top;
-    lv_coord_t room = bottom - top;
-    if (room >= icon_h) {
-        y = top + (room - icon_h) / 2;
-    }
-
-    lv_coord_t max_y = bottom - icon_h;
-    if (max_y < top) {
-        max_y = top;
-    }
-    y += bias_y;
-    if (y < top) {
-        y = top;
-    }
-    if (y > max_y) {
-        y = max_y;
-    }
-
-    lv_obj_align(icon, LV_ALIGN_TOP_MID, bias_x, y);
+    app_tile_position_icon_between_labels(card, icon, state_label, title, gap, bias_y);
+    lv_obj_set_x(icon, bias_x);
 }
 
 static void light_apply_visual(lv_obj_t *card, const w_light_tile_ctx_t *ctx, bool is_on, int brightness, const char *status_text)
