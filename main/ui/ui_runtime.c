@@ -683,6 +683,9 @@ static bool ui_runtime_widget_from_json(
             widget_json,
             "button_accent_color");
 
+    cJSON *state_icon_off_color = cJSON_GetObjectItemCaseSensitive(widget_json, "state_icon_off_color");
+    cJSON *state_icon_on_color = cJSON_GetObjectItemCaseSensitive(widget_json, "state_icon_on_color");
+
     cJSON *button_mode =
         cJSON_GetObjectItemCaseSensitive(
             widget_json,
@@ -889,6 +892,13 @@ static bool ui_runtime_widget_from_json(
             sizeof(out->button_accent_color),
             "%s",
             button_accent_color->valuestring);
+    }
+
+    if (cJSON_IsString(state_icon_off_color) && state_icon_off_color->valuestring != NULL) {
+        snprintf(out->state_icon_off_color, sizeof(out->state_icon_off_color), "%s", state_icon_off_color->valuestring);
+    }
+    if (cJSON_IsString(state_icon_on_color) && state_icon_on_color->valuestring != NULL) {
+        snprintf(out->state_icon_on_color, sizeof(out->state_icon_on_color), "%s", state_icon_on_color->valuestring);
     }
 
     if (cJSON_IsString(button_mode) &&
