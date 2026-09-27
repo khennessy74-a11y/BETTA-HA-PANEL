@@ -38,6 +38,7 @@ typedef struct {
     lv_obj_t *action_switch;
     lv_obj_t *action_icon;
     lv_color_t accent_color;
+    bool has_custom_accent;
     w_button_mode_t mode;
     bool use_icon_appearance;
     bool show_title;
@@ -824,14 +825,17 @@ static void button_apply_visual(lv_obj_t *card, w_button_ctx_t *ctx, bool is_on,
         }
     }
 
-    /* Match Light tile colour semantics exactly:
-     * OFF uses the theme's normal icon/text colour; ON uses the configured
-     * accent (or the button's theme default accent). */
+    /* Match Light tile semantics while keeping an explicit button colour
+     * authoritative in both states.  Light tiles use CARD_ICON_OFF when off,
+     * not TEXT_PRIMARY. */
     lv_obj_set_style_text_color(
         ctx->action_icon,
         unavailable
             ? lv_color_hex(APP_UI_COLOR_TEXT_MUTED)
-            : (is_on ? ctx->accent_color : lv_color_hex(APP_UI_COLOR_TEXT_PRIMARY)),
+            : (ctx->has_custom_accent
+                   ? ctx->accent_color
+                   : (is_on ? lv_color_hex(APP_UI_COLOR_LIGHT_ICON_ON)
+                            : lv_color_hex(APP_UI_COLOR_CARD_ICON_OFF))),
         LV_PART_MAIN);
 
     button_layout_icon(
@@ -1071,6 +1075,7 @@ ctx->card = card;
     ctx->action_switch = action_switch;
     ctx->action_icon = action_icon;
     ctx->accent_color = lv_color_hex(W_BUTTON_SWITCH_ACCENT_DEFAULT_HEX);
+    ctx->has_custom_accent = false;
     ctx->mode = button_mode_from_text(def->button_mode);
     ctx->use_icon_appearance =
         strcmp(def->button_appearance, "icon") == 0 || is_lock;
@@ -1103,6 +1108,7 @@ ctx->card = card;
     lv_color_t parsed_color = lv_color_hex(0);
     if (button_parse_hex_color(def->button_accent_color, &parsed_color)) {
         ctx->accent_color = parsed_color;
+        ctx->has_custom_accent = true;
     }
 
     if (!ctx->show_title) {
