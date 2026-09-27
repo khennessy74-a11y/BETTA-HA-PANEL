@@ -90,6 +90,16 @@ Development on this fork extends the v0.8.2 baseline with a growing set of Home 
 - **HA connection diagnostics** — the Settings page now exposes a rolling firmware-side Home Assistant connection history to make startup and reconnect problems easier to diagnose.
 - **Improved save/reboot handling** — network and runtime state are cleaned up more carefully before rebooting after settings changes.
 
+### Recent development progress
+
+- **Custom MDI icon parity** — custom icons now work across the supported entity-backed tiles, including lights, fans, updates, calendars, selects, input helpers, alarms, graphs, todo lists, media players, Roborock, sensors, timers, sliders, heating, and runnable script/scene/automation buttons. Weather keeps its dedicated condition-driven icon system.
+- **Configurable state icon colours** — supported tiles can use separate ON and OFF icon colours while preserving theme defaults and Home Assistant light RGB behaviour where appropriate.
+- **Sensor precision control** — sensor tiles can configure the number of decimal places shown on the panel.
+- **Cover controls** — cover sliders support position and tilt where Home Assistant exposes those capabilities, with open/stop/close actions and movement-aware control states.
+- **Responsive compact tiles** — button geometry and controls for Select, Input Number, Fan, and Update tiles have been tightened so smaller dashboard cards remain usable without changing normal-size layouts.
+- **Editor parity cleanup** — widget options now better match runtime capabilities; unsupported generic custom-icon controls are hidden for Weather while its dynamic weather icons remain intact.
+- **Hardware validation** — the current development line has been repeatedly built, flashed, and exercised on-panel; the latest confirmed hardware-green checkpoint is commit `b95f290`.
+
 ### Reliability fixes
 
 - **WebSocket connection-state recovery** — BETTA now uses the ESP WebSocket client's native connection state as the source of truth, preventing a stale local state from trapping the panel in repeated failed authentication attempts.
