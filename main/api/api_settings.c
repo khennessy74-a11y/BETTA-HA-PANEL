@@ -174,7 +174,7 @@ static void restart_timer_cb(void *arg)
     vTaskDelay(pdMS_TO_TICKS(250));
 
     /* Avoid random panel colors during software reset. */
-    (void)bsp_display_backlight_off();
+    (void)display_set_brightness_percent(0);
     esp_restart();
 }
 
