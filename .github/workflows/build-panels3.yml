@@ -40,10 +40,15 @@ jobs:
             -DSDKCONFIG="${{ matrix.sdkconfig }}" \
             build
 
+      - name: Package ${{ matrix.variant }} release images
+        shell: pwsh
+        run: |
+          ./tools/make_factory_bin.ps1 -Variant "${{ matrix.variant }}" -BuildDir "build-${{ matrix.variant }}"
+
       - name: Upload firmware
         uses: actions/upload-artifact@v4
         with:
           name: betta-ha-panel-${{ matrix.variant }}
           path: |
-            build-${{ matrix.variant }}/*.bin
-            build-${{ matrix.variant }}/**/*.bin
+            release/betta86-ha-panel-v0.9-${{ matrix.variant }}.factory.bin
+            release/ota/betta86-ha-panel-v0.9-${{ matrix.variant }}.ota.bin
