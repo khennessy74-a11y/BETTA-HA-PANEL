@@ -41,9 +41,18 @@ jobs:
             build
 
       - name: Package ${{ matrix.variant }} release images
-        shell: pwsh
+        shell: bash
         run: |
-          ./tools/make_factory_bin.ps1 -Variant "${{ matrix.variant }}" -BuildDir "build-${{ matrix.variant }}"
+          . ${IDF_PATH}/export.sh
+          BUILD_DIR="build-${{ matrix.variant }}"
+          mkdir -p release/ota
+
+          APP_BIN="$(python -c 'import json,sys; d=json.load(open(sys.argv[1])); print(d["app"]["file"])' "$BUILD_DIR/flasher_args.json")"
+          CHIP="$(python -c 'import json,sys; d=json.load(open(sys.argv[1])); print(d["extra_esptool_args"]["chip"])' "$BUILD_DIR/flasher_args.json")"
+
+          python -m esptool --chip "$CHIP" merge_bin             -o "release/betta86-ha-panel-v0.9-${{ matrix.variant }}.factory.bin"             @<(grep -v '^--' "$BUILD_DIR/flash_args" | sed "s# \([^/]\)# $BUILD_DIR/\1#g")
+
+          cp "$BUILD_DIR/$APP_BIN" "release/ota/betta86-ha-panel-v0.9-${{ matrix.variant }}.ota.bin"
 
       - name: Upload firmware
         uses: actions/upload-artifact@v4
