@@ -253,11 +253,21 @@ void app_main(void)
     ui_boot_splash_set_status("No Wi-Fi backend");
 #endif
 
+    /* Provisioning is a configuration state, not a connectivity state.
+     * After a site-wide power failure the panel can boot before the router/AP
+     * (and Home Assistant) is ready.  A temporary Wi-Fi failure must never
+     * send an already-configured panel back to first-boot setup.  Persisted
+     * credentials are authoritative: configured panels load the dashboard and
+     * the normal network/HA recovery paths can reconnect in the background. */
+    const bool has_ha_credentials = runtime_settings_has_ha(&s_runtime_settings);
     boot_screen_mode_t boot_screen_mode = BOOT_SCREEN_DASHBOARD;
-    if (!wifi_ready) {
+    if (!has_wifi_credentials) {
         boot_screen_mode = BOOT_SCREEN_WIFI_SETUP;
-    } else if (!runtime_settings_has_ha(&s_runtime_settings)) {
+    } else if (!has_ha_credentials) {
         boot_screen_mode = BOOT_SCREEN_HA_SETUP;
+    } else if (!wifi_ready) {
+        ESP_LOGW(TAG_WIFI,
+            "Configured panel booted before Wi-Fi became ready; loading dashboard and retaining persisted configuration");
     }
 
     ESP_ERROR_CHECK(layout_store_init());
