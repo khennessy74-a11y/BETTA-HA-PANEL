@@ -2,6 +2,79 @@
 
 # Release Notes
 
+## v0.9 — Release Candidate
+
+BETTA HA Panel v0.9 is the largest development update since v0.8.2, expanding dashboard controls, editor capabilities, display behaviour, diagnostics, and three-panel release validation.
+
+### Highlights
+
+- Added direct Home Assistant script execution and expanded button action modes.
+- Added dynamic page sizing and broader domain-aware entity discovery/search in the BETTA Editor.
+- Added custom MDI icon support across supported entity-backed widgets, while Weather retains its condition-driven icon system.
+- Added configurable ON/OFF state icon colours and sensor decimal-place precision.
+- Added cover position/tilt controls with open, stop, close, and movement-aware action states.
+- Added responsive compact layouts for Select, Input Number, Fan, Update, Input Text, Input Date/Time, Heating, and related controls.
+- Added configurable Night Mode with day/night brightness, automatic schedule transitions, wake-time schedule refresh, and idle dimming.
+- Expanded graph configuration with line colour, time window, display mode, bar buckets, and point-count controls.
+- Expanded heating-tile styling, including semi/open arc variants.
+- Improved weather current/forecast temperature handling without fabricating unavailable highs or lows.
+- Added firmware-side Home Assistant connection diagnostics and strengthened WebSocket recovery.
+- Improved Save & Reboot cleanup and restart behaviour.
+
+### Editor And Widget Improvements
+
+- Entity picker discovery now supports the domains used by lights, sensors, switches, weather, climate, todo, media players, vacuums, images, and other supported widgets.
+- Widget inspectors expose runtime-relevant options more consistently.
+- Unsupported generic custom-icon controls are hidden for Weather because Weather uses its own condition-driven icon path.
+- Light, fan, update, calendar, select, input helper, alarm, graph, todo, media player, Roborock, sensor, timer, slider, heating, and runnable action widgets have received icon/layout parity work.
+- Smaller cards use adaptive control geometry without changing normal-size layouts.
+
+### Display And Runtime
+
+- Night Mode supports configurable day and night brightness levels plus automatic scheduled transitions.
+- Idle dimming works together with Night Mode and never brightens a display that is already dimmer because of the active night setting.
+- Activity refreshes the current automatic day/night state before restoring active brightness.
+- ESP32-P4 and ESP32-S3 variants share the same release-validation workflow.
+
+### Reliability
+
+- Native ESP WebSocket connection state is used to recover from stale or failed authentication sessions.
+- Runtime settings startup handling avoids destructive reinitialisation during normal retries.
+- HTTP/API handling used by settings, diagnostics, and editor flows has been hardened.
+- The reboot path uses the portable display API before restart.
+- The ESP32-P4 dependency set pins `espressif/esp_lvgl_port` 2.7.2 for compatibility with ESP-IDF 5.5.2.
+
+### Build And Release Validation
+
+- GitHub Actions now builds `panel4`, `panel10`, and `panels3` in one matrix workflow.
+- All three variants are built against ESP-IDF 5.5.2 with their correct target/default configuration.
+- CI creates versioned factory and OTA images for every variant and uploads a separate artifact set for each.
+- The release packaging pipeline is green for all three variants at commit `9c43d32`.
+- Latest firmware behaviour confirmed on physical hardware before release-pipeline-only changes: `7bd95d7`.
+
+### Release Candidate Validation
+
+Before publishing v0.9 as the stable release:
+
+- Flash the v0.9 release-candidate image on the available target hardware.
+- Confirm normal boot, Home Assistant connection, editor access, dashboard rendering, touch input, Night Mode/idle dimming, Save & Reboot, and OTA update.
+- Keep the existing v0.8.2 public download links until the v0.9 binaries have completed final validation and are published.
+
+### Known Investigation
+
+- Cold power-cycle Home Assistant startup delay on ESP32-P4/C6 remains under investigation. The connection self-recovers, while warm starts connect normally.
+
+### Packaging
+
+The release pipeline produces:
+
+- `betta86-ha-panel-v0.9-panel4.factory.bin`
+- `betta86-ha-panel-v0.9-panel4.ota.bin`
+- `betta86-ha-panel-v0.9-panel10.factory.bin`
+- `betta86-ha-panel-v0.9-panel10.ota.bin`
+- `betta86-ha-panel-v0.9-panels3.factory.bin`
+- `betta86-ha-panel-v0.9-panels3.ota.bin`
+
 ## v0.8.2
 
 BETTA HA Panel v0.8.2 adds a third supported hardware variant — the Guition ESP32-S3-4848S040 — and ships factory and OTA images for all three panel variants.
