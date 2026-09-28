@@ -13,6 +13,10 @@ dependencies:
       - if: "target in [esp32p4]"
   lvgl/lvgl:
     version: "^9"
+  # Pin below the 2.9.0 DPI callback change; IDF 5.5.2 P4 headers still
+  # require on_refresh_done for the MIPI-DPI callback path.
+  espressif/esp_lvgl_port:
+    version: "2.7.2"
   waveshare/esp32_p4_nano:
     version: "^1.2.0"
     rules:
