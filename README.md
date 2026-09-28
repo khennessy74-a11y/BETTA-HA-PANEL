@@ -62,12 +62,16 @@ Future updates install via OTA from the editor — no cable needed.
 
 ---
 
-## What's new in v0.8.2
+## What's new in v0.9 (Release Candidate)
 
-- **ESP32-S3 support** — new `panels3` variant for the Guition ESP32-S3-4848S040 (4.8" 480×480 RGB panel, 16 MB flash, 8 MB PSRAM).
-- **Three-variant release** — factory and OTA images now ship for `panel4`, `panel10`, and `panels3`.
-- **MDI weather icons on S3** — clean Material Design Icon weather display on the S3 panel.
-- **Release tooling** — `make_factory_bin.ps1` extended; `-Variant both` now packages all three variants in one run.
+- **Home Assistant actions** — dashboard buttons can run scripts directly, with expanded action/button modes.
+- **Night Mode + idle dimming** — configurable day/night brightness, automatic schedules, wake-time refresh, and coordinated idle dimming.
+- **Richer widget controls** — custom MDI icons, ON/OFF icon colours, sensor precision, cover controls, graph options, heating styles, and responsive compact controls.
+- **Editor improvements** — dynamic page sizing, broader domain-aware entity discovery/search, and better inspector/runtime parity.
+- **Reliability and diagnostics** — stronger WebSocket recovery, HA connection diagnostics, weather correctness fixes, and improved Save & Reboot handling.
+- **Three-variant release CI** — `panel4`, `panel10`, and `panels3` now build and package versioned factory + OTA images in the same validation workflow.
+
+The public download table remains on v0.8.2 until the v0.9 release-candidate images complete final hardware validation.
 
 Full history: [release-notes.md](release-notes.md).
 
@@ -75,7 +79,7 @@ Full history: [release-notes.md](release-notes.md).
 
 ## New features & fixes in this fork
 
-Development on this fork extends the v0.8.2 baseline with a growing set of Home Assistant, editor, layout, weather, and reliability improvements.
+The v0.9 development line extends the v0.8.2 baseline with Home Assistant, editor, layout, display, weather, and reliability improvements.
 
 ### New features
 
