@@ -1,5 +1,6 @@
 ﻿/* SPDX-License-Identifier: LicenseRef-FNCL-1.1
  * Copyright (c) 2026 Cpt_Kirk
+ * Copyright (c) 2026 khennessy74-a11y
  */
 #include "drivers/touch_init.h"
 
@@ -18,6 +19,7 @@
 #include "util/log_tags.h"
 
 static bool s_touch_ready = false;
+static uint32_t s_last_touch_activity_ms = 0U;
 static lv_indev_t *s_touch_indev = NULL;
 static esp_lcd_touch_handle_t s_touch_handle = NULL;
 static const int TOUCH_INIT_RETRIES = 8;
@@ -26,6 +28,7 @@ static const uint32_t TOUCH_POLL_PERIOD_MS = 10;
 
 static void touch_activity_event_cb(lv_event_t *event)
 {
+    s_last_touch_activity_ms = lv_tick_get();
     (void)event;
     display_note_activity();
 }
@@ -161,4 +164,9 @@ esp_err_t touch_init(void)
 bool touch_is_ready(void)
 {
     return s_touch_ready;
+}
+
+uint32_t touch_last_activity_ms(void)
+{
+    return s_last_touch_activity_ms;
 }
