@@ -63,6 +63,7 @@ static lv_obj_t *s_day_start_minute = NULL;
 static lv_obj_t *s_idle_brightness_slider = NULL;
 static lv_obj_t *s_idle_brightness_value = NULL;
 static lv_timer_t *s_global_home_timer = NULL;
+static uint32_t s_last_ui_activity_ms = 0U;
 static lv_timer_t *s_system_timeout_timer = NULL;
 #define UI_SYSTEM_TIMEOUT_MS 60000U
 static bool s_status_gesture_armed = false;
@@ -500,6 +501,19 @@ static void ui_system_timeout_cb(lv_timer_t *timer)
 static void ui_system_activity_cb(lv_event_t *event)
 {
     LV_UNUSED(event);
+    s_last_ui_activity_ms = lv_tick_get();
+    if (s_system_timeout_timer != NULL) {
+        lv_timer_reset(s_system_timeout_timer);
+    }
+}
+
+static void ui_global_activity_cb(lv_event_t *event)
+{
+    LV_UNUSED(event);
+    /* Capture any press on the active screen, including child controls.
+     * Keeping our own timestamp avoids relying on LVGL's display inactivity
+     * counter, which proved unreliable with this touch/input integration. */
+    s_last_ui_activity_ms = lv_tick_get();
     if (s_system_timeout_timer != NULL) {
         lv_timer_reset(s_system_timeout_timer);
     }
@@ -508,19 +522,19 @@ static void ui_system_activity_cb(lv_event_t *event)
 static void ui_global_home_timeout_cb(lv_timer_t *timer)
 {
     LV_UNUSED(timer);
-    lv_display_t *display = lv_display_get_default();
-    if (display == NULL || lv_display_get_inactive_time(display) < UI_SYSTEM_TIMEOUT_MS) {
+    uint32_t now = lv_tick_get();
+    if ((uint32_t)(now - s_last_ui_activity_ms) < UI_SYSTEM_TIMEOUT_MS) {
         return;
     }
 
-    /* Home itself is already the timeout destination.  Every other dashboard
-     * page and every System/Display sub-page returns here after inactivity. */
     if (s_system_overlay != NULL) {
         ui_system_overlay_close();
     }
     if (s_page_count > 0U && s_current_index != 0) {
         (void)ui_pages_show_index(0);
     }
+    /* Do not repeatedly fire while already home. */
+    s_last_ui_activity_ms = now;
 }
 
 static void ui_system_overlay_refresh(void)
@@ -1286,9 +1300,10 @@ void ui_pages_init(void)
     lv_obj_set_style_border_width(screen, 0, LV_PART_MAIN);
     lv_obj_set_style_pad_all(screen, 0, LV_PART_MAIN);
 
-    /* One inactivity watchdog covers every normal page and every System /
-     * Display sub-page. LVGL input inactivity is reset by any touch, including
-     * controls nested several levels deep. */
+    /* Track real touch activity at the screen root so touches on any nested
+     * dashboard, diagnostics or settings control restart the same 60s clock. */
+    s_last_ui_activity_ms = lv_tick_get();
+    lv_obj_add_event_cb(screen, ui_global_activity_cb, LV_EVENT_PRESSED, NULL);
     s_global_home_timer = lv_timer_create(ui_global_home_timeout_cb, 1000U, NULL);
 
     s_background = lv_obj_create(screen);
