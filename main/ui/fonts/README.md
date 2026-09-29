@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: LicenseRef-FNCL-1.1 | Copyright (c) 2026 Cpt_Kirk -->
+<!-- SPDX-License-Identifier: LicenseRef-FNCL-1.1 | Copyright (c) 2026 Cpt_Kirk | Copyright (c) 2026 khennessy74-a11y -->
 # MDI Icon Font Workflow
 
 BETTA keeps the Material Design Icons source font at:
