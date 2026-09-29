@@ -50,7 +50,7 @@ jobs:
           done
 
       - name: Upload generated fonts
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: mdi-fonts-ha-batch
           if-no-files-found: error
