@@ -8,7 +8,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     container:
       image: espressif/idf:v5.5.2
     strategy:
@@ -27,7 +27,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           submodules: recursive
 
@@ -55,7 +55,7 @@ jobs:
           cp "$BUILD_DIR/$APP_BIN" "release/ota/betta86-ha-panel-v0.9-${{ matrix.variant }}.ota.bin"
 
       - name: Upload firmware
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: betta-ha-panel-${{ matrix.variant }}
           path: |
