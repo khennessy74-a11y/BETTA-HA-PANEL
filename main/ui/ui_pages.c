@@ -763,6 +763,8 @@ static void ui_system_overlay_show(void)
     lv_obj_t *page_title = lv_label_create(content);
     lv_label_set_text(page_title, "System / Diagnostics");
     lv_obj_set_style_text_font(page_title, w <= 520 ? APP_FONT_TEXT_22 : APP_FONT_TEXT_34, LV_PART_MAIN);
+    lv_obj_set_style_text_color(page_title, lv_color_hex(APP_UI_COLOR_TOPBAR_TEXT), LV_PART_MAIN);
+    lv_obj_set_style_text_opa(page_title, LV_OPA_COVER, LV_PART_MAIN);
     lv_obj_set_pos(page_title, margin, 10);
     lv_obj_set_width(page_title, w - (margin * 2));
     lv_label_set_long_mode(page_title, LV_LABEL_LONG_DOT);
@@ -772,11 +774,15 @@ static void ui_system_overlay_show(void)
     lv_obj_set_width(s_system_details, w - (margin * 2));
     lv_label_set_long_mode(s_system_details, LV_LABEL_LONG_WRAP);
     lv_obj_set_style_text_font(s_system_details, APP_FONT_TEXT_16, LV_PART_MAIN);
+    lv_obj_set_style_text_color(s_system_details, lv_color_hex(APP_UI_COLOR_TOPBAR_TEXT), LV_PART_MAIN);
+    lv_obj_set_style_text_opa(s_system_details, LV_OPA_COVER, LV_PART_MAIN);
 
     s_system_log = lv_label_create(content);
     lv_obj_set_width(s_system_log, w - (margin * 2) - 20);
     lv_label_set_long_mode(s_system_log, LV_LABEL_LONG_WRAP);
     lv_obj_set_style_text_font(s_system_log, APP_FONT_TEXT_16, LV_PART_MAIN);
+    lv_obj_set_style_text_color(s_system_log, lv_color_hex(APP_UI_COLOR_TOPBAR_TEXT), LV_PART_MAIN);
+    lv_obj_set_style_text_opa(s_system_log, LV_OPA_COVER, LV_PART_MAIN);
 
     /* Populate first, then measure.  The previous layout measured the empty
      * label, which placed the log on top of the status text. */
@@ -793,6 +799,8 @@ static void ui_system_overlay_show(void)
     lv_obj_t *log_title = lv_label_create(content);
     lv_label_set_text(log_title, "RECENT HA CONNECTION LOG");
     lv_obj_set_style_text_font(log_title, APP_FONT_TEXT_16, LV_PART_MAIN);
+    lv_obj_set_style_text_color(log_title, lv_color_hex(APP_UI_COLOR_TOPBAR_MUTED), LV_PART_MAIN);
+    lv_obj_set_style_text_opa(log_title, LV_OPA_COVER, LV_PART_MAIN);
     lv_obj_set_pos(log_title, margin, log_y);
 
     lv_obj_t *log_box = lv_obj_create(content);
@@ -837,6 +845,8 @@ static void ui_system_display_show(void)
     lv_obj_t *page_title = lv_label_create(content);
     lv_label_set_text(page_title, "Display Settings");
     lv_obj_set_style_text_font(page_title, w <= 520 ? APP_FONT_TEXT_22 : APP_FONT_TEXT_34, LV_PART_MAIN);
+    lv_obj_set_style_text_color(page_title, lv_color_hex(APP_UI_COLOR_TOPBAR_TEXT), LV_PART_MAIN);
+    lv_obj_set_style_text_opa(page_title, LV_OPA_COVER, LV_PART_MAIN);
     lv_obj_set_pos(page_title, margin, 10);
 
     lv_obj_t *body = lv_obj_create(content);
@@ -856,12 +866,16 @@ static void ui_system_display_show(void)
         lv_obj_t *brightness_label = lv_label_create(body);
         lv_label_set_text(brightness_label, "Brightness");
         lv_obj_set_style_text_font(brightness_label, APP_FONT_TEXT_16, LV_PART_MAIN);
+        lv_obj_set_style_text_color(brightness_label, lv_color_hex(APP_UI_COLOR_TOPBAR_TEXT), LV_PART_MAIN);
+        lv_obj_set_style_text_opa(brightness_label, LV_OPA_COVER, LV_PART_MAIN);
         lv_obj_set_pos(brightness_label, 0, y);
 
         s_brightness_value = lv_label_create(body);
         char value[16];
         snprintf(value, sizeof(value), "%d%%", settings.display_brightness_percent);
         lv_label_set_text(s_brightness_value, value);
+        lv_obj_set_style_text_color(s_brightness_value, lv_color_hex(APP_UI_COLOR_TOPBAR_TEXT), LV_PART_MAIN);
+        lv_obj_set_style_text_opa(s_brightness_value, LV_OPA_COVER, LV_PART_MAIN);
         lv_obj_set_pos(s_brightness_value, body_w - 54, y);
         y += 38;
 
@@ -877,6 +891,8 @@ static void ui_system_display_show(void)
         lv_obj_t *night_label = lv_label_create(body);
         lv_label_set_text(night_label, "Night mode");
         lv_obj_set_style_text_font(night_label, APP_FONT_TEXT_16, LV_PART_MAIN);
+        lv_obj_set_style_text_color(night_label, lv_color_hex(APP_UI_COLOR_TOPBAR_TEXT), LV_PART_MAIN);
+        lv_obj_set_style_text_opa(night_label, LV_OPA_COVER, LV_PART_MAIN);
         lv_obj_set_pos(night_label, 0, y + 10);
 
         s_night_mode_dropdown = lv_dropdown_create(body);
@@ -890,6 +906,8 @@ static void ui_system_display_show(void)
         lv_obj_t *idle_label = lv_label_create(body);
         lv_label_set_text(idle_label, "Auto dim");
         lv_obj_set_style_text_font(idle_label, APP_FONT_TEXT_16, LV_PART_MAIN);
+        lv_obj_set_style_text_color(idle_label, lv_color_hex(APP_UI_COLOR_TOPBAR_TEXT), LV_PART_MAIN);
+        lv_obj_set_style_text_opa(idle_label, LV_OPA_COVER, LV_PART_MAIN);
         lv_obj_set_pos(idle_label, 0, y + 10);
 
         s_idle_timeout_dropdown = lv_dropdown_create(body);
@@ -913,7 +931,16 @@ static void ui_system_display_show(void)
         lv_obj_set_width(note, body_w - 8);
         lv_label_set_long_mode(note, LV_LABEL_LONG_WRAP);
         lv_obj_set_style_text_font(note, APP_FONT_TEXT_16, LV_PART_MAIN);
+        lv_obj_set_style_text_color(note, lv_color_hex(APP_UI_COLOR_TOPBAR_MUTED), LV_PART_MAIN);
+        lv_obj_set_style_text_opa(note, LV_OPA_COVER, LV_PART_MAIN);
         lv_obj_set_pos(note, 0, y);
+    } else {
+        lv_obj_t *error = lv_label_create(body);
+        lv_label_set_text(error, "Display settings could not be loaded.");
+        lv_obj_set_style_text_font(error, APP_FONT_TEXT_16, LV_PART_MAIN);
+        lv_obj_set_style_text_color(error, lv_color_hex(APP_UI_COLOR_TOPBAR_TEXT), LV_PART_MAIN);
+        lv_obj_set_style_text_opa(error, LV_OPA_COVER, LV_PART_MAIN);
+        lv_obj_set_pos(error, 0, 8);
     }
 
     lv_obj_move_foreground(s_system_overlay);
