@@ -74,7 +74,7 @@ Future updates install via OTA from the editor — no cable needed.
 - **Reliability and diagnostics** — stronger WebSocket recovery, HA connection diagnostics, weather correctness fixes, and improved Save & Reboot handling.
 - **Three-variant release CI** — `panel4`, `panel10`, and `panels3` now build and package versioned factory + OTA images in the same validation workflow.
 
-The download table now targets this fork's v0.9 release assets. Release-candidate hardware validation is in progress.
+The download table now targets this fork's v0.9 release assets. Release-candidate hardware validation has completed for the current development checkpoint; the final release build remains the last validation stage.
 
 Full history: [release-notes.md](release-notes.md).
 
@@ -106,7 +106,7 @@ The v0.9 development line extends the v0.8.2 baseline with Home Assistant, edito
 - **Responsive compact tiles** — button geometry and controls for Select, Input Number, Fan, Update, Input Text, Input Date/Time, and Heating tiles have been tightened so smaller dashboard cards remain usable without changing normal-size layouts.
 - **Night Mode and idle dimming** — configurable day/night brightness, automatic scheduled transitions, wake-time schedule refresh, and inactivity dimming now work together without allowing idle mode to brighten an already-dimmer night display.
 - **Editor parity cleanup** — widget options now better match runtime capabilities; unsupported generic custom-icon controls are hidden for Weather while its dynamic weather icons remain intact.
-- **Hardware validation** — the current development line has been repeatedly built, flashed, and exercised on-panel; the latest confirmed hardware-green checkpoint is commit `7bd95d7`.
+- **Hardware validation** — the current development line has been repeatedly built, flashed, and exercised on-panel, including physical-touch inactivity return, protected Admin entry, themed restart confirmation, repeated software reboots, and display/connection recovery testing.
 
 ### Reliability fixes
 
@@ -121,6 +121,7 @@ The v0.9 development line extends the v0.8.2 baseline with Home Assistant, edito
 
 - **Cold-start recovery test** — the configured-panel boot path has been changed so a temporary Wi-Fi/Home Assistant outage cannot force an already-configured panel back into provisioning. Final RC validation includes powering up with the network unavailable, restoring it, and confirming automatic recovery with settings intact.
 - **Global inactivity return** — secondary dashboard/System/Display screens return Home after 60 seconds of inactivity, with the timer reset from actual touch events across nested controls.
+- **Restart confirmation UX** — the on-panel restart action uses a themed, centred modal with vertically stacked actions, touch-through protection, and a dimmed background.
 
 ---
 

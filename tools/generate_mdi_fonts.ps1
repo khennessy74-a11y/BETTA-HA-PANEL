@@ -1,4 +1,6 @@
 # SPDX-License-Identifier: LicenseRef-FNCL-1.1
+# Copyright (c) 2026 khennessy74-a11y
+# SPDX-License-Identifier: LicenseRef-FNCL-1.1
 # Regenerate BETTA shared Material Design Icon fonts with LVGL font converter.
 # Usage: .\tools\generate_mdi_fonts.ps1 -MdiFont .\materialdesignicons-webfont.ttf
 

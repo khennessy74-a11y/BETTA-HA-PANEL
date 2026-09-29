@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: LicenseRef-FNCL-1.1
+# Copyright (c) 2026 khennessy74-a11y
 #!/usr/bin/env python3
 """Build the Material Design Icons range used by BETTA's LVGL icon fonts.
 
