@@ -55,7 +55,7 @@ jobs:
           cp "$BUILD_DIR/$APP_BIN" "release/ota/betta-ha-panel-v0.9-${{ matrix.variant }}.ota.bin"
 
       - name: Upload firmware
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: betta-ha-panel-${{ matrix.variant }}
           path: |
