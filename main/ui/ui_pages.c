@@ -789,7 +789,7 @@ static void ui_system_overlay_show(void)
     ui_system_overlay_refresh();
     lv_obj_update_layout(s_system_details);
 
-    lv_coord_t log_y = lv_obj_get_y(s_system_details) + lv_obj_get_height(s_system_details) + 12;
+    lv_coord_t log_y = lv_obj_get_y(s_system_details) + lv_obj_get_height(s_system_details) + 22;
     lv_coord_t content_h = lv_obj_get_height(content);
     lv_coord_t min_log_h = w <= 520 ? 84 : 120;
     if (log_y > content_h - min_log_h - 28) {
@@ -835,12 +835,9 @@ static void ui_system_display_show(void)
 
     const lv_coord_t w = s_geometry.screen_w;
     const lv_coord_t margin = w <= 520 ? 18 : 28;
-    const lv_coord_t back_w = w <= 520 ? 72 : 90;
-    const lv_coord_t diag_w = w <= 520 ? 104 : 130;
+    const lv_coord_t back_w = w <= 520 ? 92 : 110;
 
     ui_system_header_button(s_system_overlay, "Back", margin, back_w, ui_system_diagnostics_open_cb);
-    ui_system_header_button(
-        s_system_overlay, "Diagnostics", w - margin - diag_w, diag_w, ui_system_diagnostics_open_cb);
 
     lv_obj_t *page_title = lv_label_create(content);
     lv_label_set_text(page_title, "Display Settings");
@@ -858,9 +855,15 @@ static void ui_system_display_show(void)
     lv_obj_set_scrollbar_mode(body, LV_SCROLLBAR_MODE_AUTO);
 
     runtime_settings_t settings = {0};
-    if (runtime_settings_load(&settings) == ESP_OK) {
+    runtime_settings_set_defaults(&settings);
+    (void)runtime_settings_load(&settings);
+
+    /* The body must always exist.  Persisted settings override defaults when
+     * available, but a transient NVS/read failure must never leave a blank
+     * Display Settings page. */
+    {
         lv_coord_t y = 4;
-        lv_coord_t body_w = lv_obj_get_width(body);
+        lv_coord_t body_w = w - (margin * 2);
         lv_coord_t control_w = w <= 520 ? 150 : 180;
 
         lv_obj_t *brightness_label = lv_label_create(body);
@@ -934,13 +937,6 @@ static void ui_system_display_show(void)
         lv_obj_set_style_text_color(note, lv_color_hex(APP_UI_COLOR_TOPBAR_MUTED), LV_PART_MAIN);
         lv_obj_set_style_text_opa(note, LV_OPA_COVER, LV_PART_MAIN);
         lv_obj_set_pos(note, 0, y);
-    } else {
-        lv_obj_t *error = lv_label_create(body);
-        lv_label_set_text(error, "Display settings could not be loaded.");
-        lv_obj_set_style_text_font(error, APP_FONT_TEXT_16, LV_PART_MAIN);
-        lv_obj_set_style_text_color(error, lv_color_hex(APP_UI_COLOR_TOPBAR_TEXT), LV_PART_MAIN);
-        lv_obj_set_style_text_opa(error, LV_OPA_COVER, LV_PART_MAIN);
-        lv_obj_set_pos(error, 0, 8);
     }
 
     lv_obj_move_foreground(s_system_overlay);
