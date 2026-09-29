@@ -46,6 +46,7 @@ static lv_obj_t *s_wifi_icon = NULL;
 static lv_obj_t *s_api_icon = NULL;
 static lv_obj_t *s_system_overlay = NULL;
 static lv_obj_t *s_system_details = NULL;
+static lv_obj_t *s_system_log = NULL;
 static lv_obj_t *s_restart_confirm = NULL;
 static lv_obj_t *s_brightness_slider = NULL;
 static lv_obj_t *s_brightness_value = NULL;
@@ -402,6 +403,7 @@ static void ui_system_overlay_close(void)
         lv_obj_del(s_system_overlay);
         s_system_overlay = NULL;
         s_system_details = NULL;
+        s_system_log = NULL;
         s_restart_confirm = NULL;
         s_brightness_slider = NULL;
         s_brightness_value = NULL;
@@ -435,7 +437,7 @@ static void ui_system_activity_cb(lv_event_t *event)
 
 static void ui_system_overlay_refresh(void)
 {
-    if (s_system_details == NULL) {
+    if (s_system_details == NULL || s_system_log == NULL) {
         return;
     }
 
@@ -451,54 +453,50 @@ static void ui_system_overlay_refresh(void)
     ha_client_diagnostics_t diag = {0};
     ha_client_get_diagnostics(&diag);
 
-    char text[4096] = {0};
-    size_t used = 0;
-    int written = snprintf(
-        text,
-        sizeof(text),
+    char summary[1024] = {0};
+    snprintf(
+        summary,
+        sizeof(summary),
         "SYSTEM\nFirmware: %s\nProject: %s\n\n"
-        "WI-FI\nStatus: %s\nIP: %s\nSSID: %s\nRSSI: %s\n\n"
-        "HOME ASSISTANT\nStatus: %s\nInitial sync: %s\n\n"
-        "RECENT HA CONNECTION LOG\n",
-        (desc != NULL && desc->version[0] != '\0') ? desc->version : "unknown",
-        (desc != NULL && desc->project_name[0] != '\0') ? desc->project_name : APP_NAME,
+        "WI-FI\nStatus: %s\nIP: %s\nSSID: %s\nSignal: %s\n\n"
+        "HOME ASSISTANT\nStatus: %s\nInitial sync: %s",
+        (desc != NULL && desc->version[0] != '\\0') ? desc->version : "unknown",
+        (desc != NULL && desc->project_name[0] != '\\0') ? desc->project_name : APP_NAME,
         wifi_mgr_is_connected() ? "Connected" : "Disconnected",
         ip,
         have_ap ? ap_info.ssid : "-",
         have_ap ? "available" : "-",
         ha_client_is_connected() ? "Connected" : "Disconnected",
         ha_client_is_initial_sync_done() ? "Complete" : "Waiting");
+    lv_label_set_text(s_system_details, summary);
 
-    if (written > 0) {
-        used = (size_t)written < sizeof(text) ? (size_t)written : sizeof(text) - 1U;
-    }
-
-    if (have_ap && used < sizeof(text) - 1U) {
-        written = snprintf(text + used, sizeof(text) - used, "Signal: %d dBm\n", (int)ap_info.rssi);
+    char log_text[3072] = {0};
+    size_t used = 0U;
+    if (have_ap) {
+        int written = snprintf(log_text, sizeof(log_text), "Wi-Fi signal: %d dBm\n", (int)ap_info.rssi);
         if (written > 0) {
-            used += ((size_t)written < sizeof(text) - used) ? (size_t)written : sizeof(text) - used - 1U;
+            used = (size_t)written < sizeof(log_text) ? (size_t)written : sizeof(log_text) - 1U;
         }
     }
 
     uint16_t start = diag.connection_log_count > 10U ? (uint16_t)(diag.connection_log_count - 10U) : 0U;
-    if (diag.connection_log_count == 0U && used < sizeof(text) - 1U) {
-        snprintf(text + used, sizeof(text) - used, "No connection events recorded yet.");
+    if (diag.connection_log_count == 0U && used < sizeof(log_text) - 1U) {
+        snprintf(log_text + used, sizeof(log_text) - used, "No connection events recorded yet.");
     } else {
-        for (uint16_t i = start; i < diag.connection_log_count && used < sizeof(text) - 1U; i++) {
-            written = snprintf(
-                text + used,
-                sizeof(text) - used,
+        for (uint16_t i = start; i < diag.connection_log_count && used < sizeof(log_text) - 1U; i++) {
+            int written = snprintf(
+                log_text + used,
+                sizeof(log_text) - used,
                 "%lld ms  %s\n",
                 (long long)diag.connection_log[i].elapsed_ms,
                 diag.connection_log[i].message);
             if (written <= 0) {
                 break;
             }
-            used += ((size_t)written < sizeof(text) - used) ? (size_t)written : sizeof(text) - used - 1U;
+            used += ((size_t)written < sizeof(log_text) - used) ? (size_t)written : sizeof(log_text) - used - 1U;
         }
     }
-
-    lv_label_set_text(s_system_details, text);
+    lv_label_set_text(s_system_log, log_text);
 }
 
 static void ui_restart_cancel_cb(lv_event_t *event)
@@ -634,6 +632,13 @@ static void ui_system_overlay_show(void)
         return;
     }
 
+    const lv_coord_t screen_w = s_geometry.screen_w;
+    const lv_coord_t screen_h = s_geometry.screen_h;
+    const lv_coord_t margin = screen_w <= 520 ? 18 : 28;
+    const lv_coord_t header_h = 92;
+    const lv_coord_t content_w = screen_w - (margin * 2);
+    const lv_coord_t control_w = screen_w <= 520 ? 136 : 160;
+
     s_system_overlay = lv_obj_create(screen);
     lv_obj_remove_style_all(s_system_overlay);
     lv_obj_add_flag(s_system_overlay, LV_OBJ_FLAG_CLICKABLE);
@@ -645,66 +650,118 @@ static void ui_system_overlay_show(void)
 
     lv_obj_t *title = lv_label_create(s_system_overlay);
     lv_label_set_text(title, "System / Diagnostics");
-    lv_obj_set_style_text_font(title, APP_FONT_TEXT_34, LV_PART_MAIN);
-    lv_obj_align(title, LV_ALIGN_TOP_LEFT, 24, 18);
+    lv_obj_set_style_text_font(title, screen_w <= 520 ? APP_FONT_TEXT_22 : APP_FONT_TEXT_34, LV_PART_MAIN);
+    lv_obj_set_width(title, screen_w - 150);
+    lv_label_set_long_mode(title, LV_LABEL_LONG_DOT);
+    lv_obj_align(title, LV_ALIGN_TOP_LEFT, margin, 16);
 
     lv_obj_t *hint = lv_label_create(s_system_overlay);
     lv_label_set_text(hint, "Panel diagnostics and controls");
     lv_obj_set_style_text_font(hint, APP_FONT_TEXT_16, LV_PART_MAIN);
-    lv_obj_align(hint, LV_ALIGN_TOP_LEFT, 26, 64);
-
-    s_system_details = lv_label_create(s_system_overlay);
-    lv_obj_set_pos(s_system_details, 26, 100);
-    lv_obj_set_size(s_system_details, s_geometry.screen_w - 52, s_geometry.screen_h - 126);
-    lv_label_set_long_mode(s_system_details, LV_LABEL_LONG_WRAP);
-    lv_obj_set_style_text_font(s_system_details, APP_FONT_TEXT_16, LV_PART_MAIN);
+    lv_obj_set_width(hint, screen_w - 150);
+    lv_label_set_long_mode(hint, LV_LABEL_LONG_DOT);
+    lv_obj_align(hint, LV_ALIGN_TOP_LEFT, margin, 52);
 
     lv_obj_t *back = lv_btn_create(s_system_overlay);
-    lv_obj_set_size(back, 110, 48);
-    lv_obj_align(back, LV_ALIGN_TOP_RIGHT, -20, 14);
+    lv_obj_set_size(back, 100, 46);
+    lv_obj_align(back, LV_ALIGN_TOP_RIGHT, -margin, 14);
     lv_obj_add_event_cb(back, ui_system_overlay_close_cb, LV_EVENT_CLICKED, NULL);
-
     lv_obj_t *back_label = lv_label_create(back);
     lv_label_set_text(back_label, "Back");
     lv_obj_center(back_label);
 
+    /* Everything below the fixed header scrolls as one document.  This keeps
+     * diagnostics, controls and restart separated on 480px panels while also
+     * scaling cleanly to the larger P4/P10 displays. */
+    lv_obj_t *content = lv_obj_create(s_system_overlay);
+    lv_obj_remove_style_all(content);
+    lv_obj_set_pos(content, margin, header_h);
+    lv_obj_set_size(content, content_w, screen_h - header_h - 10);
+    lv_obj_add_flag(content, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_scroll_dir(content, LV_DIR_VER);
+    lv_obj_set_scrollbar_mode(content, LV_SCROLLBAR_MODE_AUTO);
+    lv_obj_set_style_pad_right(content, 8, LV_PART_MAIN);
+
+    lv_coord_t y = 0;
+
+    s_system_details = lv_label_create(content);
+    lv_obj_set_pos(s_system_details, 0, y);
+    lv_obj_set_width(s_system_details, content_w - 12);
+    lv_label_set_long_mode(s_system_details, LV_LABEL_LONG_WRAP);
+    lv_obj_set_style_text_font(s_system_details, APP_FONT_TEXT_16, LV_PART_MAIN);
+    lv_label_set_text(s_system_details, "Loading diagnostics...");
+    lv_obj_update_layout(s_system_details);
+    y += lv_obj_get_height(s_system_details) + 18;
+
+    lv_obj_t *log_title = lv_label_create(content);
+    lv_label_set_text(log_title, "RECENT HA CONNECTION LOG");
+    lv_obj_set_style_text_font(log_title, APP_FONT_TEXT_16, LV_PART_MAIN);
+    lv_obj_set_pos(log_title, 0, y);
+    y += 26;
+
+    lv_obj_t *log_box = lv_obj_create(content);
+    lv_obj_set_pos(log_box, 0, y);
+    lv_obj_set_size(log_box, content_w - 12, screen_w <= 520 ? 150 : 190);
+    lv_obj_set_style_bg_color(log_box, lv_color_hex(APP_UI_COLOR_TOPBAR_BG), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(log_box, LV_OPA_50, LV_PART_MAIN);
+    lv_obj_set_style_border_width(log_box, 1, LV_PART_MAIN);
+    lv_obj_set_style_border_color(log_box, lv_color_hex(APP_UI_COLOR_TOPBAR_BORDER), LV_PART_MAIN);
+    lv_obj_set_style_radius(log_box, 10, LV_PART_MAIN);
+    lv_obj_set_style_pad_all(log_box, 10, LV_PART_MAIN);
+    lv_obj_add_flag(log_box, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_scroll_dir(log_box, LV_DIR_VER);
+    lv_obj_set_scrollbar_mode(log_box, LV_SCROLLBAR_MODE_AUTO);
+
+    s_system_log = lv_label_create(log_box);
+    lv_obj_set_width(s_system_log, LV_PCT(100));
+    lv_label_set_long_mode(s_system_log, LV_LABEL_LONG_WRAP);
+    lv_obj_set_style_text_font(s_system_log, APP_FONT_TEXT_16, LV_PART_MAIN);
+    lv_label_set_text(s_system_log, "Loading...");
+    y += lv_obj_get_height(log_box) + 22;
+
+    lv_obj_t *display_title = lv_label_create(content);
+    lv_label_set_text(display_title, "DISPLAY");
+    lv_obj_set_style_text_font(display_title, APP_FONT_TEXT_16, LV_PART_MAIN);
+    lv_obj_set_pos(display_title, 0, y);
+    y += 30;
+
     runtime_settings_t display_settings = {0};
     if (runtime_settings_load(&display_settings) == ESP_OK) {
-        lv_obj_t *display_title = lv_label_create(s_system_overlay);
-        lv_label_set_text(display_title, "DISPLAY BRIGHTNESS");
-        lv_obj_set_style_text_font(display_title, APP_FONT_TEXT_16, LV_PART_MAIN);
-        lv_obj_align(display_title, LV_ALIGN_BOTTOM_LEFT, 26, -72);
+        lv_obj_t *brightness_label = lv_label_create(content);
+        lv_label_set_text(brightness_label, "Brightness");
+        lv_obj_set_pos(brightness_label, 0, y);
 
-        s_brightness_slider = lv_slider_create(s_system_overlay);
-        lv_slider_set_range(s_brightness_slider, 1, 100);
-        lv_slider_set_value(s_brightness_slider, display_settings.display_brightness_percent, LV_ANIM_OFF);
-        lv_obj_set_size(s_brightness_slider, s_geometry.screen_w > 700 ? 360 : 280, 20);
-        lv_obj_align(s_brightness_slider, LV_ALIGN_BOTTOM_LEFT, 26, -32);
-        lv_obj_add_event_cb(s_brightness_slider, ui_brightness_changed_cb, LV_EVENT_VALUE_CHANGED, NULL);
-        lv_obj_add_event_cb(s_brightness_slider, ui_brightness_changed_cb, LV_EVENT_RELEASED, NULL);
-
-        s_brightness_value = lv_label_create(s_system_overlay);
+        s_brightness_value = lv_label_create(content);
         char brightness_text[16];
         snprintf(brightness_text, sizeof(brightness_text), "%d%%", display_settings.display_brightness_percent);
         lv_label_set_text(s_brightness_value, brightness_text);
-        lv_obj_align_to(s_brightness_value, s_brightness_slider, LV_ALIGN_OUT_RIGHT_MID, 14, 0);
+        lv_obj_align_to(s_brightness_value, brightness_label, LV_ALIGN_OUT_RIGHT_MID, 14, 0);
+        y += 30;
 
-        lv_obj_t *night_label = lv_label_create(s_system_overlay);
+        s_brightness_slider = lv_slider_create(content);
+        lv_slider_set_range(s_brightness_slider, 1, 100);
+        lv_slider_set_value(s_brightness_slider, display_settings.display_brightness_percent, LV_ANIM_OFF);
+        lv_obj_set_pos(s_brightness_slider, 0, y);
+        lv_obj_set_size(s_brightness_slider, content_w - 30, 20);
+        lv_obj_add_event_cb(s_brightness_slider, ui_brightness_changed_cb, LV_EVENT_VALUE_CHANGED, NULL);
+        lv_obj_add_event_cb(s_brightness_slider, ui_brightness_changed_cb, LV_EVENT_RELEASED, NULL);
+        y += 44;
+
+        lv_obj_t *night_label = lv_label_create(content);
         lv_label_set_text(night_label, "Night mode");
-        lv_obj_align(night_label, LV_ALIGN_BOTTOM_LEFT, 26, -132);
-
-        s_night_mode_dropdown = lv_dropdown_create(s_system_overlay);
+        lv_obj_set_pos(night_label, 0, y);
+        s_night_mode_dropdown = lv_dropdown_create(content);
         lv_dropdown_set_options(s_night_mode_dropdown, "Day\nNight\nAuto");
         lv_dropdown_set_selected(s_night_mode_dropdown, (uint32_t)display_settings.display_night_mode);
-        lv_obj_set_size(s_night_mode_dropdown, 150, 44);
-        lv_obj_align(s_night_mode_dropdown, LV_ALIGN_BOTTOM_LEFT, 130, -120);
+        lv_obj_set_size(s_night_mode_dropdown, control_w, 44);
+        lv_obj_set_pos(s_night_mode_dropdown, content_w - control_w - 12, y - 10);
         lv_obj_add_event_cb(s_night_mode_dropdown, ui_display_mode_changed_cb, LV_EVENT_VALUE_CHANGED, NULL);
+        y += 58;
 
-        lv_obj_t *idle_label = lv_label_create(s_system_overlay);
+        lv_obj_t *idle_label = lv_label_create(content);
         lv_label_set_text(idle_label, "Auto dim");
-        lv_obj_align(idle_label, LV_ALIGN_BOTTOM_LEFT, 310, -132);
-
-        s_idle_timeout_dropdown = lv_dropdown_create(s_system_overlay);
+        lv_obj_set_pos(idle_label, 0, y);
+        s_idle_timeout_dropdown = lv_dropdown_create(content);
         lv_dropdown_set_options(s_idle_timeout_dropdown, "Off\n30 sec\n1 min\n2 min\n5 min\n10 min");
         uint32_t idle_index = 0;
         const int idle_seconds[] = {0, 30, 60, 120, 300, 600};
@@ -715,18 +772,26 @@ static void ui_system_overlay_show(void)
             }
         }
         lv_dropdown_set_selected(s_idle_timeout_dropdown, idle_index);
-        lv_obj_set_size(s_idle_timeout_dropdown, 150, 44);
-        lv_obj_align(s_idle_timeout_dropdown, LV_ALIGN_BOTTOM_LEFT, 390, -120);
+        lv_obj_set_size(s_idle_timeout_dropdown, control_w, 44);
+        lv_obj_set_pos(s_idle_timeout_dropdown, content_w - control_w - 12, y - 10);
         lv_obj_add_event_cb(s_idle_timeout_dropdown, ui_display_mode_changed_cb, LV_EVENT_VALUE_CHANGED, NULL);
+        y += 64;
     }
 
-    lv_obj_t *restart = lv_btn_create(s_system_overlay);
-    lv_obj_set_size(restart, 160, 48);
-    lv_obj_align(restart, LV_ALIGN_BOTTOM_RIGHT, -20, -18);
+    lv_obj_t *restart = lv_btn_create(content);
+    lv_obj_set_size(restart, screen_w <= 520 ? 190 : 220, 50);
+    lv_obj_set_pos(restart, 0, y);
     lv_obj_add_event_cb(restart, ui_restart_request_cb, LV_EVENT_CLICKED, NULL);
     lv_obj_t *restart_label = lv_label_create(restart);
     lv_label_set_text(restart_label, "Restart Panel");
     lv_obj_center(restart_label);
+    y += 70;
+
+    /* A spacer establishes the scrollable document height. */
+    lv_obj_t *spacer = lv_obj_create(content);
+    lv_obj_remove_style_all(spacer);
+    lv_obj_set_pos(spacer, 0, y);
+    lv_obj_set_size(spacer, 1, 1);
 
     ui_system_overlay_refresh();
 
@@ -882,6 +947,7 @@ void ui_pages_init(void)
     s_api_icon = NULL;
     s_system_overlay = NULL;
     s_system_details = NULL;
+    s_system_log = NULL;
     s_restart_confirm = NULL;
     s_brightness_slider = NULL;
     s_brightness_value = NULL;
