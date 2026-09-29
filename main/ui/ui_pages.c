@@ -52,6 +52,8 @@ static lv_obj_t *s_brightness_value = NULL;
 static lv_obj_t *s_night_mode_dropdown = NULL;
 static lv_obj_t *s_idle_timeout_dropdown = NULL;
 static bool s_status_gesture_armed = false;
+static uint32_t s_status_gesture_started_ms = 0U;
+#define UI_SYSTEM_HOLD_MS 3000U
 static lv_obj_t *s_nav_bar = NULL;
 static lv_obj_t *s_nav_home_button = NULL;
 static lv_obj_t *s_nav_home_label = NULL;
@@ -700,14 +702,21 @@ static void ui_status_gesture_cb(lv_event_t *event)
     lv_event_code_t code = lv_event_get_code(event);
 
     if (code == LV_EVENT_PRESSED) {
-        /* The HA and Wi-Fi chips overlap their extended hit areas. Pressing
-         * the shared status area arms the protected long-press gesture. */
+        /* Treat the adjacent HA/Wi-Fi chips as one protected status area.
+         * Use our own timer so entry always requires a deliberate 3-second
+         * hold rather than LVGL's shorter platform long-press threshold. */
         s_status_gesture_armed = true;
-    } else if (code == LV_EVENT_LONG_PRESSED && s_status_gesture_armed) {
-        s_status_gesture_armed = false;
-        ui_system_overlay_show();
+        s_status_gesture_started_ms = lv_tick_get();
+    } else if (code == LV_EVENT_PRESSING && s_status_gesture_armed) {
+        uint32_t now = lv_tick_get();
+        if ((uint32_t)(now - s_status_gesture_started_ms) >= UI_SYSTEM_HOLD_MS) {
+            s_status_gesture_armed = false;
+            s_status_gesture_started_ms = 0U;
+            ui_system_overlay_show();
+        }
     } else if (code == LV_EVENT_RELEASED || code == LV_EVENT_PRESS_LOST) {
         s_status_gesture_armed = false;
+        s_status_gesture_started_ms = 0U;
     }
 }
 
@@ -837,6 +846,7 @@ void ui_pages_init(void)
     s_night_mode_dropdown = NULL;
     s_idle_timeout_dropdown = NULL;
     s_status_gesture_armed = false;
+    s_status_gesture_started_ms = 0U;
     s_nav_bar = NULL;
     s_nav_home_button = NULL;
     s_nav_home_label = NULL;
