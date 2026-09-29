@@ -51,6 +51,8 @@ static lv_obj_t *s_brightness_slider = NULL;
 static lv_obj_t *s_brightness_value = NULL;
 static lv_obj_t *s_night_mode_dropdown = NULL;
 static lv_obj_t *s_idle_timeout_dropdown = NULL;
+static lv_timer_t *s_system_timeout_timer = NULL;
+#define UI_SYSTEM_TIMEOUT_MS 60000U
 static bool s_status_gesture_armed = false;
 static uint32_t s_status_gesture_started_ms = 0U;
 #define UI_SYSTEM_HOLD_MS 3000U
@@ -385,9 +387,17 @@ static void ui_nav_extra_button_event_cb(lv_event_t *event)
     ui_pages_show_index(page_index);
 }
 
-static void ui_system_overlay_close_cb(lv_event_t *event)
+static void ui_system_timeout_delete(void)
 {
-    LV_UNUSED(event);
+    if (s_system_timeout_timer != NULL) {
+        lv_timer_del(s_system_timeout_timer);
+        s_system_timeout_timer = NULL;
+    }
+}
+
+static void ui_system_overlay_close(void)
+{
+    ui_system_timeout_delete();
     if (s_system_overlay != NULL) {
         lv_obj_del(s_system_overlay);
         s_system_overlay = NULL;
@@ -397,6 +407,29 @@ static void ui_system_overlay_close_cb(lv_event_t *event)
         s_brightness_value = NULL;
         s_night_mode_dropdown = NULL;
         s_idle_timeout_dropdown = NULL;
+    }
+}
+
+static void ui_system_overlay_close_cb(lv_event_t *event)
+{
+    LV_UNUSED(event);
+    ui_system_overlay_close();
+}
+
+static void ui_system_timeout_cb(lv_timer_t *timer)
+{
+    LV_UNUSED(timer);
+    ui_system_overlay_close();
+    if (s_page_count > 0U) {
+        (void)ui_pages_show_index(0);
+    }
+}
+
+static void ui_system_activity_cb(lv_event_t *event)
+{
+    LV_UNUSED(event);
+    if (s_system_timeout_timer != NULL) {
+        lv_timer_reset(s_system_timeout_timer);
     }
 }
 
@@ -603,6 +636,8 @@ static void ui_system_overlay_show(void)
 
     s_system_overlay = lv_obj_create(screen);
     lv_obj_remove_style_all(s_system_overlay);
+    lv_obj_add_flag(s_system_overlay, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(s_system_overlay, ui_system_activity_cb, LV_EVENT_PRESSED, NULL);
     lv_obj_set_size(s_system_overlay, LV_PCT(100), LV_PCT(100));
     lv_obj_set_style_bg_color(s_system_overlay, lv_color_hex(APP_UI_COLOR_SCREEN_BG), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(s_system_overlay, LV_OPA_COVER, LV_PART_MAIN);
@@ -694,6 +729,13 @@ static void ui_system_overlay_show(void)
     lv_obj_center(restart_label);
 
     ui_system_overlay_refresh();
+
+    ui_system_timeout_delete();
+    s_system_timeout_timer = lv_timer_create(ui_system_timeout_cb, UI_SYSTEM_TIMEOUT_MS, NULL);
+    if (s_system_timeout_timer != NULL) {
+        lv_timer_set_repeat_count(s_system_timeout_timer, 1);
+    }
+
     lv_obj_move_foreground(s_system_overlay);
 }
 
@@ -845,6 +887,7 @@ void ui_pages_init(void)
     s_brightness_value = NULL;
     s_night_mode_dropdown = NULL;
     s_idle_timeout_dropdown = NULL;
+    ui_system_timeout_delete();
     s_status_gesture_armed = false;
     s_status_gesture_started_ms = 0U;
     s_nav_bar = NULL;
