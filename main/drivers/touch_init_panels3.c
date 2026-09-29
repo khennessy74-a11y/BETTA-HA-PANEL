@@ -39,6 +39,7 @@
 #define PANELS3_TOUCH_RETRY_MS      250
 
 static bool s_touch_ready = false;
+static uint32_t s_last_touch_activity_ms = 0U;
 static lv_indev_t *s_touch_indev = NULL;
 static esp_lcd_touch_handle_t s_touch_handle = NULL;
 static esp_lcd_panel_io_handle_t s_touch_io_handle = NULL;
@@ -47,6 +48,7 @@ static uint8_t s_gt911_addr = ESP_LCD_TOUCH_IO_I2C_GT911_ADDRESS;
 
 static void touch_activity_event_cb(lv_event_t *event)
 {
+    s_last_touch_activity_ms = lv_tick_get();
     if (display_is_screen_off()) {
         display_note_activity();
         lv_indev_t *indev = lv_event_get_indev(event);
@@ -262,4 +264,9 @@ esp_err_t touch_init(void)
 bool touch_is_ready(void)
 {
     return s_touch_ready;
+}
+
+uint32_t touch_last_activity_ms(void)
+{
+    return s_last_touch_activity_ms;
 }
