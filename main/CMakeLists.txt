@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: LicenseRef-FNCL-1.1
 # Copyright (c) 2026 Cpt_Kirk
+# Copyright (c) 2026 khennessy74-a11y
 
 # ---- Panel-variant-specific driver sources --------------------------------
 # The 4" (smart86) and 10.1" (nano) panels use different BSPs and different
