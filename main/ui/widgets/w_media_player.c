@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: LicenseRef-FNCL-1.1
  * Copyright (c) 2026 Cpt_Kirk
+ * Copyright (c) 2026 khennessy74-a11y
  *
  * Media player widget. Aggregates title/artist, progress bar,
  * prev / play-pause / next controls and a volume slider for a single
