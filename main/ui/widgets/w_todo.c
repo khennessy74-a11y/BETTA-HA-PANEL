@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: LicenseRef-FNCL-1.1
  * Copyright (c) 2026 Cpt_Kirk
+ * Copyright (c) 2026 khennessy74-a11y
  *
  * Todo list widget. Displays the items of a HA `todo.*` entity as a
  * touch-friendly scrollable list. Items are pulled on demand via the

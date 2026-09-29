@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: LicenseRef-FNCL-1.1
  * Copyright (c) 2026 Cpt_Kirk
+ * Copyright (c) 2026 khennessy74-a11y
  *
  * Roborock widget. Shows status + battery for a vacuum.* entity and
  * exposes start/pause, return-to-base and room cleaning via roborock.get_maps.
