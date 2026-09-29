@@ -49,6 +49,8 @@ static lv_obj_t *s_system_details = NULL;
 static lv_obj_t *s_restart_confirm = NULL;
 static lv_obj_t *s_brightness_slider = NULL;
 static lv_obj_t *s_brightness_value = NULL;
+static lv_obj_t *s_night_mode_dropdown = NULL;
+static lv_obj_t *s_idle_timeout_dropdown = NULL;
 static bool s_status_gesture_armed = false;
 static lv_obj_t *s_nav_bar = NULL;
 static lv_obj_t *s_nav_home_button = NULL;
@@ -391,6 +393,8 @@ static void ui_system_overlay_close_cb(lv_event_t *event)
         s_restart_confirm = NULL;
         s_brightness_slider = NULL;
         s_brightness_value = NULL;
+        s_night_mode_dropdown = NULL;
+        s_idle_timeout_dropdown = NULL;
     }
 }
 
@@ -552,6 +556,38 @@ static void ui_brightness_changed_cb(lv_event_t *event)
     }
 }
 
+static void ui_display_mode_changed_cb(lv_event_t *event)
+{
+    LV_UNUSED(event);
+    runtime_settings_t settings = {0};
+    if (runtime_settings_load(&settings) != ESP_OK) {
+        return;
+    }
+
+    if (s_night_mode_dropdown != NULL) {
+        settings.display_night_mode = (int)lv_dropdown_get_selected(s_night_mode_dropdown);
+        settings.display_night_mode_auto = (settings.display_night_mode == 2);
+    }
+    if (s_idle_timeout_dropdown != NULL) {
+        static const int idle_seconds[] = {0, 30, 60, 120, 300, 600};
+        uint32_t index = lv_dropdown_get_selected(s_idle_timeout_dropdown);
+        if (index < (sizeof(idle_seconds) / sizeof(idle_seconds[0]))) {
+            settings.display_idle_timeout_seconds = idle_seconds[index];
+        }
+    }
+
+    (void)runtime_settings_save(&settings);
+    display_configure_night_mode(
+        settings.display_brightness_percent,
+        settings.display_night_brightness_percent,
+        settings.display_night_mode,
+        settings.display_night_start_hour,
+        settings.display_night_start_minute,
+        settings.display_day_start_hour,
+        settings.display_day_start_minute);
+    display_configure_idle(settings.display_idle_timeout_seconds, settings.display_idle_brightness_percent);
+}
+
 static void ui_system_overlay_show(void)
 {
     if (s_system_overlay != NULL) {
@@ -615,6 +651,36 @@ static void ui_system_overlay_show(void)
         snprintf(brightness_text, sizeof(brightness_text), "%d%%", display_settings.display_brightness_percent);
         lv_label_set_text(s_brightness_value, brightness_text);
         lv_obj_align_to(s_brightness_value, s_brightness_slider, LV_ALIGN_OUT_RIGHT_MID, 14, 0);
+
+        lv_obj_t *night_label = lv_label_create(s_system_overlay);
+        lv_label_set_text(night_label, "Night mode");
+        lv_obj_align(night_label, LV_ALIGN_BOTTOM_LEFT, 26, -132);
+
+        s_night_mode_dropdown = lv_dropdown_create(s_system_overlay);
+        lv_dropdown_set_options(s_night_mode_dropdown, "Day\nNight\nAuto");
+        lv_dropdown_set_selected(s_night_mode_dropdown, (uint32_t)display_settings.display_night_mode);
+        lv_obj_set_size(s_night_mode_dropdown, 150, 44);
+        lv_obj_align(s_night_mode_dropdown, LV_ALIGN_BOTTOM_LEFT, 130, -120);
+        lv_obj_add_event_cb(s_night_mode_dropdown, ui_display_mode_changed_cb, LV_EVENT_VALUE_CHANGED, NULL);
+
+        lv_obj_t *idle_label = lv_label_create(s_system_overlay);
+        lv_label_set_text(idle_label, "Auto dim");
+        lv_obj_align(idle_label, LV_ALIGN_BOTTOM_LEFT, 310, -132);
+
+        s_idle_timeout_dropdown = lv_dropdown_create(s_system_overlay);
+        lv_dropdown_set_options(s_idle_timeout_dropdown, "Off\n30 sec\n1 min\n2 min\n5 min\n10 min");
+        uint32_t idle_index = 0;
+        const int idle_seconds[] = {0, 30, 60, 120, 300, 600};
+        for (uint32_t i = 0; i < (sizeof(idle_seconds) / sizeof(idle_seconds[0])); i++) {
+            if (display_settings.display_idle_timeout_seconds == idle_seconds[i]) {
+                idle_index = i;
+                break;
+            }
+        }
+        lv_dropdown_set_selected(s_idle_timeout_dropdown, idle_index);
+        lv_obj_set_size(s_idle_timeout_dropdown, 150, 44);
+        lv_obj_align(s_idle_timeout_dropdown, LV_ALIGN_BOTTOM_LEFT, 390, -120);
+        lv_obj_add_event_cb(s_idle_timeout_dropdown, ui_display_mode_changed_cb, LV_EVENT_VALUE_CHANGED, NULL);
     }
 
     lv_obj_t *restart = lv_btn_create(s_system_overlay);
@@ -768,6 +834,8 @@ void ui_pages_init(void)
     s_restart_confirm = NULL;
     s_brightness_slider = NULL;
     s_brightness_value = NULL;
+    s_night_mode_dropdown = NULL;
+    s_idle_timeout_dropdown = NULL;
     s_status_gesture_armed = false;
     s_nav_bar = NULL;
     s_nav_home_button = NULL;
