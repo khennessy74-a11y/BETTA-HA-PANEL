@@ -9,6 +9,9 @@
 #include <time.h>
 
 #include "app_config.h"
+#include "esp_app_desc.h"
+#include "ha/ha_client.h"
+#include "net/wifi_mgr.h"
 #include "ui/fonts/app_text_fonts.h"
 #include "ui/ui_i18n.h"
 #include "ui/theme/theme_default.h"
@@ -37,6 +40,7 @@ static lv_obj_t *s_time_label = NULL;
 static lv_obj_t *s_wifi_icon = NULL;
 static lv_obj_t *s_api_icon = NULL;
 static lv_obj_t *s_system_overlay = NULL;
+static lv_obj_t *s_system_details = NULL;
 static bool s_status_gesture_armed = false;
 static lv_obj_t *s_nav_bar = NULL;
 static lv_obj_t *s_nav_home_button = NULL;
@@ -375,7 +379,76 @@ static void ui_system_overlay_close_cb(lv_event_t *event)
     if (s_system_overlay != NULL) {
         lv_obj_del(s_system_overlay);
         s_system_overlay = NULL;
+        s_system_details = NULL;
     }
+}
+
+static void ui_system_overlay_refresh(void)
+{
+    if (s_system_details == NULL) {
+        return;
+    }
+
+    const esp_app_desc_t *desc = esp_app_get_description();
+    char ip[48] = "Unavailable";
+    if (wifi_mgr_get_sta_ip(ip, sizeof(ip)) != ESP_OK) {
+        snprintf(ip, sizeof(ip), "%s", "Unavailable");
+    }
+
+    wifi_mgr_sta_ap_info_t ap_info = {0};
+    bool have_ap = (wifi_mgr_get_sta_ap_info(&ap_info) == ESP_OK);
+
+    ha_client_diagnostics_t diag = {0};
+    ha_client_get_diagnostics(&diag);
+
+    char text[4096] = {0};
+    size_t used = 0;
+    int written = snprintf(
+        text,
+        sizeof(text),
+        "SYSTEM\nFirmware: %s\nProject: %s\n\n"
+        "WI-FI\nStatus: %s\nIP: %s\nSSID: %s\nRSSI: %s\n\n"
+        "HOME ASSISTANT\nStatus: %s\nInitial sync: %s\n\n"
+        "RECENT HA CONNECTION LOG\n",
+        (desc != NULL && desc->version[0] != '\0') ? desc->version : "unknown",
+        (desc != NULL && desc->project_name[0] != '\0') ? desc->project_name : APP_NAME,
+        wifi_mgr_is_connected() ? "Connected" : "Disconnected",
+        ip,
+        have_ap ? ap_info.ssid : "-",
+        have_ap ? "available" : "-",
+        ha_client_is_connected() ? "Connected" : "Disconnected",
+        ha_client_is_initial_sync_done() ? "Complete" : "Waiting");
+
+    if (written > 0) {
+        used = (size_t)written < sizeof(text) ? (size_t)written : sizeof(text) - 1U;
+    }
+
+    if (have_ap && used < sizeof(text) - 1U) {
+        written = snprintf(text + used, sizeof(text) - used, "Signal: %d dBm\n", (int)ap_info.rssi);
+        if (written > 0) {
+            used += ((size_t)written < sizeof(text) - used) ? (size_t)written : sizeof(text) - used - 1U;
+        }
+    }
+
+    uint16_t start = diag.connection_log_count > 10U ? (uint16_t)(diag.connection_log_count - 10U) : 0U;
+    if (diag.connection_log_count == 0U && used < sizeof(text) - 1U) {
+        snprintf(text + used, sizeof(text) - used, "No connection events recorded yet.");
+    } else {
+        for (uint16_t i = start; i < diag.connection_log_count && used < sizeof(text) - 1U; i++) {
+            written = snprintf(
+                text + used,
+                sizeof(text) - used,
+                "%lld ms  %s\n",
+                (long long)diag.connection_log[i].elapsed_ms,
+                diag.connection_log[i].message);
+            if (written <= 0) {
+                break;
+            }
+            used += ((size_t)written < sizeof(text) - used) ? (size_t)written : sizeof(text) - used - 1U;
+        }
+    }
+
+    lv_label_set_text(s_system_details, text);
 }
 
 static void ui_system_overlay_show(void)
@@ -406,6 +479,12 @@ static void ui_system_overlay_show(void)
     lv_obj_set_style_text_font(hint, APP_FONT_TEXT_16, LV_PART_MAIN);
     lv_obj_align(hint, LV_ALIGN_TOP_LEFT, 26, 64);
 
+    s_system_details = lv_label_create(s_system_overlay);
+    lv_obj_set_pos(s_system_details, 26, 100);
+    lv_obj_set_size(s_system_details, s_geometry.screen_w - 52, s_geometry.screen_h - 126);
+    lv_label_set_long_mode(s_system_details, LV_LABEL_LONG_WRAP);
+    lv_obj_set_style_text_font(s_system_details, APP_FONT_TEXT_16, LV_PART_MAIN);
+
     lv_obj_t *back = lv_btn_create(s_system_overlay);
     lv_obj_set_size(back, 110, 48);
     lv_obj_align(back, LV_ALIGN_TOP_RIGHT, -20, 14);
@@ -415,6 +494,7 @@ static void ui_system_overlay_show(void)
     lv_label_set_text(back_label, "Back");
     lv_obj_center(back_label);
 
+    ui_system_overlay_refresh();
     lv_obj_move_foreground(s_system_overlay);
 }
 
@@ -553,6 +633,7 @@ void ui_pages_init(void)
     s_wifi_icon = NULL;
     s_api_icon = NULL;
     s_system_overlay = NULL;
+    s_system_details = NULL;
     s_status_gesture_armed = false;
     s_nav_bar = NULL;
     s_nav_home_button = NULL;
