@@ -661,6 +661,7 @@ static void ui_restart_request_cb(lv_event_t *event)
     lv_obj_t *message = lv_label_create(s_restart_confirm);
     lv_label_set_text(message, "Restart the BETTA panel?\nSaved settings will be retained.");
     lv_obj_set_width(message, LV_PCT(90));
+    lv_obj_set_style_text_color(message, lv_color_hex(APP_UI_COLOR_TOPBAR_TEXT), LV_PART_MAIN);
     lv_obj_set_style_text_align(message, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     lv_obj_align(message, LV_ALIGN_TOP_MID, 0, 22);
 
