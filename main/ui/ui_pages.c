@@ -46,6 +46,8 @@ static lv_obj_t *s_wifi_icon = NULL;
 static lv_obj_t *s_api_icon = NULL;
 static lv_obj_t *s_system_overlay = NULL;
 static lv_obj_t *s_system_details = NULL;
+static lv_obj_t *s_system_ha_details = NULL;
+static lv_obj_t *s_system_wifi_details = NULL;
 static lv_obj_t *s_system_log = NULL;
 static lv_obj_t *s_restart_confirm = NULL;
 static lv_obj_t *s_brightness_slider = NULL;
@@ -403,6 +405,8 @@ static void ui_system_overlay_close(void)
         lv_obj_del(s_system_overlay);
         s_system_overlay = NULL;
         s_system_details = NULL;
+        s_system_ha_details = NULL;
+        s_system_wifi_details = NULL;
         s_system_log = NULL;
         s_restart_confirm = NULL;
         s_brightness_slider = NULL;
@@ -414,6 +418,9 @@ static void ui_system_overlay_close(void)
 
 static void ui_system_overlay_show(void);
 static void ui_system_display_show(void);
+static void ui_system_display_brightness_show(void);
+static void ui_system_display_night_show(void);
+static void ui_system_display_dim_show(void);
 
 static void ui_system_overlay_close_cb(lv_event_t *event)
 {
@@ -435,6 +442,34 @@ static void ui_system_diagnostics_open_cb(lv_event_t *event)
     ui_system_overlay_show();
 }
 
+static void ui_system_display_menu_cb(lv_event_t *event)
+{
+    LV_UNUSED(event);
+    ui_system_overlay_close();
+    ui_system_display_show();
+}
+
+static void ui_system_display_brightness_cb(lv_event_t *event)
+{
+    LV_UNUSED(event);
+    ui_system_overlay_close();
+    ui_system_display_brightness_show();
+}
+
+static void ui_system_display_night_cb(lv_event_t *event)
+{
+    LV_UNUSED(event);
+    ui_system_overlay_close();
+    ui_system_display_night_show();
+}
+
+static void ui_system_display_dim_cb(lv_event_t *event)
+{
+    LV_UNUSED(event);
+    ui_system_overlay_close();
+    ui_system_display_dim_show();
+}
+
 static void ui_system_timeout_cb(lv_timer_t *timer)
 {
     LV_UNUSED(timer);
@@ -454,7 +489,8 @@ static void ui_system_activity_cb(lv_event_t *event)
 
 static void ui_system_overlay_refresh(void)
 {
-    if (s_system_details == NULL || s_system_log == NULL) {
+    if (s_system_details == NULL || s_system_ha_details == NULL ||
+        s_system_wifi_details == NULL || s_system_log == NULL) {
         return;
     }
 
@@ -470,47 +506,45 @@ static void ui_system_overlay_refresh(void)
     ha_client_diagnostics_t diag = {0};
     ha_client_get_diagnostics(&diag);
 
-    char summary[1024] = {0};
-    snprintf(
-        summary,
-        sizeof(summary),
-        "SYSTEM\nFirmware: %s\nProject: %s\n\n"
-        "WI-FI\nStatus: %s\nIP: %s\nSSID: %s\nSignal: %s\n\n"
-        "HOME ASSISTANT\nStatus: %s\nInitial sync: %s",
+    char system_text[384];
+    snprintf(system_text, sizeof(system_text),
+        "SYSTEM\nFirmware: %s\nProject: %s",
         (desc != NULL && desc->version[0] != '\\0') ? desc->version : "unknown",
-        (desc != NULL && desc->project_name[0] != '\\0') ? desc->project_name : APP_NAME,
+        (desc != NULL && desc->project_name[0] != '\\0') ? desc->project_name : APP_NAME);
+    lv_label_set_text(s_system_details, system_text);
+
+    char ha_text[256];
+    snprintf(ha_text, sizeof(ha_text),
+        "HOME ASSISTANT\nStatus: %s\nSync: %s",
+        ha_client_is_connected() ? "Connected" : "Disconnected",
+        ha_client_is_initial_sync_done() ? "Complete" : "Waiting");
+    lv_label_set_text(s_system_ha_details, ha_text);
+
+    char wifi_text[512];
+    snprintf(wifi_text, sizeof(wifi_text),
+        "WI-FI\n%s  |  %s\nSSID: %s  |  Signal: %s%d%s",
         wifi_mgr_is_connected() ? "Connected" : "Disconnected",
         ip,
         have_ap ? ap_info.ssid : "-",
-        have_ap ? "available" : "-",
-        ha_client_is_connected() ? "Connected" : "Disconnected",
-        ha_client_is_initial_sync_done() ? "Complete" : "Waiting");
-    lv_label_set_text(s_system_details, summary);
+        have_ap ? "" : "-",
+        have_ap ? (int)ap_info.rssi : 0,
+        have_ap ? " dBm" : "");
+    lv_label_set_text(s_system_wifi_details, wifi_text);
 
     char log_text[3072] = {0};
     size_t used = 0U;
-    if (have_ap) {
-        int written = snprintf(log_text, sizeof(log_text), "Wi-Fi signal: %d dBm\n", (int)ap_info.rssi);
-        if (written > 0) {
-            used = (size_t)written < sizeof(log_text) ? (size_t)written : sizeof(log_text) - 1U;
-        }
-    }
-
-    uint16_t start = diag.connection_log_count > 10U ? (uint16_t)(diag.connection_log_count - 10U) : 0U;
-    if (diag.connection_log_count == 0U && used < sizeof(log_text) - 1U) {
-        snprintf(log_text + used, sizeof(log_text) - used, "No connection events recorded yet.");
+    uint16_t start = diag.connection_log_count > 12U ? (uint16_t)(diag.connection_log_count - 12U) : 0U;
+    if (diag.connection_log_count == 0U) {
+        snprintf(log_text, sizeof(log_text), "No connection events recorded yet.");
     } else {
         for (uint16_t i = start; i < diag.connection_log_count && used < sizeof(log_text) - 1U; i++) {
-            int written = snprintf(
-                log_text + used,
-                sizeof(log_text) - used,
+            int written = snprintf(log_text + used, sizeof(log_text) - used,
                 "%lld ms  %s\n",
                 (long long)diag.connection_log[i].elapsed_ms,
                 diag.connection_log[i].message);
-            if (written <= 0) {
-                break;
-            }
-            used += ((size_t)written < sizeof(log_text) - used) ? (size_t)written : sizeof(log_text) - used - 1U;
+            if (written <= 0) break;
+            used += ((size_t)written < sizeof(log_text) - used)
+                ? (size_t)written : sizeof(log_text) - used - 1U;
         }
     }
     lv_label_set_text(s_system_log, log_text);
@@ -735,14 +769,9 @@ static lv_obj_t *ui_system_create_shell(const char *title)
 
 static void ui_system_overlay_show(void)
 {
-    if (s_system_overlay != NULL) {
-        return;
-    }
-
+    if (s_system_overlay != NULL) return;
     lv_obj_t *content = ui_system_create_shell("System / Diagnostics");
-    if (content == NULL) {
-        return;
-    }
+    if (content == NULL) return;
 
     const lv_coord_t w = s_geometry.screen_w;
     const lv_coord_t margin = w <= 520 ? 14 : 24;
@@ -750,64 +779,66 @@ static void ui_system_overlay_show(void)
     const lv_coord_t back_w = w <= 520 ? 92 : 110;
     const lv_coord_t display_w = w <= 520 ? 110 : 130;
     const lv_coord_t restart_w = w <= 520 ? 110 : 130;
-
     ui_system_header_button(s_system_overlay, "Back", margin, back_w, ui_system_overlay_close_cb);
-    ui_system_header_button(
-        s_system_overlay, "Display",
+    ui_system_header_button(s_system_overlay, "Display",
         w - margin - restart_w - gap - display_w, display_w, ui_system_display_open_cb);
-    ui_system_header_button(
-        s_system_overlay, "Restart",
+    ui_system_header_button(s_system_overlay, "Restart",
         w - margin - restart_w, restart_w, ui_restart_request_cb);
 
-    /* Diagnostics belongs to the content page, not the action bar. */
-    lv_obj_t *page_title = lv_label_create(content);
-    lv_label_set_text(page_title, "System / Diagnostics");
-    lv_obj_set_style_text_font(page_title, w <= 520 ? APP_FONT_TEXT_22 : APP_FONT_TEXT_34, LV_PART_MAIN);
-    lv_obj_set_style_text_color(page_title, lv_color_hex(APP_UI_COLOR_TOPBAR_TEXT), LV_PART_MAIN);
-    lv_obj_set_style_text_opa(page_title, LV_OPA_COVER, LV_PART_MAIN);
-    lv_obj_set_pos(page_title, margin, 10);
-    lv_obj_set_width(page_title, w - (margin * 2));
-    lv_label_set_long_mode(page_title, LV_LABEL_LONG_DOT);
+    lv_obj_t *title = lv_label_create(content);
+    lv_label_set_text(title, "System / Diagnostics");
+    lv_obj_set_style_text_font(title, w <= 520 ? APP_FONT_TEXT_22 : APP_FONT_TEXT_34, LV_PART_MAIN);
+    lv_obj_set_style_text_color(title, lv_color_hex(APP_UI_COLOR_TOPBAR_TEXT), LV_PART_MAIN);
+    lv_obj_set_pos(title, margin, 8);
+
+    const lv_coord_t col_y = w <= 520 ? 44 : 58;
+    const lv_coord_t col_gap = 12;
+    const lv_coord_t col_w = (w - margin * 2 - col_gap) / 2;
 
     s_system_details = lv_label_create(content);
-    lv_obj_set_pos(s_system_details, margin, w <= 520 ? 48 : 58);
-    lv_obj_set_width(s_system_details, w - (margin * 2));
+    lv_obj_set_pos(s_system_details, margin, col_y);
+    lv_obj_set_width(s_system_details, col_w);
     lv_label_set_long_mode(s_system_details, LV_LABEL_LONG_WRAP);
-    lv_obj_set_style_text_font(s_system_details, APP_FONT_TEXT_16, LV_PART_MAIN);
-    lv_obj_set_style_text_color(s_system_details, lv_color_hex(APP_UI_COLOR_TOPBAR_TEXT), LV_PART_MAIN);
-    lv_obj_set_style_text_opa(s_system_details, LV_OPA_COVER, LV_PART_MAIN);
+
+    s_system_ha_details = lv_label_create(content);
+    lv_obj_set_pos(s_system_ha_details, margin + col_w + col_gap, col_y);
+    lv_obj_set_width(s_system_ha_details, col_w);
+    lv_label_set_long_mode(s_system_ha_details, LV_LABEL_LONG_WRAP);
+
+    s_system_wifi_details = lv_label_create(content);
+    lv_obj_set_pos(s_system_wifi_details, margin, col_y + (w <= 520 ? 68 : 84));
+    lv_obj_set_width(s_system_wifi_details, w - margin * 2);
+    lv_label_set_long_mode(s_system_wifi_details, LV_LABEL_LONG_WRAP);
+
+    lv_obj_t *labels[] = {s_system_details, s_system_ha_details, s_system_wifi_details};
+    for (size_t i = 0; i < 3; i++) {
+        lv_obj_set_style_text_font(labels[i], w <= 520 ? APP_FONT_TEXT_14 : APP_FONT_TEXT_16, LV_PART_MAIN);
+        lv_obj_set_style_text_color(labels[i], lv_color_hex(APP_UI_COLOR_TOPBAR_TEXT), LV_PART_MAIN);
+        lv_obj_set_style_text_opa(labels[i], LV_OPA_COVER, LV_PART_MAIN);
+    }
 
     s_system_log = lv_label_create(content);
-    lv_obj_set_width(s_system_log, w - (margin * 2) - 20);
     lv_label_set_long_mode(s_system_log, LV_LABEL_LONG_WRAP);
-    lv_obj_set_style_text_font(s_system_log, APP_FONT_TEXT_16, LV_PART_MAIN);
+    lv_obj_set_style_text_font(s_system_log, w <= 520 ? APP_FONT_TEXT_14 : APP_FONT_TEXT_16, LV_PART_MAIN);
     lv_obj_set_style_text_color(s_system_log, lv_color_hex(APP_UI_COLOR_TOPBAR_TEXT), LV_PART_MAIN);
     lv_obj_set_style_text_opa(s_system_log, LV_OPA_COVER, LV_PART_MAIN);
 
-    /* Populate first, then measure.  The previous layout measured the empty
-     * label, which placed the log on top of the status text. */
     ui_system_overlay_refresh();
-    lv_obj_update_layout(s_system_details);
 
-    lv_coord_t log_y = lv_obj_get_y(s_system_details) + lv_obj_get_height(s_system_details) + 12;
-    lv_coord_t content_h = s_geometry.screen_h
-        - (s_geometry.content_y > 64 ? s_geometry.content_y : 64)
-        - (s_geometry.nav_h > 0 ? s_geometry.nav_h : 60);
+    const lv_coord_t log_y = col_y + (w <= 520 ? 128 : 154);
+    const lv_coord_t header_h = s_geometry.content_y > 64 ? s_geometry.content_y : 64;
+    const lv_coord_t footer_h = s_geometry.nav_h > 0 ? s_geometry.nav_h : 60;
+    const lv_coord_t content_h = s_geometry.screen_h - header_h - footer_h;
 
     lv_obj_t *log_title = lv_label_create(content);
     lv_label_set_text(log_title, "RECENT HA CONNECTION LOG");
     lv_obj_set_style_text_font(log_title, APP_FONT_TEXT_16, LV_PART_MAIN);
     lv_obj_set_style_text_color(log_title, lv_color_hex(APP_UI_COLOR_TOPBAR_MUTED), LV_PART_MAIN);
-    lv_obj_set_style_text_opa(log_title, LV_OPA_COVER, LV_PART_MAIN);
     lv_obj_set_pos(log_title, margin, log_y);
 
     lv_obj_t *log_box = lv_obj_create(content);
     lv_obj_set_pos(log_box, margin, log_y + 24);
-    lv_coord_t log_h = content_h - log_y - 30;
-    if (log_h < 56) {
-        log_h = 56;
-    }
-    lv_obj_set_size(log_box, w - (margin * 2), log_h);
+    lv_obj_set_size(log_box, w - margin * 2, content_h - log_y - 30);
     lv_obj_set_style_bg_color(log_box, lv_color_hex(APP_UI_COLOR_TOPBAR_BG), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(log_box, LV_OPA_50, LV_PART_MAIN);
     lv_obj_set_style_border_width(log_box, 1, LV_PART_MAIN);
@@ -820,138 +851,156 @@ static void ui_system_overlay_show(void)
     lv_obj_set_parent(s_system_log, log_box);
     lv_obj_set_pos(s_system_log, 0, 0);
     lv_obj_set_width(s_system_log, LV_PCT(100));
-    if (w <= 520) {
-        lv_obj_set_style_text_font(s_system_log, APP_FONT_TEXT_14, LV_PART_MAIN);
-    }
 
     lv_obj_move_foreground(s_system_overlay);
 }
 
+static lv_obj_t *ui_system_display_page(const char *title)
+{
+    lv_obj_t *content = ui_system_create_shell(title);
+    if (content == NULL) return NULL;
+    const lv_coord_t margin = s_geometry.screen_w <= 520 ? 18 : 28;
+    ui_system_header_button(s_system_overlay, "Back", margin,
+        s_geometry.screen_w <= 520 ? 92 : 110, ui_system_display_menu_cb);
+    lv_obj_t *heading = lv_label_create(content);
+    lv_label_set_text(heading, title);
+    lv_obj_set_style_text_font(heading, s_geometry.screen_w <= 520 ? APP_FONT_TEXT_22 : APP_FONT_TEXT_34, LV_PART_MAIN);
+    lv_obj_set_style_text_color(heading, lv_color_hex(APP_UI_COLOR_TOPBAR_TEXT), LV_PART_MAIN);
+    lv_obj_set_pos(heading, margin, 12);
+    return content;
+}
+
+static lv_obj_t *ui_system_menu_row(lv_obj_t *parent, const char *title, const char *value,
+    lv_coord_t y, lv_event_cb_t cb)
+{
+    const lv_coord_t margin = s_geometry.screen_w <= 520 ? 18 : 28;
+    lv_obj_t *row = lv_obj_create(parent);
+    lv_obj_remove_style_all(row);
+    lv_obj_set_pos(row, margin, y);
+    lv_obj_set_size(row, s_geometry.screen_w - margin * 2, 62);
+    lv_obj_add_flag(row, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(row, cb, LV_EVENT_CLICKED, NULL);
+    lv_obj_t *label = lv_label_create(row);
+    lv_label_set_text(label, title);
+    lv_obj_set_style_text_font(label, APP_FONT_TEXT_16, LV_PART_MAIN);
+    lv_obj_align(label, LV_ALIGN_LEFT_MID, 14, 0);
+    lv_obj_t *val = lv_label_create(row);
+    lv_label_set_text(val, value);
+    lv_obj_set_style_text_font(val, APP_FONT_TEXT_16, LV_PART_MAIN);
+    lv_obj_align(val, LV_ALIGN_RIGHT_MID, -28, 0);
+    lv_obj_t *arrow = lv_label_create(row);
+    lv_label_set_text(arrow, LV_SYMBOL_RIGHT);
+    lv_obj_align(arrow, LV_ALIGN_RIGHT_MID, -8, 0);
+    ui_pages_style_nav_button(row, label, false, false);
+    lv_obj_set_style_text_color(val, lv_color_hex(APP_UI_COLOR_TOPBAR_MUTED), LV_PART_MAIN);
+    lv_obj_set_style_text_color(arrow, lv_color_hex(APP_UI_COLOR_TOPBAR_MUTED), LV_PART_MAIN);
+    return row;
+}
+
 static void ui_system_display_show(void)
 {
-    if (s_system_overlay != NULL) {
-        return;
-    }
-
+    if (s_system_overlay != NULL) return;
     lv_obj_t *content = ui_system_create_shell("Display Settings");
-    if (content == NULL) {
-        return;
-    }
+    if (content == NULL) return;
+    const lv_coord_t margin = s_geometry.screen_w <= 520 ? 18 : 28;
+    ui_system_header_button(s_system_overlay, "Back", margin,
+        s_geometry.screen_w <= 520 ? 92 : 110, ui_system_diagnostics_open_cb);
 
-    const lv_coord_t w = s_geometry.screen_w;
-    const lv_coord_t margin = w <= 520 ? 18 : 28;
-    const lv_coord_t back_w = w <= 520 ? 92 : 110;
+    lv_obj_t *heading = lv_label_create(content);
+    lv_label_set_text(heading, "Display Settings");
+    lv_obj_set_style_text_font(heading, s_geometry.screen_w <= 520 ? APP_FONT_TEXT_22 : APP_FONT_TEXT_34, LV_PART_MAIN);
+    lv_obj_set_style_text_color(heading, lv_color_hex(APP_UI_COLOR_TOPBAR_TEXT), LV_PART_MAIN);
+    lv_obj_set_pos(heading, margin, 12);
 
-    ui_system_header_button(s_system_overlay, "Back", margin, back_w, ui_system_diagnostics_open_cb);
-
-    lv_obj_t *page_title = lv_label_create(content);
-    lv_label_set_text(page_title, "Display Settings");
-    lv_obj_set_style_text_font(page_title, w <= 520 ? APP_FONT_TEXT_22 : APP_FONT_TEXT_34, LV_PART_MAIN);
-    lv_obj_set_style_text_color(page_title, lv_color_hex(APP_UI_COLOR_TOPBAR_TEXT), LV_PART_MAIN);
-    lv_obj_set_style_text_opa(page_title, LV_OPA_COVER, LV_PART_MAIN);
-    lv_obj_set_pos(page_title, margin, 10);
-
-    const lv_coord_t header_h = s_geometry.content_y > 64 ? s_geometry.content_y : 64;
-    const lv_coord_t footer_h = s_geometry.nav_h > 0 ? s_geometry.nav_h : 60;
-    const lv_coord_t content_h = s_geometry.screen_h - header_h - footer_h;
-    const lv_coord_t body_y = w <= 520 ? 50 : 62;
-    const lv_coord_t body_h = content_h - body_y - 8;
-
-    lv_obj_t *body = lv_obj_create(content);
-    lv_obj_remove_style_all(body);
-    lv_obj_set_pos(body, margin, body_y);
-    lv_obj_set_size(body, w - (margin * 2), body_h);
-    lv_obj_add_flag(body, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_set_scroll_dir(body, LV_DIR_VER);
-    lv_obj_set_scrollbar_mode(body, LV_SCROLLBAR_MODE_AUTO);
-
-    runtime_settings_t settings = {0};
-    runtime_settings_set_defaults(&settings);
-    (void)runtime_settings_load(&settings);
-
-    /* The body must always exist.  Persisted settings override defaults when
-     * available, but a transient NVS/read failure must never leave a blank
-     * Display Settings page. */
-    {
-        lv_coord_t y = 4;
-        lv_coord_t body_w = w - (margin * 2);
-        lv_coord_t control_w = w <= 520 ? 150 : 180;
-
-        lv_obj_t *brightness_label = lv_label_create(body);
-        lv_label_set_text(brightness_label, "Brightness");
-        lv_obj_set_style_text_font(brightness_label, APP_FONT_TEXT_16, LV_PART_MAIN);
-        lv_obj_set_style_text_color(brightness_label, lv_color_hex(APP_UI_COLOR_TOPBAR_TEXT), LV_PART_MAIN);
-        lv_obj_set_style_text_opa(brightness_label, LV_OPA_COVER, LV_PART_MAIN);
-        lv_obj_set_pos(brightness_label, 0, y);
-
-        s_brightness_value = lv_label_create(body);
-        char value[16];
-        snprintf(value, sizeof(value), "%d%%", settings.display_brightness_percent);
-        lv_label_set_text(s_brightness_value, value);
-        lv_obj_set_style_text_font(s_brightness_value, APP_FONT_TEXT_16, LV_PART_MAIN);
-        lv_obj_set_style_text_color(s_brightness_value, lv_color_hex(APP_UI_COLOR_TOPBAR_TEXT), LV_PART_MAIN);
-        lv_obj_set_style_text_opa(s_brightness_value, LV_OPA_COVER, LV_PART_MAIN);
-        lv_obj_set_pos(s_brightness_value, body_w - 54, y);
-        y += 38;
-
-        s_brightness_slider = lv_slider_create(body);
-        lv_slider_set_range(s_brightness_slider, 1, 100);
-        lv_slider_set_value(s_brightness_slider, settings.display_brightness_percent, LV_ANIM_OFF);
-        lv_obj_set_pos(s_brightness_slider, 0, y);
-        lv_obj_set_size(s_brightness_slider, body_w - 12, 22);
-        lv_obj_add_event_cb(s_brightness_slider, ui_brightness_changed_cb, LV_EVENT_VALUE_CHANGED, NULL);
-        lv_obj_add_event_cb(s_brightness_slider, ui_brightness_changed_cb, LV_EVENT_RELEASED, NULL);
-        y += 62;
-
-        lv_obj_t *night_label = lv_label_create(body);
-        lv_label_set_text(night_label, "Night mode");
-        lv_obj_set_style_text_font(night_label, APP_FONT_TEXT_16, LV_PART_MAIN);
-        lv_obj_set_style_text_color(night_label, lv_color_hex(APP_UI_COLOR_TOPBAR_TEXT), LV_PART_MAIN);
-        lv_obj_set_style_text_opa(night_label, LV_OPA_COVER, LV_PART_MAIN);
-        lv_obj_set_pos(night_label, 0, y + 10);
-
-        s_night_mode_dropdown = lv_dropdown_create(body);
-        lv_dropdown_set_options(s_night_mode_dropdown, "Day\nNight\nAuto");
-        lv_dropdown_set_selected(s_night_mode_dropdown, (uint32_t)settings.display_night_mode);
-        lv_obj_set_size(s_night_mode_dropdown, control_w, 46);
-        lv_obj_set_pos(s_night_mode_dropdown, body_w - control_w - 4, y);
-        lv_obj_add_event_cb(s_night_mode_dropdown, ui_display_mode_changed_cb, LV_EVENT_VALUE_CHANGED, NULL);
-        y += 64;
-
-        lv_obj_t *idle_label = lv_label_create(body);
-        lv_label_set_text(idle_label, "Auto dim");
-        lv_obj_set_style_text_font(idle_label, APP_FONT_TEXT_16, LV_PART_MAIN);
-        lv_obj_set_style_text_color(idle_label, lv_color_hex(APP_UI_COLOR_TOPBAR_TEXT), LV_PART_MAIN);
-        lv_obj_set_style_text_opa(idle_label, LV_OPA_COVER, LV_PART_MAIN);
-        lv_obj_set_pos(idle_label, 0, y + 10);
-
-        s_idle_timeout_dropdown = lv_dropdown_create(body);
-        lv_dropdown_set_options(s_idle_timeout_dropdown, "Off\n30 sec\n1 min\n2 min\n5 min\n10 min");
-        uint32_t idle_index = 0;
-        const int idle_seconds[] = {0, 30, 60, 120, 300, 600};
-        for (uint32_t i = 0; i < (sizeof(idle_seconds) / sizeof(idle_seconds[0])); i++) {
-            if (settings.display_idle_timeout_seconds == idle_seconds[i]) {
-                idle_index = i;
-                break;
-            }
-        }
-        lv_dropdown_set_selected(s_idle_timeout_dropdown, idle_index);
-        lv_obj_set_size(s_idle_timeout_dropdown, control_w, 46);
-        lv_obj_set_pos(s_idle_timeout_dropdown, body_w - control_w - 4, y);
-        lv_obj_add_event_cb(s_idle_timeout_dropdown, ui_display_mode_changed_cb, LV_EVENT_VALUE_CHANGED, NULL);
-        y += 70;
-
-        lv_obj_t *note = lv_label_create(body);
-        lv_label_set_text(note, "Changes are saved to the panel and are also visible in the web admin settings.");
-        lv_obj_set_width(note, body_w - 8);
-        lv_label_set_long_mode(note, LV_LABEL_LONG_WRAP);
-        lv_obj_set_style_text_font(note, APP_FONT_TEXT_16, LV_PART_MAIN);
-        lv_obj_set_style_text_color(note, lv_color_hex(APP_UI_COLOR_TOPBAR_MUTED), LV_PART_MAIN);
-        lv_obj_set_style_text_opa(note, LV_OPA_COVER, LV_PART_MAIN);
-        lv_obj_set_pos(note, 0, y);
-    }
-
+    runtime_settings_t s = {0};
+    runtime_settings_set_defaults(&s);
+    (void)runtime_settings_load(&s);
+    char brightness[16], night[24], dim[24];
+    snprintf(brightness, sizeof(brightness), "%d%%", s.display_brightness_percent);
+    snprintf(night, sizeof(night), "%s", s.display_night_mode == 2 ? "Auto" : (s.display_night_mode == 1 ? "Night" : "Day"));
+    snprintf(dim, sizeof(dim), "%s", s.display_idle_timeout_seconds == 0 ? "Off" :
+        (s.display_idle_timeout_seconds == 30 ? "30 sec" :
+        (s.display_idle_timeout_seconds == 60 ? "1 min" :
+        (s.display_idle_timeout_seconds == 120 ? "2 min" :
+        (s.display_idle_timeout_seconds == 300 ? "5 min" : "10 min")))));
+    ui_system_menu_row(content, "Brightness", brightness, 58, ui_system_display_brightness_cb);
+    ui_system_menu_row(content, "Night mode", night, 130, ui_system_display_night_cb);
+    ui_system_menu_row(content, "Auto dim", dim, 202, ui_system_display_dim_cb);
     lv_obj_move_foreground(s_system_overlay);
+}
+
+static void ui_system_display_brightness_show(void)
+{
+    if (s_system_overlay != NULL) return;
+    lv_obj_t *content = ui_system_display_page("Brightness");
+    if (content == NULL) return;
+    runtime_settings_t s = {0}; runtime_settings_set_defaults(&s); (void)runtime_settings_load(&s);
+    const lv_coord_t margin = s_geometry.screen_w <= 520 ? 18 : 28;
+    s_brightness_value = lv_label_create(content);
+    char value[16]; snprintf(value, sizeof(value), "%d%%", s.display_brightness_percent);
+    lv_label_set_text(s_brightness_value, value);
+    lv_obj_set_style_text_font(s_brightness_value, APP_FONT_TEXT_22, LV_PART_MAIN);
+    lv_obj_set_style_text_color(s_brightness_value, lv_color_hex(APP_UI_COLOR_TOPBAR_TEXT), LV_PART_MAIN);
+    lv_obj_set_pos(s_brightness_value, margin, 70);
+    s_brightness_slider = lv_slider_create(content);
+    lv_slider_set_range(s_brightness_slider, 1, 100);
+    lv_slider_set_value(s_brightness_slider, s.display_brightness_percent, LV_ANIM_OFF);
+    lv_obj_set_pos(s_brightness_slider, margin, 120);
+    lv_obj_set_size(s_brightness_slider, s_geometry.screen_w - margin * 2, 24);
+    lv_obj_add_event_cb(s_brightness_slider, ui_brightness_changed_cb, LV_EVENT_VALUE_CHANGED, NULL);
+    lv_obj_add_event_cb(s_brightness_slider, ui_brightness_changed_cb, LV_EVENT_RELEASED, NULL);
+}
+
+static void ui_system_display_night_show(void)
+{
+    if (s_system_overlay != NULL) return;
+    lv_obj_t *content = ui_system_display_page("Night Mode");
+    if (content == NULL) return;
+    runtime_settings_t s = {0}; runtime_settings_set_defaults(&s); (void)runtime_settings_load(&s);
+    const lv_coord_t margin = s_geometry.screen_w <= 520 ? 18 : 28;
+    lv_obj_t *label = lv_label_create(content);
+    lv_label_set_text(label, "Mode");
+    lv_obj_set_style_text_color(label, lv_color_hex(APP_UI_COLOR_TOPBAR_TEXT), LV_PART_MAIN);
+    lv_obj_set_pos(label, margin, 76);
+    s_night_mode_dropdown = lv_dropdown_create(content);
+    lv_dropdown_set_options(s_night_mode_dropdown, "Day\nNight\nAuto");
+    lv_dropdown_set_selected(s_night_mode_dropdown, (uint32_t)s.display_night_mode);
+    lv_obj_set_size(s_night_mode_dropdown, 180, 46);
+    lv_obj_set_pos(s_night_mode_dropdown, s_geometry.screen_w - margin - 180, 64);
+    lv_obj_add_event_cb(s_night_mode_dropdown, ui_display_mode_changed_cb, LV_EVENT_VALUE_CHANGED, NULL);
+    lv_obj_t *note = lv_label_create(content);
+    lv_label_set_text(note, "Advanced night brightness and schedule remain available in the web admin while the compact panel editor is expanded.");
+    lv_obj_set_width(note, s_geometry.screen_w - margin * 2);
+    lv_label_set_long_mode(note, LV_LABEL_LONG_WRAP);
+    lv_obj_set_style_text_color(note, lv_color_hex(APP_UI_COLOR_TOPBAR_MUTED), LV_PART_MAIN);
+    lv_obj_set_pos(note, margin, 135);
+}
+
+static void ui_system_display_dim_show(void)
+{
+    if (s_system_overlay != NULL) return;
+    lv_obj_t *content = ui_system_display_page("Auto Dim");
+    if (content == NULL) return;
+    runtime_settings_t s = {0}; runtime_settings_set_defaults(&s); (void)runtime_settings_load(&s);
+    const lv_coord_t margin = s_geometry.screen_w <= 520 ? 18 : 28;
+    lv_obj_t *label = lv_label_create(content);
+    lv_label_set_text(label, "Timeout");
+    lv_obj_set_style_text_color(label, lv_color_hex(APP_UI_COLOR_TOPBAR_TEXT), LV_PART_MAIN);
+    lv_obj_set_pos(label, margin, 76);
+    s_idle_timeout_dropdown = lv_dropdown_create(content);
+    lv_dropdown_set_options(s_idle_timeout_dropdown, "Off\n30 sec\n1 min\n2 min\n5 min\n10 min");
+    const int vals[] = {0,30,60,120,300,600}; uint32_t selected = 0;
+    for (uint32_t i=0;i<6;i++) if (s.display_idle_timeout_seconds == vals[i]) selected=i;
+    lv_dropdown_set_selected(s_idle_timeout_dropdown, selected);
+    lv_obj_set_size(s_idle_timeout_dropdown, 180, 46);
+    lv_obj_set_pos(s_idle_timeout_dropdown, s_geometry.screen_w - margin - 180, 64);
+    lv_obj_add_event_cb(s_idle_timeout_dropdown, ui_display_mode_changed_cb, LV_EVENT_VALUE_CHANGED, NULL);
+    lv_obj_t *note = lv_label_create(content);
+    lv_label_set_text(note, "Dim brightness remains shared with the web admin and will be added here as a dedicated control.");
+    lv_obj_set_width(note, s_geometry.screen_w - margin * 2);
+    lv_label_set_long_mode(note, LV_LABEL_LONG_WRAP);
+    lv_obj_set_style_text_color(note, lv_color_hex(APP_UI_COLOR_TOPBAR_MUTED), LV_PART_MAIN);
+    lv_obj_set_pos(note, margin, 135);
 }
 
 static void ui_status_gesture_cb(lv_event_t *event)
