@@ -36,6 +36,8 @@ static lv_obj_t *s_date_label = NULL;
 static lv_obj_t *s_time_label = NULL;
 static lv_obj_t *s_wifi_icon = NULL;
 static lv_obj_t *s_api_icon = NULL;
+static lv_obj_t *s_system_overlay = NULL;
+static bool s_status_gesture_armed = false;
 static lv_obj_t *s_nav_bar = NULL;
 static lv_obj_t *s_nav_home_button = NULL;
 static lv_obj_t *s_nav_home_label = NULL;
@@ -367,6 +369,71 @@ static void ui_nav_extra_button_event_cb(lv_event_t *event)
     ui_pages_show_index(page_index);
 }
 
+static void ui_system_overlay_close_cb(lv_event_t *event)
+{
+    LV_UNUSED(event);
+    if (s_system_overlay != NULL) {
+        lv_obj_del(s_system_overlay);
+        s_system_overlay = NULL;
+    }
+}
+
+static void ui_system_overlay_show(void)
+{
+    if (s_system_overlay != NULL) {
+        return;
+    }
+
+    lv_obj_t *screen = lv_scr_act();
+    if (screen == NULL) {
+        return;
+    }
+
+    s_system_overlay = lv_obj_create(screen);
+    lv_obj_remove_style_all(s_system_overlay);
+    lv_obj_set_size(s_system_overlay, LV_PCT(100), LV_PCT(100));
+    lv_obj_set_style_bg_color(s_system_overlay, lv_color_hex(APP_UI_COLOR_SCREEN_BG), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(s_system_overlay, LV_OPA_COVER, LV_PART_MAIN);
+    lv_obj_clear_flag(s_system_overlay, LV_OBJ_FLAG_SCROLLABLE);
+
+    lv_obj_t *title = lv_label_create(s_system_overlay);
+    lv_label_set_text(title, "System / Diagnostics");
+    lv_obj_set_style_text_font(title, APP_FONT_TEXT_34, LV_PART_MAIN);
+    lv_obj_align(title, LV_ALIGN_TOP_LEFT, 24, 18);
+
+    lv_obj_t *hint = lv_label_create(s_system_overlay);
+    lv_label_set_text(hint, "Panel diagnostics and controls");
+    lv_obj_set_style_text_font(hint, APP_FONT_TEXT_16, LV_PART_MAIN);
+    lv_obj_align(hint, LV_ALIGN_TOP_LEFT, 26, 64);
+
+    lv_obj_t *back = lv_btn_create(s_system_overlay);
+    lv_obj_set_size(back, 110, 48);
+    lv_obj_align(back, LV_ALIGN_TOP_RIGHT, -20, 14);
+    lv_obj_add_event_cb(back, ui_system_overlay_close_cb, LV_EVENT_CLICKED, NULL);
+
+    lv_obj_t *back_label = lv_label_create(back);
+    lv_label_set_text(back_label, "Back");
+    lv_obj_center(back_label);
+
+    lv_obj_move_foreground(s_system_overlay);
+}
+
+static void ui_status_gesture_cb(lv_event_t *event)
+{
+    lv_event_code_t code = lv_event_get_code(event);
+
+    if (code == LV_EVENT_PRESSED) {
+        /* The HA and Wi-Fi chips overlap their extended hit areas. Pressing
+         * the shared status area arms the protected long-press gesture. */
+        s_status_gesture_armed = true;
+    } else if (code == LV_EVENT_LONG_PRESSED && s_status_gesture_armed) {
+        s_status_gesture_armed = false;
+        ui_system_overlay_show();
+    } else if (code == LV_EVENT_RELEASED || code == LV_EVENT_PRESS_LOST) {
+        s_status_gesture_armed = false;
+    }
+}
+
 static void ui_pages_create_topbar(lv_obj_t *screen)
 {
     const lv_coord_t topbar_h = s_geometry.content_y;
@@ -408,12 +475,18 @@ static void ui_pages_create_topbar(lv_obj_t *screen)
         char api_text[32] = {0};
     snprintf(api_text, sizeof(api_text), "%s %s", ui_i18n_get("topbar.ha", "HA"), LV_SYMBOL_CLOSE);
     lv_label_set_text(s_api_icon, api_text);
+    lv_obj_add_flag(s_api_icon, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_set_ext_click_area(s_api_icon, 16);
+    lv_obj_add_event_cb(s_api_icon, ui_status_gesture_cb, LV_EVENT_ALL, NULL);
 
         s_wifi_icon = lv_label_create(s_topbar);
     lv_obj_set_width(s_wifi_icon, 48);
     lv_obj_align(s_wifi_icon, LV_ALIGN_RIGHT_MID, -12, 0);
     ui_pages_style_topbar_chip(s_wifi_icon);
     lv_label_set_text(s_wifi_icon, LV_SYMBOL_CLOSE);
+    lv_obj_add_flag(s_wifi_icon, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_set_ext_click_area(s_wifi_icon, 16);
+    lv_obj_add_event_cb(s_wifi_icon, ui_status_gesture_cb, LV_EVENT_ALL, NULL);
     }
 
 static void ui_pages_create_nav(lv_obj_t *screen)
@@ -479,6 +552,8 @@ void ui_pages_init(void)
     s_time_label = NULL;
     s_wifi_icon = NULL;
     s_api_icon = NULL;
+    s_system_overlay = NULL;
+    s_status_gesture_armed = false;
     s_nav_bar = NULL;
     s_nav_home_button = NULL;
     s_nav_home_label = NULL;
