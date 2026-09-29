@@ -16,6 +16,7 @@
 #include "freertos/task.h"
 #include "ha/ha_client.h"
 #include "drivers/display_init.h"
+#include "drivers/touch_init.h"
 #include "settings/runtime_settings.h"
 #include "net/wifi_mgr.h"
 #include "ui/fonts/app_text_fonts.h"
@@ -524,6 +525,10 @@ static void ui_global_home_timeout_cb(lv_timer_t *timer)
 {
     LV_UNUSED(timer);
     uint32_t now = lv_tick_get();
+    uint32_t touch_ms = touch_last_activity_ms();
+    if (touch_ms != 0U && (int32_t)(touch_ms - s_last_ui_activity_ms) > 0) {
+        s_last_ui_activity_ms = touch_ms;
+    }
     if ((uint32_t)(now - s_last_ui_activity_ms) < UI_SYSTEM_TIMEOUT_MS) {
         return;
     }
