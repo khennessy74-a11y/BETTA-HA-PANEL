@@ -14,6 +14,8 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "ha/ha_client.h"
+#include "drivers/display_init.h"
+#include "settings/runtime_settings.h"
 #include "net/wifi_mgr.h"
 #include "ui/fonts/app_text_fonts.h"
 #include "ui/ui_i18n.h"
@@ -45,6 +47,8 @@ static lv_obj_t *s_api_icon = NULL;
 static lv_obj_t *s_system_overlay = NULL;
 static lv_obj_t *s_system_details = NULL;
 static lv_obj_t *s_restart_confirm = NULL;
+static lv_obj_t *s_brightness_slider = NULL;
+static lv_obj_t *s_brightness_value = NULL;
 static bool s_status_gesture_armed = false;
 static lv_obj_t *s_nav_bar = NULL;
 static lv_obj_t *s_nav_home_button = NULL;
@@ -385,6 +389,8 @@ static void ui_system_overlay_close_cb(lv_event_t *event)
         s_system_overlay = NULL;
         s_system_details = NULL;
         s_restart_confirm = NULL;
+        s_brightness_slider = NULL;
+        s_brightness_value = NULL;
     }
 }
 
@@ -517,6 +523,35 @@ static void ui_restart_request_cb(lv_event_t *event)
     lv_obj_move_foreground(s_restart_confirm);
 }
 
+static void ui_brightness_changed_cb(lv_event_t *event)
+{
+    lv_obj_t *slider = lv_event_get_target(event);
+    int value = (int)lv_slider_get_value(slider);
+    (void)display_set_brightness_percent(value);
+
+    if (s_brightness_value != NULL) {
+        char label[16];
+        snprintf(label, sizeof(label), "%d%%", value);
+        lv_label_set_text(s_brightness_value, label);
+    }
+
+    if (lv_event_get_code(event) == LV_EVENT_RELEASED) {
+        runtime_settings_t settings = {0};
+        if (runtime_settings_load(&settings) == ESP_OK) {
+            settings.display_brightness_percent = value;
+            (void)runtime_settings_save(&settings);
+            display_configure_night_mode(
+                settings.display_brightness_percent,
+                settings.display_night_brightness_percent,
+                settings.display_night_mode,
+                settings.display_night_start_hour,
+                settings.display_night_start_minute,
+                settings.display_day_start_hour,
+                settings.display_day_start_minute);
+        }
+    }
+}
+
 static void ui_system_overlay_show(void)
 {
     if (s_system_overlay != NULL) {
@@ -559,6 +594,28 @@ static void ui_system_overlay_show(void)
     lv_obj_t *back_label = lv_label_create(back);
     lv_label_set_text(back_label, "Back");
     lv_obj_center(back_label);
+
+    runtime_settings_t display_settings = {0};
+    if (runtime_settings_load(&display_settings) == ESP_OK) {
+        lv_obj_t *display_title = lv_label_create(s_system_overlay);
+        lv_label_set_text(display_title, "DISPLAY BRIGHTNESS");
+        lv_obj_set_style_text_font(display_title, APP_FONT_TEXT_16, LV_PART_MAIN);
+        lv_obj_align(display_title, LV_ALIGN_BOTTOM_LEFT, 26, -72);
+
+        s_brightness_slider = lv_slider_create(s_system_overlay);
+        lv_slider_set_range(s_brightness_slider, 1, 100);
+        lv_slider_set_value(s_brightness_slider, display_settings.display_brightness_percent, LV_ANIM_OFF);
+        lv_obj_set_size(s_brightness_slider, s_geometry.screen_w > 700 ? 360 : 280, 20);
+        lv_obj_align(s_brightness_slider, LV_ALIGN_BOTTOM_LEFT, 26, -32);
+        lv_obj_add_event_cb(s_brightness_slider, ui_brightness_changed_cb, LV_EVENT_VALUE_CHANGED, NULL);
+        lv_obj_add_event_cb(s_brightness_slider, ui_brightness_changed_cb, LV_EVENT_RELEASED, NULL);
+
+        s_brightness_value = lv_label_create(s_system_overlay);
+        char brightness_text[16];
+        snprintf(brightness_text, sizeof(brightness_text), "%d%%", display_settings.display_brightness_percent);
+        lv_label_set_text(s_brightness_value, brightness_text);
+        lv_obj_align_to(s_brightness_value, s_brightness_slider, LV_ALIGN_OUT_RIGHT_MID, 14, 0);
+    }
 
     lv_obj_t *restart = lv_btn_create(s_system_overlay);
     lv_obj_set_size(restart, 160, 48);
@@ -709,6 +766,8 @@ void ui_pages_init(void)
     s_system_overlay = NULL;
     s_system_details = NULL;
     s_restart_confirm = NULL;
+    s_brightness_slider = NULL;
+    s_brightness_value = NULL;
     s_status_gesture_armed = false;
     s_nav_bar = NULL;
     s_nav_home_button = NULL;
