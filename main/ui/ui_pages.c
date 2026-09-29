@@ -648,21 +648,37 @@ static void ui_restart_request_cb(lv_event_t *event)
     lv_obj_set_style_text_align(message, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     lv_obj_align(message, LV_ALIGN_TOP_MID, 0, 24);
 
-    lv_obj_t *cancel = lv_btn_create(s_restart_confirm);
+    lv_obj_t *cancel = lv_obj_create(s_restart_confirm);
+    lv_obj_remove_style_all(cancel);
     lv_obj_set_size(cancel, 130, 50);
     lv_obj_align(cancel, LV_ALIGN_BOTTOM_LEFT, 24, -20);
+    lv_obj_add_flag(cancel, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_clear_flag(cancel, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_ext_click_area(cancel, 8);
     lv_obj_add_event_cb(cancel, ui_restart_cancel_cb, LV_EVENT_CLICKED, NULL);
     lv_obj_t *cancel_label = lv_label_create(cancel);
     lv_label_set_text(cancel_label, "Cancel");
+    lv_obj_set_style_text_font(cancel_label, NAV_TEXT_FONT, LV_PART_MAIN);
+    lv_obj_set_width(cancel_label, 118);
+    lv_obj_set_style_text_align(cancel_label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     lv_obj_center(cancel_label);
+    ui_pages_style_nav_button(cancel, cancel_label, false, false);
 
-    lv_obj_t *restart = lv_btn_create(s_restart_confirm);
+    lv_obj_t *restart = lv_obj_create(s_restart_confirm);
+    lv_obj_remove_style_all(restart);
     lv_obj_set_size(restart, 150, 50);
     lv_obj_align(restart, LV_ALIGN_BOTTOM_RIGHT, -24, -20);
+    lv_obj_add_flag(restart, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_clear_flag(restart, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_ext_click_area(restart, 8);
     lv_obj_add_event_cb(restart, ui_restart_now_cb, LV_EVENT_CLICKED, NULL);
     lv_obj_t *restart_label = lv_label_create(restart);
     lv_label_set_text(restart_label, "Restart");
+    lv_obj_set_style_text_font(restart_label, NAV_TEXT_FONT, LV_PART_MAIN);
+    lv_obj_set_width(restart_label, 138);
+    lv_obj_set_style_text_align(restart_label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     lv_obj_center(restart_label);
+    ui_pages_style_nav_button(restart, restart_label, true, false);
 
     lv_obj_move_foreground(s_restart_confirm);
 }
