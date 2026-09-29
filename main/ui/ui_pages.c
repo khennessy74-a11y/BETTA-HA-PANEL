@@ -641,14 +641,22 @@ static void ui_display_mode_changed_cb(lv_event_t *event)
 static lv_obj_t *ui_system_header_button(
     lv_obj_t *parent, const char *text, lv_coord_t x, lv_coord_t width, lv_event_cb_t cb)
 {
-    lv_obj_t *button = lv_btn_create(parent);
-    lv_obj_set_size(button, width, 46);
+    lv_obj_t *button = lv_obj_create(parent);
+    lv_obj_remove_style_all(button);
+    lv_obj_set_size(button, width, 42);
     lv_obj_set_pos(button, x, 9);
+    lv_obj_add_flag(button, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_clear_flag(button, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_ext_click_area(button, 8);
     lv_obj_add_event_cb(button, cb, LV_EVENT_CLICKED, NULL);
+
     lv_obj_t *label = lv_label_create(button);
     lv_label_set_text(label, text);
-    lv_obj_set_style_text_font(label, APP_FONT_TEXT_16, LV_PART_MAIN);
+    lv_obj_set_style_text_font(label, NAV_TEXT_FONT, LV_PART_MAIN);
+    lv_obj_set_width(label, width - 12);
+    lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     lv_obj_center(label);
+    ui_pages_style_nav_button(button, label, false, false);
     return button;
 }
 
@@ -682,12 +690,7 @@ static lv_obj_t *ui_system_create_shell(const char *title)
     lv_obj_set_style_border_color(header, lv_color_hex(APP_UI_COLOR_TOPBAR_BORDER), LV_PART_MAIN);
     lv_obj_clear_flag(header, LV_OBJ_FLAG_SCROLLABLE);
 
-    lv_obj_t *title_label = lv_label_create(header);
-    lv_label_set_text(title_label, title);
-    lv_obj_set_style_text_font(title_label, s_geometry.screen_w <= 520 ? APP_FONT_TEXT_22 : APP_FONT_TEXT_34, LV_PART_MAIN);
-    lv_obj_set_width(title_label, s_geometry.screen_w <= 520 ? 190 : 360);
-    lv_label_set_long_mode(title_label, LV_LABEL_LONG_DOT);
-    lv_obj_align(title_label, LV_ALIGN_CENTER, 0, 0);
+    LV_UNUSED(title);
 
     lv_obj_t *footer = lv_obj_create(s_system_overlay);
     lv_obj_remove_style_all(footer);
@@ -700,14 +703,18 @@ static lv_obj_t *ui_system_create_shell(const char *title)
     lv_obj_set_style_border_color(footer, lv_color_hex(APP_UI_COLOR_TOPBAR_BORDER), LV_PART_MAIN);
     lv_obj_clear_flag(footer, LV_OBJ_FLAG_SCROLLABLE);
 
-    lv_obj_t *home = lv_btn_create(footer);
+    lv_obj_t *home = lv_obj_create(footer);
+    lv_obj_remove_style_all(home);
     lv_obj_set_size(home, 92, 42);
     lv_obj_center(home);
+    lv_obj_add_flag(home, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_clear_flag(home, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_add_event_cb(home, ui_system_overlay_close_cb, LV_EVENT_CLICKED, NULL);
     lv_obj_t *home_label = lv_label_create(home);
     lv_label_set_text(home_label, LV_SYMBOL_HOME);
     lv_obj_set_style_text_font(home_label, TOPBAR_ICON_FONT, LV_PART_MAIN);
     lv_obj_center(home_label);
+    ui_pages_style_nav_button(home, home_label, true, true);
 
     lv_obj_t *content = lv_obj_create(s_system_overlay);
     lv_obj_remove_style_all(content);
@@ -739,10 +746,10 @@ static void ui_system_overlay_show(void)
 
     const lv_coord_t w = s_geometry.screen_w;
     const lv_coord_t margin = w <= 520 ? 14 : 24;
-    const lv_coord_t gap = 8;
-    const lv_coord_t back_w = w <= 520 ? 72 : 90;
-    const lv_coord_t restart_w = w <= 520 ? 88 : 120;
-    const lv_coord_t display_w = w <= 520 ? 82 : 110;
+    const lv_coord_t gap = 10;
+    const lv_coord_t back_w = w <= 520 ? 92 : 110;
+    const lv_coord_t display_w = w <= 520 ? 110 : 130;
+    const lv_coord_t restart_w = w <= 520 ? 110 : 130;
 
     ui_system_header_button(s_system_overlay, "Back", margin, back_w, ui_system_overlay_close_cb);
     ui_system_header_button(
@@ -752,11 +759,16 @@ static void ui_system_overlay_show(void)
         s_system_overlay, "Restart",
         w - margin - restart_w, restart_w, ui_restart_request_cb);
 
-    /* Status occupies the upper portion.  The HA log gets the remaining
-     * content area and scrolls independently, matching the dashboard's
-     * fixed header/content/footer model. */
+    /* Diagnostics belongs to the content page, not the action bar. */
+    lv_obj_t *page_title = lv_label_create(content);
+    lv_label_set_text(page_title, "System / Diagnostics");
+    lv_obj_set_style_text_font(page_title, w <= 520 ? APP_FONT_TEXT_22 : APP_FONT_TEXT_34, LV_PART_MAIN);
+    lv_obj_set_pos(page_title, margin, 10);
+    lv_obj_set_width(page_title, w - (margin * 2));
+    lv_label_set_long_mode(page_title, LV_LABEL_LONG_DOT);
+
     s_system_details = lv_label_create(content);
-    lv_obj_set_pos(s_system_details, margin, 12);
+    lv_obj_set_pos(s_system_details, margin, w <= 520 ? 48 : 58);
     lv_obj_set_width(s_system_details, w - (margin * 2));
     lv_label_set_long_mode(s_system_details, LV_LABEL_LONG_WRAP);
     lv_obj_set_style_text_font(s_system_details, APP_FONT_TEXT_16, LV_PART_MAIN);
@@ -766,13 +778,16 @@ static void ui_system_overlay_show(void)
     lv_label_set_long_mode(s_system_log, LV_LABEL_LONG_WRAP);
     lv_obj_set_style_text_font(s_system_log, APP_FONT_TEXT_16, LV_PART_MAIN);
 
+    /* Populate first, then measure.  The previous layout measured the empty
+     * label, which placed the log on top of the status text. */
     ui_system_overlay_refresh();
     lv_obj_update_layout(s_system_details);
 
-    lv_coord_t log_y = lv_obj_get_y(s_system_details) + lv_obj_get_height(s_system_details) + 30;
+    lv_coord_t log_y = lv_obj_get_y(s_system_details) + lv_obj_get_height(s_system_details) + 12;
     lv_coord_t content_h = lv_obj_get_height(content);
-    if (log_y > content_h - 100) {
-        log_y = content_h - 100;
+    lv_coord_t min_log_h = w <= 520 ? 84 : 120;
+    if (log_y > content_h - min_log_h - 28) {
+        log_y = content_h - min_log_h - 28;
     }
 
     lv_obj_t *log_title = lv_label_create(content);
@@ -781,8 +796,8 @@ static void ui_system_overlay_show(void)
     lv_obj_set_pos(log_title, margin, log_y);
 
     lv_obj_t *log_box = lv_obj_create(content);
-    lv_obj_set_pos(log_box, margin, log_y + 26);
-    lv_obj_set_size(log_box, w - (margin * 2), content_h - log_y - 34);
+    lv_obj_set_pos(log_box, margin, log_y + 24);
+    lv_obj_set_size(log_box, w - (margin * 2), content_h - log_y - 30);
     lv_obj_set_style_bg_color(log_box, lv_color_hex(APP_UI_COLOR_TOPBAR_BG), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(log_box, LV_OPA_50, LV_PART_MAIN);
     lv_obj_set_style_border_width(log_box, 1, LV_PART_MAIN);
@@ -819,10 +834,15 @@ static void ui_system_display_show(void)
     ui_system_header_button(
         s_system_overlay, "Diagnostics", w - margin - diag_w, diag_w, ui_system_diagnostics_open_cb);
 
+    lv_obj_t *page_title = lv_label_create(content);
+    lv_label_set_text(page_title, "Display Settings");
+    lv_obj_set_style_text_font(page_title, w <= 520 ? APP_FONT_TEXT_22 : APP_FONT_TEXT_34, LV_PART_MAIN);
+    lv_obj_set_pos(page_title, margin, 10);
+
     lv_obj_t *body = lv_obj_create(content);
     lv_obj_remove_style_all(body);
-    lv_obj_set_pos(body, margin, 12);
-    lv_obj_set_size(body, w - (margin * 2), lv_obj_get_height(content) - 24);
+    lv_obj_set_pos(body, margin, w <= 520 ? 50 : 62);
+    lv_obj_set_size(body, w - (margin * 2), lv_obj_get_height(content) - (w <= 520 ? 58 : 70));
     lv_obj_add_flag(body, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_scroll_dir(body, LV_DIR_VER);
     lv_obj_set_scrollbar_mode(body, LV_SCROLLBAR_MODE_AUTO);
