@@ -789,12 +789,10 @@ static void ui_system_overlay_show(void)
     ui_system_overlay_refresh();
     lv_obj_update_layout(s_system_details);
 
-    lv_coord_t log_y = lv_obj_get_y(s_system_details) + lv_obj_get_height(s_system_details) + 22;
-    lv_coord_t content_h = lv_obj_get_height(content);
-    lv_coord_t min_log_h = w <= 520 ? 84 : 120;
-    if (log_y > content_h - min_log_h - 28) {
-        log_y = content_h - min_log_h - 28;
-    }
+    lv_coord_t log_y = lv_obj_get_y(s_system_details) + lv_obj_get_height(s_system_details) + 12;
+    lv_coord_t content_h = s_geometry.screen_h
+        - (s_geometry.content_y > 64 ? s_geometry.content_y : 64)
+        - (s_geometry.nav_h > 0 ? s_geometry.nav_h : 60);
 
     lv_obj_t *log_title = lv_label_create(content);
     lv_label_set_text(log_title, "RECENT HA CONNECTION LOG");
@@ -805,7 +803,11 @@ static void ui_system_overlay_show(void)
 
     lv_obj_t *log_box = lv_obj_create(content);
     lv_obj_set_pos(log_box, margin, log_y + 24);
-    lv_obj_set_size(log_box, w - (margin * 2), content_h - log_y - 30);
+    lv_coord_t log_h = content_h - log_y - 30;
+    if (log_h < 56) {
+        log_h = 56;
+    }
+    lv_obj_set_size(log_box, w - (margin * 2), log_h);
     lv_obj_set_style_bg_color(log_box, lv_color_hex(APP_UI_COLOR_TOPBAR_BG), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(log_box, LV_OPA_50, LV_PART_MAIN);
     lv_obj_set_style_border_width(log_box, 1, LV_PART_MAIN);
@@ -818,6 +820,9 @@ static void ui_system_overlay_show(void)
     lv_obj_set_parent(s_system_log, log_box);
     lv_obj_set_pos(s_system_log, 0, 0);
     lv_obj_set_width(s_system_log, LV_PCT(100));
+    if (w <= 520) {
+        lv_obj_set_style_text_font(s_system_log, APP_FONT_TEXT_14, LV_PART_MAIN);
+    }
 
     lv_obj_move_foreground(s_system_overlay);
 }
@@ -846,10 +851,16 @@ static void ui_system_display_show(void)
     lv_obj_set_style_text_opa(page_title, LV_OPA_COVER, LV_PART_MAIN);
     lv_obj_set_pos(page_title, margin, 10);
 
+    const lv_coord_t header_h = s_geometry.content_y > 64 ? s_geometry.content_y : 64;
+    const lv_coord_t footer_h = s_geometry.nav_h > 0 ? s_geometry.nav_h : 60;
+    const lv_coord_t content_h = s_geometry.screen_h - header_h - footer_h;
+    const lv_coord_t body_y = w <= 520 ? 50 : 62;
+    const lv_coord_t body_h = content_h - body_y - 8;
+
     lv_obj_t *body = lv_obj_create(content);
     lv_obj_remove_style_all(body);
-    lv_obj_set_pos(body, margin, w <= 520 ? 50 : 62);
-    lv_obj_set_size(body, w - (margin * 2), lv_obj_get_height(content) - (w <= 520 ? 58 : 70));
+    lv_obj_set_pos(body, margin, body_y);
+    lv_obj_set_size(body, w - (margin * 2), body_h);
     lv_obj_add_flag(body, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_scroll_dir(body, LV_DIR_VER);
     lv_obj_set_scrollbar_mode(body, LV_SCROLLBAR_MODE_AUTO);
@@ -877,6 +888,7 @@ static void ui_system_display_show(void)
         char value[16];
         snprintf(value, sizeof(value), "%d%%", settings.display_brightness_percent);
         lv_label_set_text(s_brightness_value, value);
+        lv_obj_set_style_text_font(s_brightness_value, APP_FONT_TEXT_16, LV_PART_MAIN);
         lv_obj_set_style_text_color(s_brightness_value, lv_color_hex(APP_UI_COLOR_TOPBAR_TEXT), LV_PART_MAIN);
         lv_obj_set_style_text_opa(s_brightness_value, LV_OPA_COVER, LV_PART_MAIN);
         lv_obj_set_pos(s_brightness_value, body_w - 54, y);
