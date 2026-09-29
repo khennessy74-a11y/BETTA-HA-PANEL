@@ -1394,6 +1394,12 @@ bool ui_pages_show_index(uint16_t index)
         }
     }
     s_current_index = (int16_t)index;
+
+    /* Showing a page is itself confirmed UI activity.  Reset the global
+     * inactivity epoch here so the 60-second home timeout is measured from
+     * the navigation that opened the page, not from boot/UI construction. */
+    s_last_ui_activity_ms = lv_tick_get();
+
     ui_pages_apply_tab_style(index);
     if (s_show_cb != NULL) {
         s_show_cb(s_pages[index].id, index);
