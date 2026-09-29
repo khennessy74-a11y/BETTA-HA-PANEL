@@ -52,6 +52,7 @@ static lv_obj_t *s_system_ha_details = NULL;
 static lv_obj_t *s_system_wifi_details = NULL;
 static lv_obj_t *s_system_log = NULL;
 static lv_obj_t *s_restart_confirm = NULL;
+static lv_obj_t *s_restart_dim = NULL;
 static lv_obj_t *s_brightness_slider = NULL;
 static lv_obj_t *s_brightness_value = NULL;
 static lv_obj_t *s_night_mode_dropdown = NULL;
@@ -609,7 +610,11 @@ static void ui_system_overlay_refresh(void)
 static void ui_restart_cancel_cb(lv_event_t *event)
 {
     LV_UNUSED(event);
-    if (s_restart_confirm != NULL) {
+    if (s_restart_dim != NULL) {
+        lv_obj_del(s_restart_dim);
+        s_restart_dim = NULL;
+        s_restart_confirm = NULL;
+    } else if (s_restart_confirm != NULL) {
         lv_obj_del(s_restart_confirm);
         s_restart_confirm = NULL;
     }
@@ -635,7 +640,17 @@ static void ui_restart_request_cb(lv_event_t *event)
         return;
     }
 
-    s_restart_confirm = lv_obj_create(s_system_overlay);
+    /* Full-screen modal scrim both dims and blocks the diagnostics UI. */
+    s_restart_dim = lv_obj_create(s_system_overlay);
+    lv_obj_remove_style_all(s_restart_dim);
+    lv_obj_set_size(s_restart_dim, LV_PCT(100), LV_PCT(100));
+    lv_obj_center(s_restart_dim);
+    lv_obj_add_flag(s_restart_dim, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_clear_flag(s_restart_dim, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_style_bg_color(s_restart_dim, lv_color_hex(0x000000), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(s_restart_dim, LV_OPA_60, LV_PART_MAIN);
+
+    s_restart_confirm = lv_obj_create(s_restart_dim);
     lv_obj_set_size(s_restart_confirm, LV_PCT(70), 300);
     lv_obj_center(s_restart_confirm);
     lv_obj_set_style_bg_color(s_restart_confirm, lv_color_hex(APP_UI_COLOR_TOPBAR_BG), LV_PART_MAIN);
@@ -652,7 +667,7 @@ static void ui_restart_request_cb(lv_event_t *event)
     lv_obj_t *cancel = lv_obj_create(s_restart_confirm);
     lv_obj_remove_style_all(cancel);
     lv_obj_set_size(cancel, 130, 50);
-    lv_obj_align(cancel, LV_ALIGN_CENTER, 0, 20);
+    lv_obj_align(cancel, LV_ALIGN_CENTER, 0, 28);
     lv_obj_add_flag(cancel, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_clear_flag(cancel, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_ext_click_area(cancel, 8);
@@ -668,7 +683,7 @@ static void ui_restart_request_cb(lv_event_t *event)
     lv_obj_t *restart = lv_obj_create(s_restart_confirm);
     lv_obj_remove_style_all(restart);
     lv_obj_set_size(restart, 150, 50);
-    lv_obj_align(restart, LV_ALIGN_CENTER, 0, 100);
+    lv_obj_align(restart, LV_ALIGN_CENTER, 0, 104);
     lv_obj_add_flag(restart, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_clear_flag(restart, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_ext_click_area(restart, 8);
@@ -681,7 +696,7 @@ static void ui_restart_request_cb(lv_event_t *event)
     lv_obj_center(restart_label);
     ui_pages_style_nav_button(restart, restart_label, true, false);
 
-    lv_obj_move_foreground(s_restart_confirm);
+    lv_obj_move_foreground(s_restart_dim);
 }
 
 static void ui_brightness_changed_cb(lv_event_t *event)
