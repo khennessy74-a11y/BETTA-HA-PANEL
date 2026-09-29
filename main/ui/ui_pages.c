@@ -10,6 +10,9 @@
 
 #include "app_config.h"
 #include "esp_app_desc.h"
+#include "esp_system.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include "ha/ha_client.h"
 #include "net/wifi_mgr.h"
 #include "ui/fonts/app_text_fonts.h"
@@ -41,6 +44,7 @@ static lv_obj_t *s_wifi_icon = NULL;
 static lv_obj_t *s_api_icon = NULL;
 static lv_obj_t *s_system_overlay = NULL;
 static lv_obj_t *s_system_details = NULL;
+static lv_obj_t *s_restart_confirm = NULL;
 static bool s_status_gesture_armed = false;
 static lv_obj_t *s_nav_bar = NULL;
 static lv_obj_t *s_nav_home_button = NULL;
@@ -380,6 +384,7 @@ static void ui_system_overlay_close_cb(lv_event_t *event)
         lv_obj_del(s_system_overlay);
         s_system_overlay = NULL;
         s_system_details = NULL;
+        s_restart_confirm = NULL;
     }
 }
 
@@ -451,6 +456,67 @@ static void ui_system_overlay_refresh(void)
     lv_label_set_text(s_system_details, text);
 }
 
+static void ui_restart_cancel_cb(lv_event_t *event)
+{
+    LV_UNUSED(event);
+    if (s_restart_confirm != NULL) {
+        lv_obj_del(s_restart_confirm);
+        s_restart_confirm = NULL;
+    }
+}
+
+static void ui_restart_now_cb(lv_event_t *event)
+{
+    LV_UNUSED(event);
+    ha_client_stop();
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+    if (wifi_mgr_force_transport_recover() != ESP_OK) {
+        (void)wifi_mgr_force_reconnect();
+    }
+#endif
+    vTaskDelay(pdMS_TO_TICKS(250));
+    esp_restart();
+}
+
+static void ui_restart_request_cb(lv_event_t *event)
+{
+    LV_UNUSED(event);
+    if (s_system_overlay == NULL || s_restart_confirm != NULL) {
+        return;
+    }
+
+    s_restart_confirm = lv_obj_create(s_system_overlay);
+    lv_obj_set_size(s_restart_confirm, LV_PCT(70), 210);
+    lv_obj_center(s_restart_confirm);
+    lv_obj_set_style_bg_color(s_restart_confirm, lv_color_hex(APP_UI_COLOR_TOPBAR_BG), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(s_restart_confirm, LV_OPA_COVER, LV_PART_MAIN);
+    lv_obj_set_style_radius(s_restart_confirm, 16, LV_PART_MAIN);
+
+    lv_obj_t *message = lv_label_create(s_restart_confirm);
+    lv_label_set_text(message, "Restart the BETTA panel?\nSaved settings will be retained.");
+    lv_obj_set_width(message, LV_PCT(90));
+    lv_obj_set_style_text_align(message, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+    lv_obj_align(message, LV_ALIGN_TOP_MID, 0, 24);
+
+    lv_obj_t *cancel = lv_btn_create(s_restart_confirm);
+    lv_obj_set_size(cancel, 130, 50);
+    lv_obj_align(cancel, LV_ALIGN_BOTTOM_LEFT, 24, -20);
+    lv_obj_add_event_cb(cancel, ui_restart_cancel_cb, LV_EVENT_CLICKED, NULL);
+    lv_obj_t *cancel_label = lv_label_create(cancel);
+    lv_label_set_text(cancel_label, "Cancel");
+    lv_obj_center(cancel_label);
+
+    lv_obj_t *restart = lv_btn_create(s_restart_confirm);
+    lv_obj_set_size(restart, 150, 50);
+    lv_obj_align(restart, LV_ALIGN_BOTTOM_RIGHT, -24, -20);
+    lv_obj_add_event_cb(restart, ui_restart_now_cb, LV_EVENT_CLICKED, NULL);
+    lv_obj_t *restart_label = lv_label_create(restart);
+    lv_label_set_text(restart_label, "Restart");
+    lv_obj_center(restart_label);
+
+    lv_obj_move_foreground(s_restart_confirm);
+}
+
 static void ui_system_overlay_show(void)
 {
     if (s_system_overlay != NULL) {
@@ -493,6 +559,14 @@ static void ui_system_overlay_show(void)
     lv_obj_t *back_label = lv_label_create(back);
     lv_label_set_text(back_label, "Back");
     lv_obj_center(back_label);
+
+    lv_obj_t *restart = lv_btn_create(s_system_overlay);
+    lv_obj_set_size(restart, 160, 48);
+    lv_obj_align(restart, LV_ALIGN_BOTTOM_RIGHT, -20, -18);
+    lv_obj_add_event_cb(restart, ui_restart_request_cb, LV_EVENT_CLICKED, NULL);
+    lv_obj_t *restart_label = lv_label_create(restart);
+    lv_label_set_text(restart_label, "Restart Panel");
+    lv_obj_center(restart_label);
 
     ui_system_overlay_refresh();
     lv_obj_move_foreground(s_system_overlay);
@@ -634,6 +708,7 @@ void ui_pages_init(void)
     s_api_icon = NULL;
     s_system_overlay = NULL;
     s_system_details = NULL;
+    s_restart_confirm = NULL;
     s_status_gesture_armed = false;
     s_nav_bar = NULL;
     s_nav_home_button = NULL;
