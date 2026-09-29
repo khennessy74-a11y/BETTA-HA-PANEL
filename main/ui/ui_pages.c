@@ -1128,6 +1128,16 @@ static void ui_status_gesture_cb(lv_event_t *event)
         if ((uint32_t)(now - s_status_gesture_started_ms) >= UI_SYSTEM_HOLD_MS) {
             s_status_gesture_armed = false;
             s_status_gesture_started_ms = 0U;
+
+            /* The finger that completed the 3-second status hold is still
+             * physically down while the diagnostics overlay is created.
+             * Reset that indev before exposing controls under the old touch
+             * coordinate so the opening gesture cannot click Restart. */
+            lv_indev_t *indev = lv_event_get_indev(event);
+            if (indev != NULL) {
+                lv_indev_reset(indev, NULL);
+            }
+            lv_event_stop_processing(event);
             ui_system_overlay_show();
         }
     } else if (code == LV_EVENT_RELEASED || code == LV_EVENT_PRESS_LOST) {
