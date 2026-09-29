@@ -636,22 +636,23 @@ static void ui_restart_request_cb(lv_event_t *event)
     }
 
     s_restart_confirm = lv_obj_create(s_system_overlay);
-    lv_obj_set_size(s_restart_confirm, LV_PCT(70), 210);
+    lv_obj_set_size(s_restart_confirm, LV_PCT(70), 300);
     lv_obj_center(s_restart_confirm);
     lv_obj_set_style_bg_color(s_restart_confirm, lv_color_hex(APP_UI_COLOR_TOPBAR_BG), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(s_restart_confirm, LV_OPA_COVER, LV_PART_MAIN);
     lv_obj_set_style_radius(s_restart_confirm, 16, LV_PART_MAIN);
+    lv_obj_clear_flag(s_restart_confirm, LV_OBJ_FLAG_SCROLLABLE);
 
     lv_obj_t *message = lv_label_create(s_restart_confirm);
     lv_label_set_text(message, "Restart the BETTA panel?\nSaved settings will be retained.");
     lv_obj_set_width(message, LV_PCT(90));
     lv_obj_set_style_text_align(message, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
-    lv_obj_align(message, LV_ALIGN_TOP_MID, 0, 24);
+    lv_obj_align(message, LV_ALIGN_TOP_MID, 0, 22);
 
     lv_obj_t *cancel = lv_obj_create(s_restart_confirm);
     lv_obj_remove_style_all(cancel);
     lv_obj_set_size(cancel, 130, 50);
-    lv_obj_align(cancel, LV_ALIGN_BOTTOM_MID, -82, -20);
+    lv_obj_align(cancel, LV_ALIGN_CENTER, 0, 20);
     lv_obj_add_flag(cancel, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_clear_flag(cancel, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_ext_click_area(cancel, 8);
@@ -667,7 +668,7 @@ static void ui_restart_request_cb(lv_event_t *event)
     lv_obj_t *restart = lv_obj_create(s_restart_confirm);
     lv_obj_remove_style_all(restart);
     lv_obj_set_size(restart, 150, 50);
-    lv_obj_align(restart, LV_ALIGN_BOTTOM_MID, 78, -20);
+    lv_obj_align(restart, LV_ALIGN_CENTER, 0, 100);
     lv_obj_add_flag(restart, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_clear_flag(restart, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_ext_click_area(restart, 8);
