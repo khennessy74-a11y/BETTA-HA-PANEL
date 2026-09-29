@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: LicenseRef-FNCL-1.1 | Copyright (c) 2026 Cpt_Kirk -->
+<!-- SPDX-License-Identifier: LicenseRef-FNCL-1.1 | Copyright (c) 2026 Cpt_Kirk | Copyright (c) 2026 khennessy74-a11y -->
 <img src="images/BETTAOS.jpg" alt="BETTA OS Logo" width="10%" />
 
 # BETTA HA Panel
@@ -18,9 +18,9 @@ BETTA HA Panel ships as **three firmware variants**, one per supported device:
 
 | Variant    | Device                                                  | Resolution | Factory image                                                                     |
 |------------|---------------------------------------------------------|------------|-----------------------------------------------------------------------------------|
-| `panel4`   | Waveshare **ESP32-P4-WIFI6-Touch-LCD-4B** (4")          | 720 × 720  | [betta86-ha-panel-v0.8.2-panel4.factory.bin](release/betta86-ha-panel-v0.8.2-panel4.factory.bin)   |
-| `panel10`  | Waveshare **ESP32-P4 Module Nano + 10.1" DSI panel**    | 1280 × 800 | [betta86-ha-panel-v0.8.2-panel10.factory.bin](release/betta86-ha-panel-v0.8.2-panel10.factory.bin) |
-| `panels3`  | Guition **ESP32-S3-4848S040** (4")                      | 480 × 480  | [betta86-ha-panel-v0.8.2-panels3.factory.bin](release/betta86-ha-panel-v0.8.2-panels3.factory.bin) |
+| `panel4`   | Waveshare **ESP32-P4-WIFI6-Touch-LCD-4B** (4")       | 720 × 720  | [betta-ha-panel-v0.9-panel4.factory.bin](https://github.com/khennessy74-a11y/BETTA-HA-PANEL/releases/latest/download/betta-ha-panel-v0.9-panel4.factory.bin) |
+| `panel10`  | Waveshare **ESP32-P4 Module Nano + 10.1" DSI panel** | 1280 × 800 | [betta-ha-panel-v0.9-panel10.factory.bin](https://github.com/khennessy74-a11y/BETTA-HA-PANEL/releases/latest/download/betta-ha-panel-v0.9-panel10.factory.bin) |
+| `panels3`  | Guition **ESP32-S3-4848S040** (4")                   | 480 × 480  | [betta-ha-panel-v0.9-panels3.factory.bin](https://github.com/khennessy74-a11y/BETTA-HA-PANEL/releases/latest/download/betta-ha-panel-v0.9-panels3.factory.bin) |
 
 All variants share the same dashboard engine, web editor, and Home Assistant integration. Pick the image that matches your board.
 
@@ -37,7 +37,10 @@ All variants share the same dashboard engine, web editor, and Home Assistant int
 - **First-run provisioning** — `BETTA-Setup` Wi-Fi AP, guided Wi-Fi + Home Assistant setup, Quick Setup flow for a starter dashboard.
 - **OTA updates** — upload an `.ota.bin` or point to an OTA URL from the web editor; no reflash required after v0.7.1.
 - **Multilingual** — built-in English, German, Spanish, French; custom translation JSON upload/download.
-- **Touch-friendly UX** — auto-dimming backlight after idle, pointer-capture drag/resize, stable GT911 touch startup.
+- **Touch-friendly UX** — auto-dimming backlight after idle, scheduled Night Mode, pointer-capture drag/resize, stable GT911 touch startup.
+- **On-panel System & Diagnostics** — open diagnostics from the status area to inspect firmware, Wi-Fi and Home Assistant connection state/logs, restart safely, and adjust display settings without a browser.
+- **On-panel display controls** — brightness, Night Mode schedules and Auto Dim settings with explicit Save behaviour and automatic return to Home after inactivity.
+- **Resilient configured boot** — saved Wi-Fi/Home Assistant configuration is retained when the network or Home Assistant is unavailable during startup; the panel continues to the dashboard and retries recovery instead of dropping into provisioning.
 
 ---
 
@@ -71,7 +74,7 @@ Future updates install via OTA from the editor — no cable needed.
 - **Reliability and diagnostics** — stronger WebSocket recovery, HA connection diagnostics, weather correctness fixes, and improved Save & Reboot handling.
 - **Three-variant release CI** — `panel4`, `panel10`, and `panels3` now build and package versioned factory + OTA images in the same validation workflow.
 
-The public download table remains on v0.8.2 until the v0.9 release-candidate images complete final hardware validation.
+The download table now targets this fork's v0.9 release assets. Release-candidate hardware validation is in progress.
 
 Full history: [release-notes.md](release-notes.md).
 
@@ -114,9 +117,10 @@ The v0.9 development line extends the v0.8.2 baseline with Home Assistant, edito
 - **Weather data correctness** — missing forecast highs/lows are no longer fabricated from the current temperature, and current-temperature handling has been hardened.
 - **HTTP route and handler hardening** — improved robustness around web/API handlers used by the editor and diagnostics.
 
-### Currently under investigation
+### Final RC validation
 
-- **Cold power-cycle HA startup delay on ESP32-P4/C6** — HA now self-recovers and connects, but a true cold boot can require several WebSocket reconnect attempts before the ESP-Hosted network path becomes fully usable. Warm starts connect immediately. Additional native transport-state diagnostics are being used to isolate the remaining startup delay.
+- **Cold-start recovery test** — the configured-panel boot path has been changed so a temporary Wi-Fi/Home Assistant outage cannot force an already-configured panel back into provisioning. Final RC validation includes powering up with the network unavailable, restoring it, and confirming automatic recovery with settings intact.
+- **Global inactivity return** — secondary dashboard/System/Display screens return Home after 60 seconds of inactivity, with the timer reset from actual touch events across nested controls.
 
 ---
 
