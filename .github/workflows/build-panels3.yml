@@ -50,14 +50,14 @@ jobs:
           APP_BIN="$(python -c 'import json,sys; d=json.load(open(sys.argv[1])); print(d["app"]["file"])' "$BUILD_DIR/flasher_args.json")"
           CHIP="$(python -c 'import json,sys; d=json.load(open(sys.argv[1])); print(d["extra_esptool_args"]["chip"])' "$BUILD_DIR/flasher_args.json")"
 
-          python -m esptool --chip "$CHIP" merge_bin             -o "release/betta86-ha-panel-v0.9-${{ matrix.variant }}.factory.bin"             @<(grep -v '^--' "$BUILD_DIR/flash_args" | sed "s# \([^/]\)# $BUILD_DIR/\1#g")
+          python -m esptool --chip "$CHIP" merge_bin             -o "release/betta-ha-panel-v0.9-${{ matrix.variant }}.factory.bin"             @<(grep -v '^--' "$BUILD_DIR/flash_args" | sed "s# \([^/]\)# $BUILD_DIR/\1#g")
 
-          cp "$BUILD_DIR/$APP_BIN" "release/ota/betta86-ha-panel-v0.9-${{ matrix.variant }}.ota.bin"
+          cp "$BUILD_DIR/$APP_BIN" "release/ota/betta-ha-panel-v0.9-${{ matrix.variant }}.ota.bin"
 
       - name: Upload firmware
         uses: actions/upload-artifact@v5
         with:
           name: betta-ha-panel-${{ matrix.variant }}
           path: |
-            release/betta86-ha-panel-v0.9-${{ matrix.variant }}.factory.bin
-            release/ota/betta86-ha-panel-v0.9-${{ matrix.variant }}.ota.bin
+            release/betta-ha-panel-v0.9-${{ matrix.variant }}.factory.bin
+            release/ota/betta-ha-panel-v0.9-${{ matrix.variant }}.ota.bin
