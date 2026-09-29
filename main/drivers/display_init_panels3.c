@@ -1,5 +1,6 @@
 ﻿/* SPDX-License-Identifier: LicenseRef-FNCL-1.1
  * Copyright (c) 2026 Cpt_Kirk
+ * Copyright (c) 2026 khennessy74-a11y
  *
  * Display init â€” Guition CYD ESP32-S3 4848S040 (RGB ST7701S).
  *
