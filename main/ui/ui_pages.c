@@ -651,7 +651,7 @@ static void ui_restart_request_cb(lv_event_t *event)
     lv_obj_t *cancel = lv_obj_create(s_restart_confirm);
     lv_obj_remove_style_all(cancel);
     lv_obj_set_size(cancel, 130, 50);
-    lv_obj_align(cancel, LV_ALIGN_BOTTOM_LEFT, 24, -20);
+    lv_obj_align(cancel, LV_ALIGN_BOTTOM_MID, -82, -20);
     lv_obj_add_flag(cancel, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_clear_flag(cancel, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_ext_click_area(cancel, 8);
@@ -667,7 +667,7 @@ static void ui_restart_request_cb(lv_event_t *event)
     lv_obj_t *restart = lv_obj_create(s_restart_confirm);
     lv_obj_remove_style_all(restart);
     lv_obj_set_size(restart, 150, 50);
-    lv_obj_align(restart, LV_ALIGN_BOTTOM_RIGHT, -24, -20);
+    lv_obj_align(restart, LV_ALIGN_BOTTOM_MID, 78, -20);
     lv_obj_add_flag(restart, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_clear_flag(restart, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_ext_click_area(restart, 8);
