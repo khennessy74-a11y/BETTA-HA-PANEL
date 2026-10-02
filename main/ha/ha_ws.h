@@ -24,6 +24,7 @@ typedef struct {
     uint8_t op_code;
     int payload_len;
     int payload_offset;
+    int error_type;
     esp_err_t tls_esp_err;
     int tls_stack_err;
     int tls_cert_flags;
