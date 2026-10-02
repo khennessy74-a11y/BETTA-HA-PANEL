@@ -388,6 +388,7 @@ const SETTINGS_NAV_ITEMS = [
   { sectionId: "settingsUiSection", headingId: "settingsUiHeading", labelKey: "settings.ui.heading" },
   { sectionId: "settingsThemeSection", headingId: "settingsThemeHeading", labelKey: "settings.theme.heading" },
   { sectionId: "settingsApSection", headingId: "settingsApHeading", labelKey: "settings.ap.heading" },
+  { sectionId: "settingsLogsSection", headingId: "settingsLogsHeading", labelKey: "settings.logs.heading" },
   { sectionId: "settingsOtaSection", headingId: "settingsOtaHeading", labelKey: "settings.ota.heading" },
 ];
 const OTA_STATUS_POLL_MS = 900;
@@ -421,6 +422,7 @@ const WEB_I18N_BUILTIN = {
   en: {
     "tabs.layout": "Layout",
     "tabs.settings": "Settings",
+    "settings.logs.heading": "Logs",
     "sidebar.title": "BETTA Editor",
     "sidebar.subtitle": "Layout source of truth: JSON",
     "layout.pages.heading": "Pages",
