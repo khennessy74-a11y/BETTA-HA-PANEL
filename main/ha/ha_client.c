@@ -484,7 +484,7 @@ static const int64_t HA_WS_GET_STATES_BAD_INPUT_COOLDOWN_MS = 60000;
  * therefore allowed to escalate through the existing guarded recovery path.
  * TLS BAD_INPUT_DATA remains explicitly excluded below. */
 #if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
-static const bool HA_WS_ESCALATE_RECOVER_WHEN_WIFI_UP = true;
+static const bool HA_WS_ESCALATE_RECOVER_WHEN_WIFI_UP = false;
 #else
 static const bool HA_WS_ESCALATE_RECOVER_WHEN_WIFI_UP = false;
 #endif
