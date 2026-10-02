@@ -289,11 +289,14 @@ static bool button_apply_custom_mdi_icon(
     lv_coord_t min_dim = card_w < card_h ? card_w : card_h;
     const lv_font_t *font = NULL;
     const lv_font_t *candidates[4] = {0};
-    if (min_dim >= 260) {
+    /* Match the light tile's MDI size breakpoints exactly so button
+     * icons such as mdi:radiator have the same visual scale at the same
+     * tile geometry. */
+    if (min_dim >= 300) {
         candidates[0] = mdi_font_icon_72();
         candidates[1] = mdi_font_icon_56();
         candidates[2] = mdi_font_icon_42();
-    } else if (min_dim >= 170) {
+    } else if (min_dim >= 240) {
         candidates[0] = mdi_font_icon_56();
         candidates[1] = mdi_font_icon_42();
         candidates[2] = mdi_font_icon_72();
