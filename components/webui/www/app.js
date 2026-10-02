@@ -2082,9 +2082,7 @@ function normalizeLayoutWidgets(layout) {
 
       if (widget.type === "button") {
         widget.button_appearance = normalizeButtonAppearance(widget.button_appearance);
-        const hasStateOffColor = Object.prototype.hasOwnProperty.call(widget, "state_icon_off_color");
-        const hasStateOnColor = Object.prototype.hasOwnProperty.call(widget, "state_icon_on_color");
-        if (!hasStateOffColor && !hasStateOnColor && widget.button_accent_color) {
+        if (!widget.state_icon_off_color && !widget.state_icon_on_color && widget.button_accent_color) {
           const legacyAccent = normalizeHexColor(widget.button_accent_color, DEFAULT_BUTTON_ACCENT_COLOR);
           widget.state_icon_off_color = legacyAccent;
           widget.state_icon_on_color = legacyAccent;
@@ -6764,19 +6762,15 @@ function applyInspector(options = {}) {
     widget.secondary_entity_id = "";
   }
   if (STATE_ICON_COLOR_WIDGET_TYPES.has(widgetType)) {
-    if (el.fStateOffColorMode?.value === "custom") {
-      widget.state_icon_off_color = normalizeHexColor(el.fStateOffColor?.value, "#8ea1b4");
-    } else {
-      /* Keep an explicit empty value to record that the user chose Default.
-       * This prevents legacy button_accent_color migration from recreating a
-       * custom state colour on the next layout reload. */
-      widget.state_icon_off_color = "";
-    }
-    if (el.fStateOnColorMode?.value === "custom") {
-      widget.state_icon_on_color = normalizeHexColor(el.fStateOnColor?.value, "#ffcf6b");
-    } else {
-      widget.state_icon_on_color = "";
-    }
+    if (el.fStateOffColorMode?.value === "custom") widget.state_icon_off_color = normalizeHexColor(el.fStateOffColor?.value, "#8ea1b4");
+    else delete widget.state_icon_off_color;
+    if (el.fStateOnColorMode?.value === "custom") widget.state_icon_on_color = normalizeHexColor(el.fStateOnColor?.value, "#ffcf6b");
+    else delete widget.state_icon_on_color;
+
+    /* button_accent_color is legacy-only. If it survives while the new
+     * state color fields are cleared, layout normalization recreates custom
+     * colors on reload and "Default" appears not to save. */
+    if (widgetType === "button") delete widget.button_accent_color;
   } else {
     delete widget.state_icon_off_color;
     delete widget.state_icon_on_color;
