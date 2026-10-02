@@ -6605,15 +6605,17 @@ static void ha_client_ws_event_cb(const ha_ws_event_t *event, void *user_ctx)
         UBaseType_t ws_hwm_error = uxTaskGetStackHighWaterMark(NULL);
         ESP_LOGE(TAG_HA_CLIENT,
             "HA-CONNECT stage=ws_error attempt=%" PRIu32 " elapsed=%" PRId64
-            "ms tls_esp=%s tls_stack=%d sock_errno=%d ws_task_hwm=%u",
+            "ms type=%d handshake=%d tls_esp=%s tls_stack=%d sock_errno=%d ws_task_hwm=%u",
             s_ha_ws_attempt_no, ha_client_trace_elapsed_ms(),
+            event->error_type,
+            event->ws_handshake_status_code,
             esp_err_to_name(event->tls_esp_err),
             event->tls_stack_err,
             event->sock_errno,
             (unsigned)ws_hwm_error);
-        ha_client_trace_recordf("ws_error attempt=%" PRIu32 " tls=%s stack=%d sock=%d",
-            s_ha_ws_attempt_no, esp_err_to_name(event->tls_esp_err),
-            event->tls_stack_err, event->sock_errno);
+        ha_client_trace_recordf("ws_error attempt=%" PRIu32 " type=%d hs=%d tls=%s stack=%d sock=%d",
+            s_ha_ws_attempt_no, event->error_type, event->ws_handshake_status_code,
+            esp_err_to_name(event->tls_esp_err), event->tls_stack_err, event->sock_errno);
         int64_t ws_error_now_ms = ha_client_now_ms();
         bool tls_bad_input = ha_client_is_tls_bad_input_data(event->tls_stack_err);
         xSemaphoreTake(s_client.mutex, portMAX_DELAY);
