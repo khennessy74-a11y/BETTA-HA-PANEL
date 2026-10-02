@@ -737,10 +737,7 @@
               <span id="settingsHaRestEnabledLabel">Enable HA REST fallback (Default: Off, WS-only preferred)</span>
             </label>
             <div id="settingsHaInfo" class="meta"></div>
-            <div class="ha-connection-log-wrap">
-              <span class="ha-connection-log-title">HA connection log</span>
-              <div id="settingsHaConnectionLog" class="ha-connection-log">Waiting for connection status...</div>
-            </div>
+
           </div>
         </section>
 
@@ -893,6 +890,17 @@
           <h2 id="settingsApHeading">Setup AP</h2>
           <div id="settingsApInfo" class="meta"></div>
           <div id="settingsApHint" class="meta">If setup AP is active, connect to it and open <code>http://192.168.4.1</code>.</div>
+        </section>
+
+        <section>
+          <h2 id="settingsLogsHeading">Logs</h2>
+          <div class="form">
+            <div class="ha-connection-log-wrap">
+              <span class="ha-connection-log-title">HA connection log</span>
+              <div class="meta">Live Home Assistant WebSocket connection history from this boot.</div>
+              <div id="settingsHaConnectionLog" class="ha-connection-log">Waiting for connection status...</div>
+            </div>
+          </div>
         </section>
 
         <section>
