@@ -6766,6 +6766,11 @@ function applyInspector(options = {}) {
     else delete widget.state_icon_off_color;
     if (el.fStateOnColorMode?.value === "custom") widget.state_icon_on_color = normalizeHexColor(el.fStateOnColor?.value, "#ffcf6b");
     else delete widget.state_icon_on_color;
+
+    /* button_accent_color is legacy-only. If it survives while the new
+     * state color fields are cleared, layout normalization recreates custom
+     * colors on reload and "Default" appears not to save. */
+    if (widgetType === "button") delete widget.button_accent_color;
   } else {
     delete widget.state_icon_off_color;
     delete widget.state_icon_on_color;
