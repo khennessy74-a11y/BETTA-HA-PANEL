@@ -172,6 +172,8 @@ typedef struct {
     char condition[32];
     bool today_has_high;
     bool today_has_low;
+    bool today_daily_has_high;
+    bool today_daily_has_low;
     float today_high_temp;
     float today_low_temp;
     char today_condition_key[32];
@@ -220,6 +222,16 @@ typedef struct {
     const lv_font_t *last_icon_font;
     char last_condition_key[32];
     char last_condition_text[32];
+
+    /* Today's daily extrema are deliberately latched per local calendar day.
+     * Some HA weather providers stop returning a complete "today" daily row
+     * later in the day; keeping the first explicit dated daily values avoids
+     * the Today range changing or disappearing as that forecast window rolls. */
+    int today_cache_date_key;
+    bool today_cache_has_high;
+    bool today_cache_has_low;
+    float today_cache_high_temp;
+    float today_cache_low_temp;
 } w_weather_tile_ctx_t;
 
 #ifndef APP_UI_WEATHER_ICON_ALLOW_72
@@ -1360,6 +1372,23 @@ static bool weather_datetime_is_today(const char *datetime)
     return (year == (local_now.tm_year + 1900)) && (month == (local_now.tm_mon + 1)) && (day == local_now.tm_mday);
 }
 
+static int weather_local_date_key(void)
+{
+    time_t now = time(NULL);
+    struct tm local_now = {0};
+    localtime_r(&now, &local_now);
+
+    const int year = local_now.tm_year + 1900;
+    const int month = local_now.tm_mon + 1;
+    const int day = local_now.tm_mday;
+
+    /* Do not latch against an unsynchronised RTC date. */
+    if (year < 2020 || month < 1 || month > 12 || day < 1 || day > 31) {
+        return 0;
+    }
+    return year * 10000 + month * 100 + day;
+}
+
 static bool weather_datetime_is_before_today(const char *datetime)
 {
     int year = 0;
@@ -1522,10 +1551,12 @@ static void weather_extract_values(const ha_state_t *state, bool want_forecast, 
                     if (has_high) {
                         out->today_high_temp = high_temp;
                         out->today_has_high = true;
+                        out->today_daily_has_high = true;
                     }
                     if (has_low) {
                         out->today_low_temp = low_temp;
                         out->today_has_low = true;
+                        out->today_daily_has_low = true;
                     }
                     if (condition_key[0] != '\0') {
                         weather_copy_text(out->today_condition_key, sizeof(out->today_condition_key), condition_key);
@@ -1635,6 +1666,51 @@ static bool weather_unit_is_fahrenheit(const char *unit)
         }
     }
     return false;
+}
+
+static void weather_apply_today_extrema_cache(
+    w_weather_tile_ctx_t *ctx,
+    weather_values_t *values)
+{
+    if (ctx == NULL || values == NULL) {
+        return;
+    }
+
+    const int date_key = weather_local_date_key();
+    if (date_key == 0) {
+        return;
+    }
+
+    if (ctx->today_cache_date_key != date_key) {
+        ctx->today_cache_date_key = date_key;
+        ctx->today_cache_has_high = false;
+        ctx->today_cache_has_low = false;
+        ctx->today_cache_high_temp = 0.0f;
+        ctx->today_cache_low_temp = 0.0f;
+    }
+
+    /* Only explicit daily entries dated today are allowed to seed the
+     * all-day cache. Hourly fallback is intentionally not latched because
+     * its remaining-day window naturally shrinks as the day progresses. */
+    if (!ctx->today_cache_has_high && values->today_daily_has_high) {
+        ctx->today_cache_high_temp = values->today_high_temp;
+        ctx->today_cache_has_high = true;
+    }
+    if (!ctx->today_cache_has_low && values->today_daily_has_low) {
+        ctx->today_cache_low_temp = values->today_low_temp;
+        ctx->today_cache_has_low = true;
+    }
+
+    /* Once captured for this calendar day, keep displaying those extrema
+     * even if later HA forecast payloads omit or alter the Today row. */
+    if (ctx->today_cache_has_high) {
+        values->today_high_temp = ctx->today_cache_high_temp;
+        values->today_has_high = true;
+    }
+    if (ctx->today_cache_has_low) {
+        values->today_low_temp = ctx->today_cache_low_temp;
+        values->today_has_low = true;
+    }
 }
 
 static float weather_temp_from_celsius(float celsius, const char *unit)
@@ -2992,6 +3068,7 @@ void w_weather_tile_apply_state(ui_widget_instance_t *instance, const ha_state_t
     }
 
     weather_extract_values(state, ctx->show_forecast, values);
+    weather_apply_today_extrema_cache(ctx, values);
     if (ctx->last_condition_text[0] == '\0' && weather_has_alpha(values->condition)) {
         weather_copy_text(ctx->last_condition_text, sizeof(ctx->last_condition_text), values->condition);
     }
