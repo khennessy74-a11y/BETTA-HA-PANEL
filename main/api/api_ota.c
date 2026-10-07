@@ -465,6 +465,12 @@ static esp_err_t ota_stream_write_checked(api_ota_stream_t *stream, const uint8_
     if (stream == NULL || data == NULL || len == 0) {
         return ESP_OK;
     }
+    if (stream->partition == NULL ||
+        stream->written > stream->partition->size ||
+        len > (stream->partition->size - stream->written)) {
+        ota_stream_set_error(stream, "OTA image exceeds the target partition");
+        return ESP_ERR_INVALID_SIZE;
+    }
 
     if (!stream->header_checked) {
         size_t copied = 0;
