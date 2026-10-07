@@ -213,6 +213,16 @@ static void active_release(uint32_t client_key)
     }
 }
 
+static void set_security_headers(httpd_req_t *req)
+{
+    if (req == NULL) {
+        return;
+    }
+    httpd_resp_set_hdr(req, "X-Content-Type-Options", "nosniff");
+    httpd_resp_set_hdr(req, "X-Frame-Options", "DENY");
+    httpd_resp_set_hdr(req, "Referrer-Policy", "no-referrer");
+}
+
 static esp_err_t send_busy(httpd_req_t *req, const char *status, const char *message)
 {
     httpd_resp_set_status(req, status);
@@ -259,6 +269,8 @@ esp_err_t http_guard_handle(httpd_req_t *req, http_guard_handler_t next_handler)
     if (req == NULL || next_handler == NULL) {
         return ESP_ERR_INVALID_ARG;
     }
+
+    set_security_headers(req);
 
     esp_err_t init_err = http_guard_init();
     if (init_err != ESP_OK) {
