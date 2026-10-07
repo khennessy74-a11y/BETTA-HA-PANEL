@@ -427,7 +427,8 @@ static const int HA_WEATHER_COMPACT_FORECAST_MAX_ITEMS = 6;
 static const int64_t HA_WS_RESTART_INTERVAL_MS = 3000;
 static const int64_t HA_WS_RESTART_INTERVAL_MAX_MS = 15000;
 static const int64_t HA_WS_RESTART_JITTER_MS = 500;
-static const int64_t HA_WS_CONNECT_GRACE_MS = 8000;
+static const int64_t HA_WS_CONNECT_GRACE_MS = 15000;
+static const int64_t HA_AUTH_HANDSHAKE_GRACE_MS = 5000;
 static const int64_t HA_WS_SHORT_SESSION_MS = 180000;
 static const uint8_t HA_WS_SHORT_SESSION_STRIKES_TO_WIFI_RECOVER = 4;
 static const uint8_t HA_WS_SHORT_SESSION_STRIKES_TO_TRANSPORT_RECOVER = 6;
@@ -6714,6 +6715,7 @@ static void ha_client_ws_event_cb(const ha_ws_event_t *event, void *user_ctx)
         xSemaphoreTake(s_client.mutex, portMAX_DELAY);
         s_client.authenticated = false;
         s_client.pending_send_auth = false;
+        s_client.auth_handshake_started_unix_ms = 0;
         s_client.next_auth_retry_unix_ms = 0;
         s_client.pending_send_pong = false;
         s_client.pending_pong_id = 0;
@@ -7331,9 +7333,9 @@ static void ha_client_task(void *arg)
              * deliver auth_required right on the generic restart boundary; recycling
              * the transport at that instant makes the auth send fail. */
             bool auth_handshake_active =
-                connected &&
+                pending_send_auth &&
                 auth_handshake_started_unix_ms > 0 &&
-                (now_ms - auth_handshake_started_unix_ms) < 15000;
+                (now_ms - auth_handshake_started_unix_ms) < HA_AUTH_HANDSHAKE_GRACE_MS;
             if (auth_handshake_active) {
                 vTaskDelay(HA_CLIENT_TASK_DELAY_TICKS);
                 continue;
