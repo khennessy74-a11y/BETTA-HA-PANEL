@@ -17,8 +17,8 @@ BETTA HA Panel v0.9 is the largest development update since v0.8.2, expanding da
 - Added configurable Night Mode with day/night brightness, automatic schedule transitions, wake-time schedule refresh, and idle dimming.
 - Expanded graph configuration with line colour, time window, display mode, bar buckets, and point-count controls.
 - Expanded heating-tile styling, including semi/open arc variants.
-- Improved weather current/forecast temperature handling without fabricating unavailable highs or lows.
-- Added firmware-side Home Assistant connection diagnostics and strengthened WebSocket recovery.
+- Rebuilt weather handling around a normalized model: current conditions, adaptive multi-day forecasts, observed-temperature range extension, duplicate-update suppression, and date-keyed persistence of authoritative Today extrema.
+- Added firmware-side Home Assistant connection diagnostics and strengthened WebSocket recovery, including protection against premature reconnect during authentication.
 - Improved Save & Reboot cleanup and restart behaviour.
 
 ### Editor And Widget Improvements
@@ -49,8 +49,8 @@ BETTA HA Panel v0.9 is the largest development update since v0.8.2, expanding da
 - GitHub Actions now builds `panel4`, `panel10`, and `panels3` in one matrix workflow.
 - All three variants are built against ESP-IDF 5.5.2 with their correct target/default configuration.
 - CI creates versioned factory and OTA images for every variant and uploads a separate artifact set for each.
-- The release packaging pipeline is green for all three variants at commit `9c43d32`.
-- Latest firmware behaviour confirmed on physical hardware before release-pipeline-only changes: `7bd95d7`.
+- The three-variant release workflow remains the validation gate for release candidates.
+- Current hardware validation is intentionally still open for intermittent display twitch observation, weather persistence across reboot/day rollover, and the revised Home Assistant reconnect path.
 
 ### Release Candidate Validation
 
@@ -58,22 +58,23 @@ Before publishing v0.9 as the stable release:
 
 - Flash the v0.9 release-candidate image on the available target hardware.
 - Confirm normal boot, Home Assistant connection, editor access, dashboard rendering, touch input, Night Mode/idle dimming, Save & Reboot, and OTA update.
-- Keep the existing v0.8.2 public download links until the v0.9 binaries have completed final validation and are published.
+- Publish the v0.9 release assets only after the current twitch, weather-persistence, reconnect, OTA, and final multi-target build checks have passed.
 
-### Known Investigation
+### Known Investigations
 
-- Cold power-cycle Home Assistant startup delay on ESP32-P4/C6 remains under investigation. The connection self-recovers, while warm starts connect normally.
+- Intermittent display twitching remains under extended on-panel observation; the normalized weather renderer now suppresses duplicate redraws, but the issue is not yet declared closed.
+- Home Assistant reconnect/authentication timing remains under investigation, particularly soft-reboot cases where `auth_required` can arrive as the native WebSocket state drops. A separate reconnect test branch contains additional handshake protection, timing diagnostics, and stricter WebSocket shutdown.
 
 ### Packaging
 
 The release pipeline produces:
 
-- `betta86-ha-panel-v0.9-panel4.factory.bin`
-- `betta86-ha-panel-v0.9-panel4.ota.bin`
-- `betta86-ha-panel-v0.9-panel10.factory.bin`
-- `betta86-ha-panel-v0.9-panel10.ota.bin`
-- `betta86-ha-panel-v0.9-panels3.factory.bin`
-- `betta86-ha-panel-v0.9-panels3.ota.bin`
+- `betta-ha-panel-v0.9-panel4.factory.bin`
+- `betta-ha-panel-v0.9-panel4.ota.bin`
+- `betta-ha-panel-v0.9-panel10.factory.bin`
+- `betta-ha-panel-v0.9-panel10.ota.bin`
+- `betta-ha-panel-v0.9-panels3.factory.bin`
+- `betta-ha-panel-v0.9-panels3.ota.bin`
 
 ## v0.8.2
 
