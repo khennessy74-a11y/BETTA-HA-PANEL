@@ -46,6 +46,7 @@ idf_component_register(
         "ha/ha_client.c"
         "ha/ha_ws.c"
         "ha/ha_model.c"
+        "ha/ha_weather_model.c"
         "ha/ha_energy_model.c"
         "ha/ha_light_capabilities.c"
         "ha/ha_cover_fetcher.c"
