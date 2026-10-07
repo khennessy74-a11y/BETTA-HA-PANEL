@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: LicenseRef-FNCL-1.1
  * Copyright (c) 2026 Cpt_Kirk
+ * Copyright (c) 2026 khennessy74-a11y
  */
 #include "api/http_guard.h"
 
@@ -308,4 +309,65 @@ esp_err_t http_guard_handle(httpd_req_t *req, http_guard_handler_t next_handler)
         xSemaphoreGive(s_guard_lock);
     }
     return err;
+}
+
+
+static bool origin_is_same_host(httpd_req_t *req)
+{
+    if (req == NULL) {
+        return false;
+    }
+
+    size_t origin_len = httpd_req_get_hdr_value_len(req, "Origin");
+    if (origin_len == 0) {
+        /* Preserve support for direct/non-browser LAN clients. */
+        return true;
+    }
+    if (origin_len > 255) {
+        return false;
+    }
+
+    char origin[256] = {0};
+    char host[128] = {0};
+    if (httpd_req_get_hdr_value_str(req, "Origin", origin, sizeof(origin)) != ESP_OK) {
+        return false;
+    }
+
+    size_t host_len = httpd_req_get_hdr_value_len(req, "Host");
+    if (host_len == 0 || host_len >= sizeof(host) ||
+        httpd_req_get_hdr_value_str(req, "Host", host, sizeof(host)) != ESP_OK) {
+        return false;
+    }
+
+    const char *authority = strstr(origin, "://");
+    if (authority == NULL) {
+        return false;
+    }
+    authority += 3;
+
+    const char *path = strchr(authority, '/');
+    size_t authority_len = path ? (size_t)(path - authority) : strlen(authority);
+    return authority_len == strlen(host) && strncmp(authority, host, authority_len) == 0;
+}
+
+static esp_err_t send_forbidden(httpd_req_t *req)
+{
+    httpd_resp_set_status(req, "403 Forbidden");
+    httpd_resp_set_type(req, "text/plain");
+    httpd_resp_set_hdr(req, "Cache-Control", "no-store");
+    httpd_resp_set_hdr(req, "X-Content-Type-Options", "nosniff");
+    httpd_resp_set_hdr(req, "X-Frame-Options", "DENY");
+    return httpd_resp_sendstr(req, "Cross-origin state change rejected");
+}
+
+esp_err_t http_guard_handle_mutation(httpd_req_t *req, http_guard_handler_t next_handler)
+{
+    if (req == NULL || next_handler == NULL) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    if (!origin_is_same_host(req)) {
+        ESP_LOGW(TAG_HTTP, "Rejected cross-origin state change: %s", req->uri);
+        return send_forbidden(req);
+    }
+    return http_guard_handle(req, next_handler);
 }

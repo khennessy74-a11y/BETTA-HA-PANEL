@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: LicenseRef-FNCL-1.1
  * Copyright (c) 2026 Cpt_Kirk
+ * Copyright (c) 2026 khennessy74-a11y
  */
 #include "api/api_routes.h"
 #include "api/http_guard.h"
@@ -13,7 +14,7 @@ static esp_err_t guarded_api_layout_get(httpd_req_t *req)
 
 static esp_err_t guarded_api_layout_put(httpd_req_t *req)
 {
-    return http_guard_handle(req, api_layout_put_handler);
+    return http_guard_handle_mutation(req, api_layout_put_handler);
 }
 
 static esp_err_t guarded_api_entities_get(httpd_req_t *req)
@@ -28,7 +29,7 @@ static esp_err_t guarded_api_light_entities_get(httpd_req_t *req)
 
 static esp_err_t guarded_api_light_entities_delete(httpd_req_t *req)
 {
-    return http_guard_handle(req, api_light_entities_delete_handler);
+    return http_guard_handle_mutation(req, api_light_entities_delete_handler);
 }
 
 static esp_err_t guarded_api_ha_energy_get(httpd_req_t *req)
@@ -48,7 +49,7 @@ static esp_err_t guarded_api_settings_get(httpd_req_t *req)
 
 static esp_err_t guarded_api_settings_put(httpd_req_t *req)
 {
-    return http_guard_handle(req, api_settings_put_handler);
+    return http_guard_handle_mutation(req, api_settings_put_handler);
 }
 
 static esp_err_t guarded_api_i18n_languages_get(httpd_req_t *req)
@@ -63,7 +64,7 @@ static esp_err_t guarded_api_i18n_effective_get(httpd_req_t *req)
 
 static esp_err_t guarded_api_i18n_custom_put(httpd_req_t *req)
 {
-    return http_guard_handle(req, api_i18n_custom_put_handler);
+    return http_guard_handle_mutation(req, api_i18n_custom_put_handler);
 }
 
 static esp_err_t guarded_api_wifi_scan_get(httpd_req_t *req)
@@ -88,12 +89,12 @@ static esp_err_t guarded_api_ota_status_get(httpd_req_t *req)
 
 static esp_err_t guarded_api_ota_url_post(httpd_req_t *req)
 {
-    return http_guard_handle(req, api_ota_url_post_handler);
+    return http_guard_handle_mutation(req, api_ota_url_post_handler);
 }
 
 static esp_err_t guarded_api_ota_upload_post(httpd_req_t *req)
 {
-    return http_guard_handle(req, api_ota_upload_post_handler);
+    return http_guard_handle_mutation(req, api_ota_upload_post_handler);
 }
 
 static esp_err_t guarded_api_ha_diagnostics_get(httpd_req_t *req)
@@ -111,7 +112,7 @@ static esp_err_t guarded_api_themes_active_get(httpd_req_t *req)
 }
 static esp_err_t guarded_api_themes_active_put(httpd_req_t *req)
 {
-    return http_guard_handle(req, api_themes_active_put_handler);
+    return http_guard_handle_mutation(req, api_themes_active_put_handler);
 }
 static esp_err_t guarded_api_themes_get(httpd_req_t *req)
 {
@@ -119,11 +120,11 @@ static esp_err_t guarded_api_themes_get(httpd_req_t *req)
 }
 static esp_err_t guarded_api_themes_custom_put(httpd_req_t *req)
 {
-    return http_guard_handle(req, api_themes_custom_put_handler);
+    return http_guard_handle_mutation(req, api_themes_custom_put_handler);
 }
 static esp_err_t guarded_api_themes_custom_delete(httpd_req_t *req)
 {
-    return http_guard_handle(req, api_themes_custom_delete_handler);
+    return http_guard_handle_mutation(req, api_themes_custom_delete_handler);
 }
 
 esp_err_t api_routes_register(httpd_handle_t server)
