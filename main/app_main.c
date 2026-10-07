@@ -225,7 +225,7 @@ void app_main(void)
         ESP_LOGW(TAG_WIFI, "No Wi-Fi credentials configured, starting setup AP");
     }
 
-    if (!wifi_ready) {
+    if (!wifi_ready && !has_wifi_credentials) {
         wifi_mgr_ap_config_t ap_cfg = {
             .ssid = NULL,
             .password = APP_SETUP_AP_PASSWORD,
@@ -248,6 +248,13 @@ void app_main(void)
             ESP_LOGW(TAG_WIFI, "Failed to start setup AP: %s", esp_err_to_name(ap_err));
             ui_boot_splash_set_status(ui_i18n_get("boot.offline_mode", "Offline mode"));
         }
+    } else if (!wifi_ready) {
+        /* A configured panel must never re-open the provisioning AP merely
+         * because the router/network is temporarily unavailable. Keep the
+         * persisted configuration authoritative and let normal recovery paths
+         * reconnect without exposing the first-boot setup network. */
+        ESP_LOGW(TAG_WIFI, "Configured Wi-Fi unavailable; setup AP remains disabled");
+        ui_boot_splash_set_status(ui_i18n_get("boot.offline_mode", "Offline mode"));
     }
 #else
     ESP_LOGW(TAG_WIFI, "No Wi-Fi backend enabled for target %s", CONFIG_IDF_TARGET);
