@@ -324,6 +324,62 @@ esp_err_t http_guard_handle(httpd_req_t *req, http_guard_handler_t next_handler)
 }
 
 
+static bool host_matches_local_address(httpd_req_t *req, const char *host)
+{
+    if (req == NULL || host == NULL || host[0] == '\0') {
+        return false;
+    }
+
+    int sockfd = httpd_req_to_sockfd(req);
+    if (sockfd < 0) {
+        return false;
+    }
+
+    struct sockaddr_storage local = {0};
+    socklen_t local_len = sizeof(local);
+    if (getsockname(sockfd, (struct sockaddr *)&local, &local_len) != 0) {
+        return false;
+    }
+
+    char host_only[128] = {0};
+    if (host[0] == '[') {
+#if LWIP_IPV6
+        const char *end = strchr(host + 1, ']');
+        if (end == NULL || (size_t)(end - (host + 1)) >= sizeof(host_only)) {
+            return false;
+        }
+        memcpy(host_only, host + 1, (size_t)(end - (host + 1)));
+        host_only[end - (host + 1)] = '\0';
+
+        struct in6_addr parsed6 = {0};
+        if (local.ss_family != AF_INET6 ||
+            inet_pton(AF_INET6, host_only, &parsed6) != 1) {
+            return false;
+        }
+        const struct sockaddr_in6 *local6 = (const struct sockaddr_in6 *)&local;
+        return memcmp(&parsed6, &local6->sin6_addr, sizeof(parsed6)) == 0;
+#else
+        return false;
+#endif
+    }
+
+    const char *colon = strchr(host, ':');
+    size_t host_len = colon != NULL ? (size_t)(colon - host) : strlen(host);
+    if (host_len == 0 || host_len >= sizeof(host_only)) {
+        return false;
+    }
+    memcpy(host_only, host, host_len);
+    host_only[host_len] = '\0';
+
+    struct in_addr parsed4 = {0};
+    if (local.ss_family != AF_INET ||
+        inet_pton(AF_INET, host_only, &parsed4) != 1) {
+        return false;
+    }
+    const struct sockaddr_in *local4 = (const struct sockaddr_in *)&local;
+    return parsed4.s_addr == local4->sin_addr.s_addr;
+}
+
 static bool origin_is_same_host(httpd_req_t *req)
 {
     if (req == NULL) {
@@ -359,7 +415,14 @@ static bool origin_is_same_host(httpd_req_t *req)
 
     const char *path = strchr(authority, '/');
     size_t authority_len = path ? (size_t)(path - authority) : strlen(authority);
-    return authority_len == strlen(host) && strncmp(authority, host, authority_len) == 0;
+    if (authority_len != strlen(host) || strncmp(authority, host, authority_len) != 0) {
+        return false;
+    }
+
+    /* Browser requests must target the panel's actual local IP, not merely a
+     * Host header that matches Origin. This prevents DNS-rebinding attacks
+     * where an attacker-controlled hostname is rebound to the panel's LAN IP. */
+    return host_matches_local_address(req, host);
 }
 
 static esp_err_t send_forbidden(httpd_req_t *req)
