@@ -16,11 +16,11 @@ A runtime-configurable Home Assistant wall panel for ESP32-P4 and ESP32-S3 touch
 
 BETTA HA Panel ships as **three firmware variants**, one per supported device:
 
-| Variant    | Device                                                  | Resolution | Factory image                                                                     |
-|------------|---------------------------------------------------------|------------|-----------------------------------------------------------------------------------|
-| `panel4`   | Waveshare **ESP32-P4-WIFI6-Touch-LCD-4B** (4")       | 720 × 720  | [betta-ha-panel-v0.9-panel4.factory.bin](https://github.com/khennessy74-a11y/BETTA-HA-PANEL/releases/latest/download/betta-ha-panel-v0.9-panel4.factory.bin) |
-| `panel10`  | Waveshare **ESP32-P4 Module Nano + 10.1" DSI panel** | 1280 × 800 | [betta-ha-panel-v0.9-panel10.factory.bin](https://github.com/khennessy74-a11y/BETTA-HA-PANEL/releases/latest/download/betta-ha-panel-v0.9-panel10.factory.bin) |
-| `panels3`  | Guition **ESP32-S3-4848S040** (4")                   | 480 × 480  | [betta-ha-panel-v0.9-panels3.factory.bin](https://github.com/khennessy74-a11y/BETTA-HA-PANEL/releases/latest/download/betta-ha-panel-v0.9-panels3.factory.bin) |
+| Variant    | Device                                                  | Resolution | v0.9 factory image |
+|------------|---------------------------------------------------------|------------|--------------------|
+| `panel4`   | Waveshare **ESP32-P4-WIFI6-Touch-LCD-4B** (4")       | 720 × 720  | `betta-ha-panel-v0.9-panel4.factory.bin` |
+| `panel10`  | Waveshare **ESP32-P4 Module Nano + 10.1" DSI panel** | 1280 × 800 | `betta-ha-panel-v0.9-panel10.factory.bin` |
+| `panels3`  | Guition **ESP32-S3-4848S040** (4")                   | 480 × 480  | `betta-ha-panel-v0.9-panels3.factory.bin` |
 
 All variants share the same dashboard engine, web editor, and Home Assistant integration. Pick the image that matches your board.
 
@@ -46,7 +46,7 @@ All variants share the same dashboard engine, web editor, and Home Assistant int
 
 ## Getting started
 
-1. **Download** the factory image for your board from the table above.
+1. **Download** the factory image for your board. During v0.9 release-candidate validation, use the matching artifact from the [Build BETTA HA Panel](../../actions/workflows/build-panels3.yml) workflow. Once v0.9 is published, the same filenames will be attached to the GitHub Release.
 2. **Flash** it with any ESP32 flasher — for example the browser-based [esptool-js](https://espressif.github.io/esptool-js/):
    - Use the outer USB-C port.
    - Baud rate `115200`, flash offset `0x0`.
@@ -74,7 +74,7 @@ Future updates install via OTA from the editor — no cable needed.
 - **Reliability and diagnostics** — stronger WebSocket recovery, HA connection diagnostics, weather correctness fixes, and improved Save & Reboot handling.
 - **Three-variant release CI** — `panel4`, `panel10`, and `panels3` now build and package versioned factory + OTA images in the same validation workflow.
 
-The download table now targets this fork's v0.9 release assets. Release-candidate hardware validation is still in progress, including extended observation for intermittent display twitching and final reconnect/weather persistence checks.
+The hardware table lists this fork's v0.9 release filenames. Until the first v0.9 GitHub Release is published, release-candidate binaries are available from the build workflow artifacts. Hardware validation is still in progress, including extended observation for intermittent display twitching and final reconnect/weather persistence checks.
 
 Full history: [release-notes.md](release-notes.md).
 
