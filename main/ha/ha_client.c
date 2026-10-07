@@ -8875,20 +8875,16 @@ esp_err_t ha_client_call_service(const char *domain, const char *service, const 
     char current_entity_state[APP_MAX_STATE_LEN] = {0};
     if (json_service_data != NULL && json_service_data[0] != '\0') {
         cJSON *service_data = cJSON_Parse(json_service_data);
-        if (service_data != NULL && cJSON_IsObject(service_data)) {
-            service_data_obj = service_data;
-            cJSON_AddItemToObject(root, "service_data", service_data);
-        } else {
+        if (service_data == NULL || !cJSON_IsObject(service_data)) {
             if (service_data != NULL) {
                 cJSON_Delete(service_data);
             }
-            service_data_obj = cJSON_CreateObject();
-            if (service_data_obj == NULL) {
-                cJSON_Delete(root);
-                return ESP_ERR_NO_MEM;
-            }
-            cJSON_AddItemToObject(root, "service_data", service_data_obj);
+            cJSON_Delete(root);
+            ESP_LOGW(TAG_HA_CLIENT, "Rejected malformed service_data for %s.%s", domain, service);
+            return ESP_ERR_INVALID_ARG;
         }
+        service_data_obj = service_data;
+        cJSON_AddItemToObject(root, "service_data", service_data);
     } else {
         service_data_obj = cJSON_CreateObject();
         if (service_data_obj == NULL) {
@@ -8998,11 +8994,15 @@ esp_err_t ha_client_call_service_with_response(
 
     if (json_service_data != NULL && json_service_data[0] != '\0') {
         cJSON *sd = cJSON_Parse(json_service_data);
-        if (sd != NULL && cJSON_IsObject(sd)) {
-            cJSON_AddItemToObject(root, "service_data", sd);
-        } else if (sd != NULL) {
-            cJSON_Delete(sd);
+        if (sd == NULL || !cJSON_IsObject(sd)) {
+            if (sd != NULL) {
+                cJSON_Delete(sd);
+            }
+            cJSON_Delete(root);
+            ESP_LOGW(TAG_HA_CLIENT, "Rejected malformed service_data for %s.%s", domain, service);
+            return ESP_ERR_INVALID_ARG;
         }
+        cJSON_AddItemToObject(root, "service_data", sd);
     }
 
     bool registered = false;
