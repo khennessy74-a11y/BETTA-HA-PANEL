@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: LicenseRef-FNCL-1.1
  * Copyright (c) 2026 Cpt_Kirk
+ * Copyright (c) 2026 khennessy74-a11y
  */
 #pragma once
 
@@ -74,7 +75,7 @@
 #define APP_SETUP_AP_SSID_PREFIX "BETTA-Setup"
 #define APP_SETUP_AP_PASSWORD ""
 #define APP_SETUP_AP_CHANNEL 1
-#define APP_SETUP_AP_MAX_CONNECTIONS 4
+#define APP_SETUP_AP_MAX_CONNECTIONS 1
 
 #define APP_MAX_PAGES 5
 #define APP_MAX_WIDGETS_PER_PAGE 32
