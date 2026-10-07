@@ -335,7 +335,16 @@ static bool origin_is_same_host(httpd_req_t *req)
 
 void http_guard_authorize_state_changes_for_ms(uint32_t duration_ms)
 {
-    s_state_change_authorized_until_ms = now_ms() + (int64_t)duration_ms;
+    if (http_guard_init() != ESP_OK || s_guard_lock == NULL) {
+        ESP_LOGW(TAG_HTTP, "Unable to authorize Web maintenance window: guard unavailable");
+        return;
+    }
+
+    const int64_t authorized_until_ms = now_ms() + (int64_t)duration_ms;
+    xSemaphoreTake(s_guard_lock, portMAX_DELAY);
+    s_state_change_authorized_until_ms = authorized_until_ms;
+    xSemaphoreGive(s_guard_lock);
+
     ESP_LOGI(TAG_HTTP, "Web maintenance window authorized for %u ms", (unsigned)duration_ms);
 }
 
@@ -345,7 +354,15 @@ static bool state_change_is_authorized(void)
     if (wifi_mgr_is_setup_ap_active()) {
         return true;
     }
-    return now_ms() < s_state_change_authorized_until_ms;
+    if (http_guard_init() != ESP_OK || s_guard_lock == NULL) {
+        return false;
+    }
+
+    int64_t authorized_until_ms = 0;
+    xSemaphoreTake(s_guard_lock, portMAX_DELAY);
+    authorized_until_ms = s_state_change_authorized_until_ms;
+    xSemaphoreGive(s_guard_lock);
+    return now_ms() < authorized_until_ms;
 }
 
 static esp_err_t send_state_change_forbidden(httpd_req_t *req, const char *message)
