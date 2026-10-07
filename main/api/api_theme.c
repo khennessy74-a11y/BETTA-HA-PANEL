@@ -3,6 +3,7 @@
  * Copyright (c) 2026 khennessy74-a11y
  */
 #include "api/api_routes.h"
+#define API_THEME_QUERY_MAX_LEN 512U
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -51,7 +52,7 @@ static bool api_theme_query_get_id(httpd_req_t *req, char *out, size_t out_len)
         return false;
     }
     size_t qlen = httpd_req_get_url_query_len(req);
-    if (qlen == 0) {
+    if (qlen == 0 || qlen > API_THEME_QUERY_MAX_LEN) {
         return false;
     }
     char *qbuf = calloc(qlen + 1U, sizeof(char));
