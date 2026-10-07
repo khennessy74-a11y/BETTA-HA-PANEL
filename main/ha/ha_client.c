@@ -607,6 +607,7 @@ static int ha_client_weather_date_key(const char *datetime);
 static void ha_client_weather_model_update_current(const char *entity_id, const char *condition, cJSON *attributes);
 static void ha_client_weather_model_update_daily(const char *entity_id, cJSON *forecast);
 static void ha_client_weather_model_update_hourly(const char *entity_id, cJSON *forecast);
+static void ha_client_weather_model_log_snapshot(const char *reason, const char *entity_id);
 static bool ha_client_entity_id_in_list(const char *entity_ids, size_t entity_count, const char *entity_id);
 static void ha_client_queue_weather_priority_sync_from_layout(int64_t now_ms);
 static ha_bg_budget_level_t ha_client_eval_bg_budget_level(
@@ -1504,6 +1505,7 @@ static void ha_client_weather_model_update_current(
 
     (void)ha_weather_model_set_current(
         entity_id, ha_client_local_date_key(), has_temp, temp, humidity, unit, condition);
+    ha_client_weather_model_log_snapshot("current", entity_id);
 }
 
 static void ha_client_weather_model_update_daily(const char *entity_id, cJSON *forecast)
@@ -1540,6 +1542,7 @@ static void ha_client_weather_model_update_daily(const char *entity_id, cJSON *f
     }
 
     (void)ha_weather_model_replace_daily(entity_id, days, out_count);
+    ha_client_weather_model_log_snapshot("daily", entity_id);
 }
 
 static void ha_client_weather_model_update_hourly(const char *entity_id, cJSON *forecast)
@@ -1584,6 +1587,48 @@ static void ha_client_weather_model_update_hourly(const char *entity_id, cJSON *
     if (have) {
         (void)ha_weather_model_set_today_hourly_range(
             entity_id, today_key, true, low, true, high, condition);
+        ha_client_weather_model_log_snapshot("hourly", entity_id);
+    }
+}
+
+static void ha_client_weather_model_log_snapshot(const char *reason, const char *entity_id)
+{
+    if (entity_id == NULL || entity_id[0] == '\0') return;
+
+    ha_weather_snapshot_t snapshot = {0};
+    if (!ha_weather_model_get_snapshot(entity_id, &snapshot)) {
+        ESP_LOGI("ha_weather_model", "%s entity=%s snapshot=missing",
+            reason != NULL ? reason : "update", entity_id);
+        return;
+    }
+
+    ESP_LOGI("ha_weather_model",
+        "%s entity=%s rev=%" PRIu32 " current=%s%.1f humidity=%d days=%u observed_date=%d observed_low=%s%.1f observed_high=%s%.1f",
+        reason != NULL ? reason : "update",
+        entity_id,
+        snapshot.revision,
+        snapshot.has_current_temp ? "" : "n/a:",
+        snapshot.current_temp,
+        snapshot.humidity,
+        (unsigned)snapshot.day_count,
+        snapshot.observed_date_key,
+        snapshot.has_observed_low ? "" : "n/a:",
+        snapshot.observed_low,
+        snapshot.has_observed_high ? "" : "n/a:",
+        snapshot.observed_high);
+
+    for (size_t i = 0; i < snapshot.day_count && i < 4U; i++) {
+        const ha_weather_day_t *day = &snapshot.days[i];
+        ESP_LOGI("ha_weather_model",
+            "day[%u] date=%d valid=%d low=%s%.1f high=%s%.1f condition=%s",
+            (unsigned)i,
+            day->date_key,
+            day->valid ? 1 : 0,
+            day->has_low ? "" : "n/a:",
+            day->low_temp,
+            day->has_high ? "" : "n/a:",
+            day->high_temp,
+            day->condition[0] != '\0' ? day->condition : "(none)");
     }
 }
 
