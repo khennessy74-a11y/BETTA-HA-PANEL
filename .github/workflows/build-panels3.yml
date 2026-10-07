@@ -8,6 +8,7 @@ on:
     branches:
       - development-next
       - recovery-admin-stable
+      - weather-rebuild
 
 jobs:
   build:
