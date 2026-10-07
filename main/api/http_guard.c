@@ -217,7 +217,6 @@ static esp_err_t send_busy(httpd_req_t *req, const char *status, const char *mes
 {
     httpd_resp_set_status(req, status);
     httpd_resp_set_type(req, "text/plain");
-    httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
     httpd_resp_set_hdr(req, "Cache-Control", "no-store");
     httpd_resp_set_hdr(req, "Retry-After", "1");
     return httpd_resp_sendstr(req, message);
