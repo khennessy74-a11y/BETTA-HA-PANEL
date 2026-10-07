@@ -1,6 +1,5 @@
 # SPDX-License-Identifier: LicenseRef-FNCL-1.1
 # Copyright (c) 2026 khennessy74-a11y
-# SPDX-License-Identifier: LicenseRef-FNCL-1.1
 # Regenerate BETTA shared Material Design Icon fonts with LVGL font converter.
 # Usage: .\tools\generate_mdi_fonts.ps1 -MdiFont .\materialdesignicons-webfont.ttf
 
@@ -45,6 +44,10 @@ foreach ($size in @(42,56,72)) {
 
   $generated = Get-Content -Raw $output
   $generated = $generated -replace '#ifdef LV_LVGL_H_INCLUDE_SIMPLE\r?\n#include "lvgl.h"\r?\n#else\r?\n#include "lvgl/lvgl.h"\r?\n#endif', '#include "lvgl.h"'
+  $header = "/* SPDX-License-Identifier: LicenseRef-FNCL-1.1`n * Copyright (c) 2026 khennessy74-a11y`n */`n"
+  if (-not $generated.StartsWith("/* SPDX-License-Identifier: LicenseRef-FNCL-1.1")) {
+    $generated = $header + $generated
+  }
   Set-Content -Path $output -Value $generated -NoNewline
 }
 Write-Host "MDI fonts regenerated from the shared glyph manifest."
