@@ -3485,6 +3485,14 @@ async function loadOtaStatus(silent = false) {
   }
 }
 
+function otaRequestError(status, statusText, body = "") {
+  if (Number(status) === 403) {
+    return "Physical Admin unlock required — hold HA/Wi-Fi on the panel for 3 seconds, then retry.";
+  }
+  const payload = parseJsonMaybe(body) || {};
+  return payload.error || `${status} ${statusText}`;
+}
+
 async function startOtaFromUrl() {
   const url = el.settingsOtaUrl?.value.trim() || "";
   if (!url) {
@@ -3506,7 +3514,7 @@ async function startOtaFromUrl() {
     const body = await response.text();
     const payload = parseJsonMaybe(body) || {};
     if (!response.ok || payload.ok === false) {
-      throw new Error(payload.error || `${response.status} ${response.statusText}`);
+      throw new Error(otaRequestError(response.status, response.statusText, body));
     }
     editor.ota.status = payload;
     renderOtaStatus(payload);
@@ -3554,7 +3562,7 @@ async function uploadOtaFile() {
       xhr.onload = () => {
         const data = parseJsonMaybe(xhr.responseText) || {};
         if (xhr.status < 200 || xhr.status >= 300 || data.ok === false) {
-          reject(new Error(data.error || `${xhr.status} ${xhr.statusText}`));
+          reject(new Error(otaRequestError(xhr.status, xhr.statusText, xhr.responseText)));
           return;
         }
         resolve(data);

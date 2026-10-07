@@ -2,6 +2,7 @@
  * Copyright (c) 2026 Cpt_Kirk
  * Copyright (c) 2026 khennessy74-a11y
  */
+#include "api/http_guard.h"
 #include "ui/ui_pages.h"
 
 #include <stdint.h>
@@ -72,6 +73,7 @@ static lv_timer_t *s_system_timeout_timer = NULL;
 static bool s_status_gesture_armed = false;
 static uint32_t s_status_gesture_started_ms = 0U;
 #define UI_SYSTEM_HOLD_MS 3000U
+#define UI_WEB_MAINTENANCE_WINDOW_MS (15U * 60U * 1000U)
 static lv_obj_t *s_nav_bar = NULL;
 static lv_obj_t *s_nav_home_button = NULL;
 static lv_obj_t *s_nav_home_label = NULL;
@@ -1171,6 +1173,7 @@ static void ui_status_gesture_cb(lv_event_t *event)
                 lv_indev_reset(indev, NULL);
             }
             lv_event_stop_processing(event);
+            http_guard_authorize_state_changes_for_ms(UI_WEB_MAINTENANCE_WINDOW_MS);
             ui_system_overlay_show();
         }
     } else if (code == LV_EVENT_RELEASED || code == LV_EVENT_PRESS_LOST) {

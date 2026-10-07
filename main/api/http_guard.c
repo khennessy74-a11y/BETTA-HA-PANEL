@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: LicenseRef-FNCL-1.1
  * Copyright (c) 2026 Cpt_Kirk
+ * Copyright (c) 2026 khennessy74-a11y
  */
 #include "api/http_guard.h"
 
@@ -17,6 +18,7 @@
 #include "lwip/sockets.h"
 
 #include "util/log_tags.h"
+#include "net/wifi_mgr.h"
 
 #define HTTP_GUARD_MAX_ACTIVE_REQUESTS 4
 #define HTTP_GUARD_MAX_CLIENTS 16
@@ -43,6 +45,7 @@ typedef struct {
 static SemaphoreHandle_t s_active_sem = NULL;
 static SemaphoreHandle_t s_guard_lock = NULL;
 static bool s_inited = false;
+static int64_t s_state_change_authorized_until_ms = 0;
 static http_guard_bucket_t s_buckets[HTTP_GUARD_MAX_CLIENTS];
 static http_guard_active_t s_active_clients[HTTP_GUARD_MAX_CLIENTS];
 
@@ -308,4 +311,64 @@ esp_err_t http_guard_handle(httpd_req_t *req, http_guard_handler_t next_handler)
         xSemaphoreGive(s_guard_lock);
     }
     return err;
+}
+
+
+static bool origin_is_same_host(httpd_req_t *req)
+{
+    size_t origin_len = httpd_req_get_hdr_value_len(req, "Origin");
+    if (origin_len == 0) return true;
+    if (origin_len > 255) return false;
+    char origin[256] = {0};
+    char host[128] = {0};
+    if (httpd_req_get_hdr_value_str(req, "Origin", origin, sizeof(origin)) != ESP_OK) return false;
+    size_t host_len = httpd_req_get_hdr_value_len(req, "Host");
+    if (host_len == 0 || host_len >= sizeof(host) ||
+        httpd_req_get_hdr_value_str(req, "Host", host, sizeof(host)) != ESP_OK) return false;
+    const char *p = strstr(origin, "://");
+    if (p == NULL) return false;
+    p += 3;
+    const char *end = strchr(p, '/');
+    size_t authority_len = end ? (size_t)(end - p) : strlen(p);
+    return authority_len == strlen(host) && strncmp(p, host, authority_len) == 0;
+}
+
+void http_guard_authorize_state_changes_for_ms(uint32_t duration_ms)
+{
+    s_state_change_authorized_until_ms = now_ms() + (int64_t)duration_ms;
+    ESP_LOGI(TAG_HTTP, "Web maintenance window authorized for %u ms", (unsigned)duration_ms);
+}
+
+static bool state_change_is_authorized(void)
+{
+    /* First-boot provisioning must remain possible on the setup AP. */
+    if (wifi_mgr_is_setup_ap_active()) {
+        return true;
+    }
+    return now_ms() < s_state_change_authorized_until_ms;
+}
+
+static esp_err_t send_state_change_forbidden(httpd_req_t *req, const char *message)
+{
+    httpd_resp_set_status(req, "403 Forbidden");
+    httpd_resp_set_type(req, "text/plain");
+    httpd_resp_set_hdr(req, "Cache-Control", "no-store");
+    httpd_resp_set_hdr(req, "X-Content-Type-Options", "nosniff");
+    httpd_resp_set_hdr(req, "X-Frame-Options", "DENY");
+    return httpd_resp_sendstr(req, message != NULL ? message : "Forbidden");
+}
+
+esp_err_t http_guard_handle_state_change(httpd_req_t *req, http_guard_handler_t next_handler)
+{
+    if (req == NULL || next_handler == NULL) return ESP_ERR_INVALID_ARG;
+    if (!state_change_is_authorized()) {
+        return send_state_change_forbidden(req, "Physical Admin unlock required");
+    }
+    /* Browsers attach Origin to fetch/XHR state changes. Requiring it to match
+     * Host blocks cross-site requests while preserving same-origin WebUI use and
+     * non-browser LAN administration clients that do not send Origin. */
+    if (!origin_is_same_host(req)) {
+        return send_state_change_forbidden(req, "Cross-origin state change rejected");
+    }
+    return http_guard_handle(req, next_handler);
 }

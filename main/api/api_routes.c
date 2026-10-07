@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: LicenseRef-FNCL-1.1
  * Copyright (c) 2026 Cpt_Kirk
+ * Copyright (c) 2026 khennessy74-a11y
  */
 #include "api/api_routes.h"
 #include "api/http_guard.h"
@@ -88,12 +89,12 @@ static esp_err_t guarded_api_ota_status_get(httpd_req_t *req)
 
 static esp_err_t guarded_api_ota_url_post(httpd_req_t *req)
 {
-    return http_guard_handle(req, api_ota_url_post_handler);
+    return http_guard_handle_state_change(req, api_ota_url_post_handler);
 }
 
 static esp_err_t guarded_api_ota_upload_post(httpd_req_t *req)
 {
-    return http_guard_handle(req, api_ota_upload_post_handler);
+    return http_guard_handle_state_change(req, api_ota_upload_post_handler);
 }
 
 static esp_err_t guarded_api_ha_diagnostics_get(httpd_req_t *req)
