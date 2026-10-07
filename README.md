@@ -30,7 +30,7 @@ All variants share the same dashboard engine, web editor, and Home Assistant int
 
 - **Live Home Assistant link** — WebSocket connection with REST fallback for forecasts and long-poll states.
 - **On-device editor** — BETTA Editor in the browser at `http://<panel-ip>`; drag-and-drop widgets, multi-page layouts, room-grouped entity picker.
-- **Widget library** — sensor, button, slider, graph, light, heating, weather, up to 5 day weather forecast, media player, todo list, Roborock, energy dashboard, empty tile.
+- **Widget library** — sensor, button, slider, graph, light, heating, weather with adaptive multi-day forecasting, media player, todo list, Roborock, energy dashboard, empty tile.
 - **Advanced light control** — brightness, color temperature, RGB — exposed only when Home Assistant reports the capability.
 - **Energy dashboard** — automatic grid / solar / battery / gas / water flow visualization driven by the Home Assistant energy model.
 - **Graphs** — line, smoothed line, or bar-chart modes; event-rate sampling up to 4096 points with progressive decimation.
@@ -74,7 +74,7 @@ Future updates install via OTA from the editor — no cable needed.
 - **Reliability and diagnostics** — stronger WebSocket recovery, HA connection diagnostics, weather correctness fixes, and improved Save & Reboot handling.
 - **Three-variant release CI** — `panel4`, `panel10`, and `panels3` now build and package versioned factory + OTA images in the same validation workflow.
 
-The download table now targets this fork's v0.9 release assets. Release-candidate hardware validation has completed for the current development checkpoint; the final release build remains the last validation stage.
+The download table now targets this fork's v0.9 release assets. Release-candidate hardware validation is still in progress, including extended observation for intermittent display twitching and final reconnect/weather persistence checks.
 
 Full history: [release-notes.md](release-notes.md).
 
@@ -93,7 +93,7 @@ The v0.9 development line extends the v0.8.2 baseline with Home Assistant, edito
 - **Enhanced widget configuration** — additional slider, graph, heating, button, and accent/style options in the web editor.
 - **Graph improvements** — configurable line colour, time window, display mode, bar buckets, and point counts.
 - **Heating tile variants** — additional heating display styles including semi/open arc layouts.
-- **Weather improvements** — current conditions plus multi-day forecasts using Home Assistant's weather data, with provider-neutral handling of available high/low temperatures.
+- **Weather improvements** — current conditions plus adaptive multi-day forecasts backed by a normalized weather model, with provider-neutral high/low handling, observed-temperature range extension, and date-keyed persistence of authoritative Today extrema.
 - **HA connection diagnostics** — the Settings page now exposes a rolling firmware-side Home Assistant connection history to make startup and reconnect problems easier to diagnose.
 - **Improved save/reboot handling** — network and runtime state are cleaned up more carefully before rebooting after settings changes.
 
@@ -106,7 +106,7 @@ The v0.9 development line extends the v0.8.2 baseline with Home Assistant, edito
 - **Responsive compact tiles** — button geometry and controls for Select, Input Number, Fan, Update, Input Text, Input Date/Time, and Heating tiles have been tightened so smaller dashboard cards remain usable without changing normal-size layouts.
 - **Night Mode and idle dimming** — configurable day/night brightness, automatic scheduled transitions, wake-time schedule refresh, and inactivity dimming now work together without allowing idle mode to brighten an already-dimmer night display.
 - **Editor parity cleanup** — widget options now better match runtime capabilities; unsupported generic custom-icon controls are hidden for Weather while its dynamic weather icons remain intact.
-- **Hardware validation** — the current development line has been repeatedly built, flashed, and exercised on-panel, including physical-touch inactivity return, protected Admin entry, themed restart confirmation, repeated software reboots, and display/connection recovery testing.
+- **Hardware validation** — the current development line has been repeatedly built, flashed, and exercised on-panel, including physical-touch inactivity return, protected Admin entry, themed restart confirmation, repeated software reboots, weather model validation, and display/connection recovery testing. Extended intermittent-twitch observation remains open before final release.
 
 ### Reliability fixes
 
@@ -135,7 +135,7 @@ idf.py -B build-panel4   -DSDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.defa
 idf.py -B build-panel10  -DSDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.defaults.panel10"                             build
 idf.py -B build-panels3  -DSDKCONFIG_DEFAULTS="sdkconfig.defaults.s3;sdkconfig.defaults.panels3" -DSDKCONFIG=sdkconfig.panels3  build
 
-# Package release images (factory + OTA) for one or both variants
+# Package release images (factory + OTA) for the supported variants
 pwsh tools/make_factory_bin.ps1 -Variant both
 ```
 
