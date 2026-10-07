@@ -5700,12 +5700,7 @@ static void ha_client_handle_result_message(cJSON *root)
     xSemaphoreTake(s_client.mutex, portMAX_DELAY);
     is_get_states = (msg_id == s_client.get_states_req_id);
     is_entities_sub = s_client.sub_state_via_entities && ha_client_entities_sub_req_known_locked(msg_id);
-    bool is_weather_hourly_ws_req = false;
-    char weather_hourly_result_entity_id[APP_MAX_ENTITY_ID_LEN] = {0};
     if (s_client.weather_hourly_req_inflight && msg_id == s_client.weather_hourly_ws_req_id) {
-        is_weather_hourly_ws_req = true;
-        safe_copy_cstr(weather_hourly_result_entity_id, sizeof(weather_hourly_result_entity_id),
-            s_client.weather_hourly_ws_req_entity_id);
         ha_client_ws_send_gate_mark_heavy_done_locked(ha_client_now_ms());
         s_client.weather_hourly_req_inflight = false;
         ESP_LOGI(TAG_HA_CLIENT, "WS hourly weather subscribe ACK id=%" PRIu32 " success=%d",
@@ -5791,50 +5786,6 @@ static void ha_client_handle_result_message(cJSON *root)
         }
     }
 
-    if (is_weather_hourly_ws_req) {
-        bool updated = false;
-        if (cJSON_IsBool(success_item) && cJSON_IsTrue(success_item)) {
-            cJSON *result_obj = cJSON_GetObjectItemCaseSensitive(root, "result");
-            cJSON *hourly = ha_client_find_compact_weather_forecast(
-                result_obj, weather_hourly_result_entity_id);
-            if (hourly != NULL) {
-                cJSON *hourly_extrema = ha_client_reduce_hourly_forecast_to_extrema(hourly);
-                cJSON_Delete(hourly);
-                hourly = hourly_extrema;
-            }
-            if (hourly != NULL) {
-                ha_state_t state = {0};
-                if (ha_model_get_state(weather_hourly_result_entity_id, &state)) {
-                    if (state.attributes_json[0] == '\0') {
-                        snprintf(state.attributes_json, sizeof(state.attributes_json), "{}");
-                    }
-                    if (ha_client_append_named_forecast_to_attrs_json(
-                            state.attributes_json, sizeof(state.attributes_json),
-                            "forecast_hourly", hourly)) {
-                        state.last_changed_unix_ms = ha_client_now_ms();
-                        ha_model_upsert_state(&state);
-                        ha_client_publish_event(EV_HA_STATE_CHANGED, weather_hourly_result_entity_id);
-                        ESP_LOGI(TAG_HA_CLIENT,
-                            "WS hourly weather initial forecast updated for %s",
-                            weather_hourly_result_entity_id);
-                        updated = true;
-                    } else {
-                        ESP_LOGW(TAG_HA_CLIENT,
-                            "WS hourly weather initial forecast merge failed for %s",
-                            weather_hourly_result_entity_id);
-                    }
-                } else {
-                    cJSON_Delete(hourly);
-                }
-            }
-        }
-        if (!updated && cJSON_IsBool(success_item) && cJSON_IsTrue(success_item)) {
-            ESP_LOGD(TAG_HA_CLIENT,
-                "WS hourly weather ACK had no inline forecast for %s; waiting for event",
-                weather_hourly_result_entity_id);
-        }
-    }
-
     if (is_weather_ws_req) {
         bool updated = false;
         bool forecast_found = false;
@@ -5868,16 +5819,6 @@ static void ha_client_handle_result_message(cJSON *root)
 
         if (updated) {
             ESP_LOGI(TAG_HA_CLIENT, "WS weather forecast updated for %s", weather_entity_id);
-            /* Today's daily row is optional for some providers.  Always
-             * subscribe to hourly after the first usable daily payload so
-             * the weather tile can reconstruct today's min/max even when
-             * daily begins at tomorrow. */
-            xSemaphoreTake(s_client.mutex, portMAX_DELAY);
-            if (s_client.weather_hourly_ws_req_id == 0 &&
-                !s_client.weather_hourly_req_inflight) {
-                s_client.weather_hourly_pending = true;
-            }
-            xSemaphoreGive(s_client.mutex);
         } else if (cJSON_IsBool(success_item) && !cJSON_IsTrue(success_item)) {
             ESP_LOGW(TAG_HA_CLIENT, "WS weather forecast request failed for %s", weather_entity_id);
         } else if (merge_failed) {
