@@ -3,6 +3,7 @@
  * Copyright (c) 2026 khennessy74-a11y
  */
 #include "api/api_routes.h"
+#define API_STATE_QUERY_MAX_LEN 512U
 
 #include <stdlib.h>
 
@@ -31,6 +32,10 @@ esp_err_t api_state_get_handler(httpd_req_t *req)
 {
     char entity_id[APP_MAX_ENTITY_ID_LEN] = {0};
     int query_len = httpd_req_get_url_query_len(req);
+    if (query_len > (int)API_STATE_QUERY_MAX_LEN) {
+        httpd_resp_set_status(req, "414 URI Too Long");
+        return httpd_resp_sendstr(req, "Query string too long");
+    }
     if (query_len > 0) {
         char *query = calloc((size_t)query_len + 1U, sizeof(char));
         if (query == NULL) {
