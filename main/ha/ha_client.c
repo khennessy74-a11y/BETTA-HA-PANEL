@@ -7963,7 +7963,13 @@ static void ha_client_task(void *arg)
                     ha_client_trace_recordf("initial_sync_done imported=%u/%u",
                         (unsigned)imported, (unsigned)entity_count);
                     ha_client_publish_event(EV_HA_CONNECTED, NULL);
-                    if (!rest_enabled && layout_needs_weather_forecast) {
+                    if (!rest_enabled) {
+                        /* Rebuild path: derive weather work from the live layout at
+                         * sync completion instead of trusting the cached
+                         * layout_needs_weather_forecast flag.  That flag has proven
+                         * stale on this branch, preventing any forecast subscription
+                         * from being sent even though weather.home is present. */
+                        ha_client_trace_record("weather bootstrap scan after initial sync");
                         ha_client_queue_weather_priority_sync_from_layout(now_ms);
                     }
                 }
