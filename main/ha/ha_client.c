@@ -2532,10 +2532,12 @@ static cJSON *ha_client_find_compact_weather_forecast(cJSON *node, const char *e
     return ha_client_find_compact_forecast_recursive(node, 0);
 }
 
-static esp_err_t ha_client_fetch_weather_daily_forecast_http(
-    const char *base_url, const char *host_header, const char *entity_id, cJSON **out_forecast)
+static esp_err_t ha_client_fetch_weather_forecast_http(
+    const char *base_url, const char *host_header, const char *entity_id,
+    const char *forecast_type, cJSON **out_forecast)
 {
-    if (base_url == NULL || entity_id == NULL || out_forecast == NULL || entity_id[0] == '\0' || s_client.http_client == NULL) {
+    if (base_url == NULL || entity_id == NULL || forecast_type == NULL || out_forecast == NULL ||
+        entity_id[0] == '\0' || forecast_type[0] == '\0' || s_client.http_client == NULL) {
         return ESP_ERR_INVALID_ARG;
     }
     *out_forecast = NULL;
@@ -2547,7 +2549,8 @@ static esp_err_t ha_client_fetch_weather_daily_forecast_http(
     }
 
     char body[256] = {0};
-    int body_len = snprintf(body, sizeof(body), "{\"type\":\"daily\",\"entity_id\":\"%s\"}", entity_id);
+    int body_len = snprintf(body, sizeof(body), "{\"type\":\"%s\",\"entity_id\":\"%s\"}",
+        forecast_type, entity_id);
     if (body_len <= 0 || (size_t)body_len >= sizeof(body)) {
         return ESP_ERR_INVALID_SIZE;
     }
@@ -2627,6 +2630,20 @@ static esp_err_t ha_client_fetch_weather_daily_forecast_http(
 
     *out_forecast = compact_forecast;
     return ESP_OK;
+}
+
+static esp_err_t ha_client_fetch_weather_daily_forecast_http(
+    const char *base_url, const char *host_header, const char *entity_id, cJSON **out_forecast)
+{
+    return ha_client_fetch_weather_forecast_http(
+        base_url, host_header, entity_id, "daily", out_forecast);
+}
+
+static esp_err_t ha_client_fetch_weather_hourly_forecast_http(
+    const char *base_url, const char *host_header, const char *entity_id, cJSON **out_forecast)
+{
+    return ha_client_fetch_weather_forecast_http(
+        base_url, host_header, entity_id, "hourly", out_forecast);
 }
 
 static bool ha_client_serialize_weather_attrs_compact(cJSON *src_attrs, char *out_json, size_t out_json_size)
@@ -4439,6 +4456,42 @@ static esp_err_t ha_client_fetch_state_http(
                         entity_id, esp_err_to_name(forecast_err));
                     if (service_forecast != NULL) {
                         cJSON_Delete(service_forecast);
+                    }
+                }
+            }
+
+            /* Daily providers may roll Today out of their forecast shortly after
+             * midnight. Fetch hourly data as the authoritative fallback for
+             * Today's remaining temperature range; the normalized model merges
+             * it into a Today row without replacing future daily rows. */
+            int today_key = ha_client_local_date_key();
+            bool model_has_today = false;
+            ha_weather_snapshot_t weather_snapshot = {0};
+            if (today_key != 0 && ha_weather_model_get_snapshot(entity_id, &weather_snapshot)) {
+                for (size_t i = 0; i < weather_snapshot.day_count; i++) {
+                    if (weather_snapshot.days[i].valid &&
+                        weather_snapshot.days[i].date_key == today_key) {
+                        model_has_today = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!model_has_today) {
+                cJSON *hourly_forecast = NULL;
+                esp_err_t hourly_err =
+                    ha_client_fetch_weather_hourly_forecast_http(
+                        base_url, host_header, entity_id, &hourly_forecast);
+                if (hourly_err == ESP_OK && cJSON_IsArray(hourly_forecast)) {
+                    ha_client_trace_recordf("weather REST hourly fetched entity=%s count=%d",
+                        entity_id, cJSON_GetArraySize(hourly_forecast));
+                    ha_client_weather_model_update_hourly(entity_id, hourly_forecast);
+                    cJSON_Delete(hourly_forecast);
+                } else {
+                    ha_client_trace_recordf("weather REST hourly fetch failed entity=%s err=%s",
+                        entity_id, esp_err_to_name(hourly_err));
+                    if (hourly_forecast != NULL) {
+                        cJSON_Delete(hourly_forecast);
                     }
                 }
             }
