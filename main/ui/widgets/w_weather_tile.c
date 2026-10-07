@@ -1635,6 +1635,82 @@ static void weather_extract_values(const ha_state_t *state, bool want_forecast, 
         }
     }
 
+    /* Temporary low-noise diagnostic for the missing Today extrema issue.
+     * Log only the first few incomplete parses after boot; this does not
+     * publish an HA event or trigger a UI refresh, so it cannot create the
+     * display twitch seen with the previous HA-client experiment. */
+    static unsigned weather_missing_today_diag_count = 0;
+    if (want_forecast && (!out->today_has_high || !out->today_has_low) &&
+        weather_missing_today_diag_count < 6U) {
+        int daily_count = 0;
+        int hourly_count = 0;
+        if (attrs != NULL) {
+            cJSON *daily_diag = cJSON_GetObjectItemCaseSensitive(attrs, "forecast");
+            cJSON *hourly_diag = cJSON_GetObjectItemCaseSensitive(attrs, "forecast_hourly");
+            daily_count = cJSON_IsArray(daily_diag) ? cJSON_GetArraySize(daily_diag) : 0;
+            hourly_count = cJSON_IsArray(hourly_diag) ? cJSON_GetArraySize(hourly_diag) : 0;
+
+            ESP_LOGI("w_weather_today",
+                "diag=%u entity=%s daily=%d hourly=%d today_high=%d today_low=%d daily_high=%d daily_low=%d current=%d",
+                weather_missing_today_diag_count + 1U,
+                state->entity_id,
+                daily_count,
+                hourly_count,
+                out->today_has_high ? 1 : 0,
+                out->today_has_low ? 1 : 0,
+                out->today_daily_has_high ? 1 : 0,
+                out->today_daily_has_low ? 1 : 0,
+                out->has_temp ? 1 : 0);
+
+            if (cJSON_IsArray(daily_diag)) {
+                int limit = daily_count < 3 ? daily_count : 3;
+                for (int i = 0; i < limit; i++) {
+                    cJSON *item = cJSON_GetArrayItem(daily_diag, i);
+                    cJSON *date = cJSON_IsObject(item) ? cJSON_GetObjectItemCaseSensitive(item, "date") : NULL;
+                    cJSON *datetime = cJSON_IsObject(item) ? cJSON_GetObjectItemCaseSensitive(item, "datetime") : NULL;
+                    cJSON *high = cJSON_IsObject(item) ? cJSON_GetObjectItemCaseSensitive(item, "temperature") : NULL;
+                    cJSON *low = cJSON_IsObject(item) ? cJSON_GetObjectItemCaseSensitive(item, "templow") : NULL;
+                    const char *when = cJSON_IsString(date) ? date->valuestring :
+                        (cJSON_IsString(datetime) ? datetime->valuestring : "(none)");
+                    ESP_LOGI("w_weather_today",
+                        "daily[%d] when=%s high=%s low=%s is_today=%d before_today=%d",
+                        i,
+                        when != NULL ? when : "(null)",
+                        cJSON_IsNumber(high) ? "yes" : "no",
+                        cJSON_IsNumber(low) ? "yes" : "no",
+                        (when != NULL && weather_datetime_is_today(when)) ? 1 : 0,
+                        (when != NULL && weather_datetime_is_before_today(when)) ? 1 : 0);
+                }
+            }
+
+            if (cJSON_IsArray(hourly_diag)) {
+                int limit = hourly_count < 3 ? hourly_count : 3;
+                for (int i = 0; i < limit; i++) {
+                    cJSON *item = cJSON_GetArrayItem(hourly_diag, i);
+                    cJSON *date = cJSON_IsObject(item) ? cJSON_GetObjectItemCaseSensitive(item, "date") : NULL;
+                    cJSON *datetime = cJSON_IsObject(item) ? cJSON_GetObjectItemCaseSensitive(item, "datetime") : NULL;
+                    cJSON *temp = cJSON_IsObject(item) ? cJSON_GetObjectItemCaseSensitive(item, "temperature") : NULL;
+                    const char *when = cJSON_IsString(datetime) ? datetime->valuestring :
+                        (cJSON_IsString(date) ? date->valuestring : "(none)");
+                    ESP_LOGI("w_weather_today",
+                        "hourly[%d] when=%s temp=%s is_today=%d",
+                        i,
+                        when != NULL ? when : "(null)",
+                        cJSON_IsNumber(temp) ? "yes" : "no",
+                        (when != NULL && weather_datetime_is_today(when)) ? 1 : 0);
+                }
+            }
+        } else {
+            ESP_LOGI("w_weather_today",
+                "diag=%u entity=%s attrs_parse_failed today_high=%d today_low=%d",
+                weather_missing_today_diag_count + 1U,
+                state->entity_id,
+                out->today_has_high ? 1 : 0,
+                out->today_has_low ? 1 : 0);
+        }
+        weather_missing_today_diag_count++;
+    }
+
     if (attrs != NULL) {
         cJSON_Delete(attrs);
     }
