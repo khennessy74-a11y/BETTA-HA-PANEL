@@ -16,3 +16,9 @@ esp_err_t http_guard_handle(httpd_req_t *req, http_guard_handler_t next_handler)
  * requests that change device state. Non-browser LAN clients without Origin
  * remain supported. */
 esp_err_t http_guard_handle_mutation(httpd_req_t *req, http_guard_handler_t next_handler);
+
+
+/* OTA is never permitted while the open first-boot setup AP is active.
+ * Normal LAN OTA then falls through to the mutation guard (and, when merged
+ * with the physical-unlock branch, the stricter OTA authorization layer). */
+esp_err_t http_guard_handle_ota_mutation(httpd_req_t *req, http_guard_handler_t next_handler);

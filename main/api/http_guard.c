@@ -17,6 +17,7 @@
 #include "lwip/inet.h"
 #include "lwip/sockets.h"
 
+#include "net/wifi_mgr.h"
 #include "util/log_tags.h"
 
 #define HTTP_GUARD_MAX_ACTIVE_REQUESTS 4
@@ -381,4 +382,25 @@ esp_err_t http_guard_handle_mutation(httpd_req_t *req, http_guard_handler_t next
         return send_forbidden(req);
     }
     return http_guard_handle(req, next_handler);
+}
+
+
+static esp_err_t send_ota_setup_ap_conflict(httpd_req_t *req)
+{
+    httpd_resp_set_status(req, "409 Conflict");
+    httpd_resp_set_type(req, "text/plain");
+    httpd_resp_set_hdr(req, "Cache-Control", "no-store");
+    return httpd_resp_sendstr(req, "OTA is unavailable while the setup AP is active");
+}
+
+esp_err_t http_guard_handle_ota_mutation(httpd_req_t *req, http_guard_handler_t next_handler)
+{
+    if (req == NULL || next_handler == NULL) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    if (wifi_mgr_is_setup_ap_active()) {
+        ESP_LOGW(TAG_HTTP, "Rejected OTA while setup AP is active: %s", req->uri);
+        return send_ota_setup_ap_conflict(req);
+    }
+    return http_guard_handle_mutation(req, next_handler);
 }

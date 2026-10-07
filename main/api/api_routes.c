@@ -89,12 +89,12 @@ static esp_err_t guarded_api_ota_status_get(httpd_req_t *req)
 
 static esp_err_t guarded_api_ota_url_post(httpd_req_t *req)
 {
-    return http_guard_handle_mutation(req, api_ota_url_post_handler);
+    return http_guard_handle_ota_mutation(req, api_ota_url_post_handler);
 }
 
 static esp_err_t guarded_api_ota_upload_post(httpd_req_t *req)
 {
-    return http_guard_handle_mutation(req, api_ota_upload_post_handler);
+    return http_guard_handle_ota_mutation(req, api_ota_upload_post_handler);
 }
 
 static esp_err_t guarded_api_ha_diagnostics_get(httpd_req_t *req)
