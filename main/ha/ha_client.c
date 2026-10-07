@@ -31,6 +31,7 @@
 #include "ha/ha_energy_model.h"
 #include "ha/ha_light_capabilities.h"
 #include "ha/ha_model.h"
+#include "ha/ha_weather_model.h"
 #include "ha/ha_ws.h"
 #include "layout/layout_store.h"
 #include "net/wifi_mgr.h"
@@ -601,6 +602,11 @@ static void ha_client_priority_sync_queue_push_locked(const char *entity_id);
 static size_t ha_client_collect_layout_entity_ids(char *entity_ids, size_t max_count, bool *out_need_weather_forecast);
 static bool ha_client_layout_needs_ha_energy(void);
 static bool ha_client_entity_is_weather(const char *entity_id);
+static int ha_client_local_date_key(void);
+static int ha_client_weather_date_key(const char *datetime);
+static void ha_client_weather_model_update_current(const char *entity_id, const char *condition, cJSON *attributes);
+static void ha_client_weather_model_update_daily(const char *entity_id, cJSON *forecast);
+static void ha_client_weather_model_update_hourly(const char *entity_id, cJSON *forecast);
 static bool ha_client_entity_id_in_list(const char *entity_ids, size_t entity_count, const char *entity_id);
 static void ha_client_queue_weather_priority_sync_from_layout(int64_t now_ms);
 static ha_bg_budget_level_t ha_client_eval_bg_budget_level(
@@ -1430,6 +1436,155 @@ static bool ha_client_entity_is_weather(const char *entity_id)
         return false;
     }
     return strncmp(entity_id, "weather.", 8) == 0;
+}
+
+
+static int ha_client_local_date_key(void)
+{
+    time_t now = time(NULL);
+    struct tm local_now = {0};
+    localtime_r(&now, &local_now);
+    int year = local_now.tm_year + 1900;
+    int month = local_now.tm_mon + 1;
+    int day = local_now.tm_mday;
+    if (year < 2020 || month < 1 || month > 12 || day < 1 || day > 31) {
+        return 0;
+    }
+    return year * 10000 + month * 100 + day;
+}
+
+static int ha_client_weather_date_key(const char *datetime)
+{
+    if (datetime == NULL || strlen(datetime) < 10) return 0;
+    if (datetime[4] != '-' || datetime[7] != '-') return 0;
+    int year = (datetime[0]-'0')*1000 + (datetime[1]-'0')*100 +
+               (datetime[2]-'0')*10 + (datetime[3]-'0');
+    int month = (datetime[5]-'0')*10 + (datetime[6]-'0');
+    int day = (datetime[8]-'0')*10 + (datetime[9]-'0');
+    if (year < 2020 || month < 1 || month > 12 || day < 1 || day > 31) return 0;
+    return year * 10000 + month * 100 + day;
+}
+
+static bool ha_client_weather_number(cJSON *obj, const char *primary, const char *fallback, float *out)
+{
+    if (!cJSON_IsObject(obj) || out == NULL) return false;
+    cJSON *item = cJSON_GetObjectItemCaseSensitive(obj, primary);
+    if (!cJSON_IsNumber(item) && fallback != NULL) {
+        item = cJSON_GetObjectItemCaseSensitive(obj, fallback);
+    }
+    if (!cJSON_IsNumber(item)) return false;
+    *out = (float)item->valuedouble;
+    return true;
+}
+
+static void ha_client_weather_model_update_current(
+    const char *entity_id, const char *condition, cJSON *attributes)
+{
+    if (entity_id == NULL || !cJSON_IsObject(attributes)) return;
+
+    float temp = 0.0f;
+    bool has_temp =
+        ha_client_weather_number(attributes, "temperature", "current_temperature", &temp);
+    if (!has_temp) {
+        has_temp = ha_client_weather_number(attributes, "native_temperature", NULL, &temp);
+    }
+
+    int humidity = -1;
+    cJSON *humidity_item = cJSON_GetObjectItemCaseSensitive(attributes, "humidity");
+    if (cJSON_IsNumber(humidity_item)) humidity = humidity_item->valueint;
+
+    const char *unit = "C";
+    cJSON *unit_item = cJSON_GetObjectItemCaseSensitive(attributes, "temperature_unit");
+    if (!cJSON_IsString(unit_item) || unit_item->valuestring == NULL) {
+        unit_item = cJSON_GetObjectItemCaseSensitive(attributes, "native_temperature_unit");
+    }
+    if (cJSON_IsString(unit_item) && unit_item->valuestring != NULL) {
+        unit = unit_item->valuestring;
+    }
+
+    (void)ha_weather_model_set_current(
+        entity_id, ha_client_local_date_key(), has_temp, temp, humidity, unit, condition);
+}
+
+static void ha_client_weather_model_update_daily(const char *entity_id, cJSON *forecast)
+{
+    if (entity_id == NULL || !cJSON_IsArray(forecast)) return;
+
+    ha_weather_day_t days[HA_WEATHER_MODEL_MAX_DAYS] = {0};
+    size_t out_count = 0;
+    int count = cJSON_GetArraySize(forecast);
+
+    for (int i = 0; i < count && out_count < HA_WEATHER_MODEL_MAX_DAYS; i++) {
+        cJSON *item = cJSON_GetArrayItem(forecast, i);
+        if (!cJSON_IsObject(item)) continue;
+
+        cJSON *dt = cJSON_GetObjectItemCaseSensitive(item, "datetime");
+        if (!cJSON_IsString(dt) || dt->valuestring == NULL) {
+            dt = cJSON_GetObjectItemCaseSensitive(item, "date");
+        }
+        int date_key = cJSON_IsString(dt) && dt->valuestring != NULL
+            ? ha_client_weather_date_key(dt->valuestring) : 0;
+        if (date_key == 0) continue;
+
+        ha_weather_day_t *day = &days[out_count];
+        day->valid = true;
+        day->date_key = date_key;
+        day->has_high = ha_client_weather_number(item, "temperature", "native_temperature", &day->high_temp);
+        day->has_low = ha_client_weather_number(item, "templow", "native_templow", &day->low_temp);
+
+        cJSON *condition_item = cJSON_GetObjectItemCaseSensitive(item, "condition");
+        if (cJSON_IsString(condition_item) && condition_item->valuestring != NULL) {
+            safe_copy_cstr(day->condition, sizeof(day->condition), condition_item->valuestring);
+        }
+        out_count++;
+    }
+
+    (void)ha_weather_model_replace_daily(entity_id, days, out_count);
+}
+
+static void ha_client_weather_model_update_hourly(const char *entity_id, cJSON *forecast)
+{
+    if (entity_id == NULL || !cJSON_IsArray(forecast)) return;
+
+    int today_key = ha_client_local_date_key();
+    if (today_key == 0) return;
+
+    bool have = false;
+    float low = 0.0f;
+    float high = 0.0f;
+    char condition[32] = {0};
+    int count = cJSON_GetArraySize(forecast);
+
+    for (int i = 0; i < count; i++) {
+        cJSON *item = cJSON_GetArrayItem(forecast, i);
+        if (!cJSON_IsObject(item)) continue;
+
+        cJSON *dt = cJSON_GetObjectItemCaseSensitive(item, "datetime");
+        if (!cJSON_IsString(dt) || dt->valuestring == NULL) {
+            dt = cJSON_GetObjectItemCaseSensitive(item, "date");
+        }
+        int item_key = cJSON_IsString(dt) && dt->valuestring != NULL
+            ? ha_client_weather_date_key(dt->valuestring) : 0;
+        if (item_key != today_key) continue;
+
+        float temp = 0.0f;
+        if (!ha_client_weather_number(item, "temperature", "native_temperature", &temp)) continue;
+        if (!have || temp < low) low = temp;
+        if (!have || temp > high) high = temp;
+        have = true;
+
+        if (condition[0] == '\0') {
+            cJSON *condition_item = cJSON_GetObjectItemCaseSensitive(item, "condition");
+            if (cJSON_IsString(condition_item) && condition_item->valuestring != NULL) {
+                safe_copy_cstr(condition, sizeof(condition), condition_item->valuestring);
+            }
+        }
+    }
+
+    if (have) {
+        (void)ha_weather_model_set_today_hourly_range(
+            entity_id, today_key, true, low, true, high, condition);
+    }
 }
 
 static bool ha_client_entity_is_light(const char *entity_id)
@@ -5200,6 +5355,7 @@ static bool ha_client_import_state_object(cJSON *state_obj)
     if (cJSON_IsObject(attributes)) {
         bool serialized = false;
         if (ha_client_entity_is_weather(model_state.entity_id)) {
+            ha_client_weather_model_update_current(model_state.entity_id, model_state.state, attributes);
             serialized = ha_client_serialize_weather_attrs_compact(
                 attributes, model_state.attributes_json, sizeof(model_state.attributes_json));
             bool weather_has_forecast = serialized && ha_client_weather_attrs_has_forecast_json(model_state.attributes_json);
@@ -5796,6 +5952,7 @@ static void ha_client_handle_result_message(cJSON *root)
             cJSON *compact_forecast = ha_client_find_compact_weather_forecast(result_obj, weather_entity_id);
             if (compact_forecast != NULL) {
                 forecast_found = true;
+                ha_client_weather_model_update_daily(weather_entity_id, compact_forecast);
                 ha_state_t state = {0};
                 if (ha_model_get_state(weather_entity_id, &state)) {
                     if (state.attributes_json[0] == '\0') {
@@ -6006,6 +6163,7 @@ static void ha_client_handle_event_message(cJSON *root)
     if (is_weather_hourly_event) {
         cJSON *hourly = ha_client_find_compact_weather_forecast(event, weather_hourly_entity_id);
         if (hourly != NULL) {
+            ha_client_weather_model_update_hourly(weather_hourly_entity_id, hourly);
             cJSON *hourly_extrema = ha_client_reduce_hourly_forecast_to_extrema(hourly);
             cJSON_Delete(hourly);
             hourly = hourly_extrema;
@@ -6048,6 +6206,7 @@ static void ha_client_handle_event_message(cJSON *root)
         cJSON *compact_forecast =
             ha_client_find_compact_weather_forecast(event, weather_event_entity_id);
         if (compact_forecast != NULL) {
+            ha_client_weather_model_update_daily(weather_event_entity_id, compact_forecast);
             ha_state_t state = {0};
             if (ha_model_get_state(weather_event_entity_id, &state)) {
                 if (state.attributes_json[0] == '\0') {
@@ -7801,6 +7960,11 @@ esp_err_t ha_client_start(const ha_client_config_t *cfg)
     }
     if (s_client.started) {
         return ESP_OK;
+    }
+
+    esp_err_t weather_model_err = ha_weather_model_init();
+    if (weather_model_err != ESP_OK) {
+        return weather_model_err;
     }
 
     /* Route all cJSON allocations to PSRAM to keep internal RAM free for TLS. */
