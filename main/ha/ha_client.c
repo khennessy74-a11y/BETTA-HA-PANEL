@@ -57,6 +57,8 @@ typedef struct {
     char expected_state[16];
 } ha_service_trace_t;
 
+static int64_t ha_client_now_ms(void);
+
 typedef enum {
     HA_BG_BUDGET_NORMAL = 0,
     HA_BG_BUDGET_PRESSURE = 1,
