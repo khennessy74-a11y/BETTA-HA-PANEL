@@ -5158,12 +5158,20 @@ static esp_err_t ha_client_send_weather_forecast_ws(
     cJSON_AddStringToObject(root, "entity_id", entity_id);
 
     ESP_LOGI(TAG_HA_CLIENT, "Subscribing to WS %s weather forecast for %s", forecast_type, entity_id);
+    ha_client_trace_recordf("weather subscribe send type=%s entity=%s id=%" PRIu32,
+        forecast_type, entity_id, req_id);
     esp_err_t err = ha_client_send_json(root);
     if (err != ESP_OK) {
         ESP_LOGW(TAG_HA_CLIENT, "Failed to request weather forecast via WS for '%s': %s",
             entity_id, esp_err_to_name(err));
-    } else if (out_req_id != NULL) {
-        *out_req_id = req_id;
+        ha_client_trace_recordf("weather subscribe send failed type=%s entity=%s err=%s",
+            forecast_type, entity_id, esp_err_to_name(err));
+    } else {
+        ha_client_trace_recordf("weather subscribe sent type=%s entity=%s id=%" PRIu32,
+            forecast_type, entity_id, req_id);
+        if (out_req_id != NULL) {
+            *out_req_id = req_id;
+        }
     }
     cJSON_Delete(root);
     return err;
@@ -5910,6 +5918,8 @@ static void ha_client_handle_result_message(cJSON *root)
         s_client.weather_hourly_req_inflight = false;
         ESP_LOGI(TAG_HA_CLIENT, "WS hourly weather subscribe ACK id=%" PRIu32 " success=%d",
             msg_id, cJSON_IsTrue(success_item) ? 1 : 0);
+        ha_client_trace_recordf("weather hourly ACK id=%" PRIu32 " success=%d",
+            msg_id, cJSON_IsTrue(success_item) ? 1 : 0);
         if (cJSON_IsBool(success_item) && !cJSON_IsTrue(success_item)) {
             s_client.weather_hourly_ws_req_id = 0;
             s_client.weather_hourly_ws_req_entity_id[0] = '\0';
@@ -5918,6 +5928,8 @@ static void ha_client_handle_result_message(cJSON *root)
     if (s_client.weather_ws_req_inflight && msg_id == s_client.weather_ws_req_id) {
         is_weather_ws_req = true;
         safe_copy_cstr(weather_entity_id, sizeof(weather_entity_id), s_client.weather_ws_req_entity_id);
+        ha_client_trace_recordf("weather daily ACK id=%" PRIu32 " success=%d entity=%s",
+            msg_id, cJSON_IsTrue(success_item) ? 1 : 0, weather_entity_id);
         /* weather/subscribe_forecast returns a small result ACK first, then
          * delivers forecast data as event messages using this same id.
          * Release the HEAVY send gate on the ACK, but retain the subscription
@@ -6025,6 +6037,7 @@ static void ha_client_handle_result_message(cJSON *root)
 
         if (updated) {
             ESP_LOGI(TAG_HA_CLIENT, "WS weather forecast updated for %s", weather_entity_id);
+            ha_client_trace_recordf("weather daily result parsed entity=%s", weather_entity_id);
         } else if (cJSON_IsBool(success_item) && !cJSON_IsTrue(success_item)) {
             ESP_LOGW(TAG_HA_CLIENT, "WS weather forecast request failed for %s", weather_entity_id);
         } else if (merge_failed) {
@@ -6032,6 +6045,7 @@ static void ha_client_handle_result_message(cJSON *root)
                 weather_entity_id);
         } else if (!forecast_found) {
             ESP_LOGW(TAG_HA_CLIENT, "WS weather forecast response had no usable forecast for %s", weather_entity_id);
+            ha_client_trace_recordf("weather daily ACK/result has no forecast entity=%s", weather_entity_id);
         } else if (state_missing) {
             ESP_LOGD(TAG_HA_CLIENT, "WS weather forecast arrived before state model existed for %s", weather_entity_id);
         } else {
@@ -6210,8 +6224,11 @@ static void ha_client_handle_event_message(cJSON *root)
     }
     xSemaphoreGive(s_client.mutex);
     if (is_weather_hourly_event) {
+        ha_client_trace_recordf("weather hourly event entity=%s id=%" PRIu32,
+            weather_hourly_entity_id, msg_id);
         cJSON *hourly = ha_client_find_compact_weather_forecast(event, weather_hourly_entity_id);
         if (hourly != NULL) {
+            ha_client_trace_recordf("weather hourly event parsed entity=%s", weather_hourly_entity_id);
             ha_client_weather_model_update_hourly(weather_hourly_entity_id, hourly);
             cJSON *hourly_extrema = ha_client_reduce_hourly_forecast_to_extrema(hourly);
             cJSON_Delete(hourly);
@@ -6252,9 +6269,12 @@ static void ha_client_handle_event_message(cJSON *root)
     xSemaphoreGive(s_client.mutex);
 
     if (is_weather_forecast_event) {
+        ha_client_trace_recordf("weather daily event entity=%s id=%" PRIu32,
+            weather_event_entity_id, msg_id);
         cJSON *compact_forecast =
             ha_client_find_compact_weather_forecast(event, weather_event_entity_id);
         if (compact_forecast != NULL) {
+            ha_client_trace_recordf("weather daily event parsed entity=%s", weather_event_entity_id);
             ha_client_weather_model_update_daily(weather_event_entity_id, compact_forecast);
             ha_state_t state = {0};
             if (ha_model_get_state(weather_event_entity_id, &state)) {
@@ -6288,6 +6308,7 @@ static void ha_client_handle_event_message(cJSON *root)
         } else {
             ESP_LOGW(TAG_HA_CLIENT, "WS weather forecast event had no usable forecast for %s",
                 weather_event_entity_id);
+            ha_client_trace_recordf("weather daily event no forecast entity=%s", weather_event_entity_id);
         }
         return;
     }
