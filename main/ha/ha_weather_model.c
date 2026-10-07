@@ -3,12 +3,28 @@
  */
 #include "ha/ha_weather_model.h"
 #include <string.h>
+#include <time.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
+#include "nvs.h"
 
 static ha_weather_snapshot_t s_weather = {0};
 static SemaphoreHandle_t s_weather_mutex = NULL;
 static uint32_t s_weather_revision = 0;
+
+#define HA_WEATHER_TODAY_NVS_NS "ha_wx_today"
+
+typedef struct {
+    bool loaded;
+    int date_key;
+    bool has_low;
+    bool has_high;
+    float low_temp;
+    float high_temp;
+    char condition[32];
+} weather_today_persist_t;
+
+static weather_today_persist_t s_today_persist = {0};
 
 static void weather_copy(char *dst, size_t dst_size, const char *src)
 {
@@ -17,6 +33,198 @@ static void weather_copy(char *dst, size_t dst_size, const char *src)
     size_t n = strnlen(src, dst_size - 1U);
     memcpy(dst, src, n);
     dst[n] = '\0';
+}
+
+static int weather_local_date_key(void)
+{
+    time_t now = time(NULL);
+    struct tm local_now = {0};
+    localtime_r(&now, &local_now);
+    int year = local_now.tm_year + 1900;
+    int month = local_now.tm_mon + 1;
+    int day = local_now.tm_mday;
+    if (year < 2020 || month < 1 || month > 12 || day < 1 || day > 31) {
+        return 0;
+    }
+    return year * 10000 + month * 100 + day;
+}
+
+static void weather_persist_load_locked(void)
+{
+    if (s_today_persist.loaded) return;
+    s_today_persist.loaded = true;
+
+    nvs_handle_t handle;
+    if (nvs_open(HA_WEATHER_TODAY_NVS_NS, NVS_READONLY, &handle) != ESP_OK) {
+        return;
+    }
+
+    int32_t date_key = 0;
+    uint8_t has_low = 0;
+    uint8_t has_high = 0;
+    size_t value_size = sizeof(float);
+    float low_temp = 0.0f;
+    float high_temp = 0.0f;
+    size_t condition_size = sizeof(s_today_persist.condition);
+
+    if (nvs_get_i32(handle, "date", &date_key) == ESP_OK) {
+        s_today_persist.date_key = (int)date_key;
+    }
+    if (nvs_get_u8(handle, "has_low", &has_low) == ESP_OK && has_low != 0) {
+        value_size = sizeof(float);
+        if (nvs_get_blob(handle, "low", &low_temp, &value_size) == ESP_OK &&
+            value_size == sizeof(float)) {
+            s_today_persist.has_low = true;
+            s_today_persist.low_temp = low_temp;
+        }
+    }
+    if (nvs_get_u8(handle, "has_high", &has_high) == ESP_OK && has_high != 0) {
+        value_size = sizeof(float);
+        if (nvs_get_blob(handle, "high", &high_temp, &value_size) == ESP_OK &&
+            value_size == sizeof(float)) {
+            s_today_persist.has_high = true;
+            s_today_persist.high_temp = high_temp;
+        }
+    }
+    if (nvs_get_str(handle, "cond", s_today_persist.condition, &condition_size) != ESP_OK) {
+        s_today_persist.condition[0] = '\0';
+    }
+    nvs_close(handle);
+}
+
+static void weather_persist_save_locked(void)
+{
+    if (s_today_persist.date_key == 0 ||
+        (!s_today_persist.has_low && !s_today_persist.has_high)) {
+        return;
+    }
+
+    nvs_handle_t handle;
+    if (nvs_open(HA_WEATHER_TODAY_NVS_NS, NVS_READWRITE, &handle) != ESP_OK) {
+        return;
+    }
+
+    esp_err_t err = nvs_set_i32(handle, "date", (int32_t)s_today_persist.date_key);
+    if (err == ESP_OK) err = nvs_set_u8(handle, "has_low", s_today_persist.has_low ? 1 : 0);
+    if (err == ESP_OK) err = nvs_set_u8(handle, "has_high", s_today_persist.has_high ? 1 : 0);
+    if (err == ESP_OK && s_today_persist.has_low) {
+        err = nvs_set_blob(handle, "low", &s_today_persist.low_temp, sizeof(float));
+    }
+    if (err == ESP_OK && s_today_persist.has_high) {
+        err = nvs_set_blob(handle, "high", &s_today_persist.high_temp, sizeof(float));
+    }
+    if (err == ESP_OK) {
+        err = nvs_set_str(handle, "cond", s_today_persist.condition);
+    }
+    if (err == ESP_OK) {
+        nvs_commit(handle);
+    }
+    nvs_close(handle);
+}
+
+static bool weather_restore_persisted_today_locked(int local_date_key)
+{
+    if (local_date_key == 0) return false;
+    weather_persist_load_locked();
+    if (s_today_persist.date_key != local_date_key ||
+        (!s_today_persist.has_low && !s_today_persist.has_high)) {
+        return false;
+    }
+
+    ha_weather_day_t *today = NULL;
+    for (size_t i = 0; i < s_weather.day_count; i++) {
+        if (s_weather.days[i].valid && s_weather.days[i].date_key == local_date_key) {
+            today = &s_weather.days[i];
+            break;
+        }
+    }
+
+    if (today == NULL) {
+        size_t move_count = s_weather.day_count;
+        if (move_count >= HA_WEATHER_MODEL_MAX_DAYS) {
+            move_count = HA_WEATHER_MODEL_MAX_DAYS - 1U;
+        }
+        memmove(&s_weather.days[1], &s_weather.days[0],
+            move_count * sizeof(s_weather.days[0]));
+        if (s_weather.day_count < HA_WEATHER_MODEL_MAX_DAYS) {
+            s_weather.day_count++;
+        }
+        today = &s_weather.days[0];
+        memset(today, 0, sizeof(*today));
+        today->valid = true;
+        today->date_key = local_date_key;
+    }
+
+    bool changed = false;
+    if (s_today_persist.has_low &&
+        (!today->has_low || s_today_persist.low_temp < today->low_temp)) {
+        today->has_low = true;
+        today->low_temp = s_today_persist.low_temp;
+        changed = true;
+    }
+    if (s_today_persist.has_high &&
+        (!today->has_high || s_today_persist.high_temp > today->high_temp)) {
+        today->has_high = true;
+        today->high_temp = s_today_persist.high_temp;
+        changed = true;
+    }
+    if (today->condition[0] == '\0' && s_today_persist.condition[0] != '\0') {
+        weather_copy(today->condition, sizeof(today->condition), s_today_persist.condition);
+        changed = true;
+    }
+    return changed;
+}
+
+static void weather_seed_persisted_today_locked(const ha_weather_day_t *today)
+{
+    if (today == NULL || !today->valid || today->date_key == 0 ||
+        (!today->has_low && !today->has_high)) {
+        return;
+    }
+
+    weather_persist_load_locked();
+    bool changed = s_today_persist.date_key != today->date_key ||
+        s_today_persist.has_low != today->has_low ||
+        s_today_persist.has_high != today->has_high ||
+        (today->has_low && s_today_persist.low_temp != today->low_temp) ||
+        (today->has_high && s_today_persist.high_temp != today->high_temp) ||
+        strncmp(s_today_persist.condition, today->condition,
+            sizeof(s_today_persist.condition)) != 0;
+
+    s_today_persist.date_key = today->date_key;
+    s_today_persist.has_low = today->has_low;
+    s_today_persist.has_high = today->has_high;
+    s_today_persist.low_temp = today->low_temp;
+    s_today_persist.high_temp = today->high_temp;
+    weather_copy(s_today_persist.condition, sizeof(s_today_persist.condition), today->condition);
+
+    if (changed) {
+        weather_persist_save_locked();
+    }
+}
+
+static void weather_extend_persisted_with_observed_locked(void)
+{
+    if (s_weather.observed_date_key == 0) return;
+    weather_persist_load_locked();
+    if (s_today_persist.date_key != s_weather.observed_date_key) return;
+
+    bool changed = false;
+    if (s_weather.has_observed_low &&
+        (!s_today_persist.has_low || s_weather.observed_low < s_today_persist.low_temp)) {
+        s_today_persist.has_low = true;
+        s_today_persist.low_temp = s_weather.observed_low;
+        changed = true;
+    }
+    if (s_weather.has_observed_high &&
+        (!s_today_persist.has_high || s_weather.observed_high > s_today_persist.high_temp)) {
+        s_today_persist.has_high = true;
+        s_today_persist.high_temp = s_weather.observed_high;
+        changed = true;
+    }
+    if (changed) {
+        weather_persist_save_locked();
+    }
 }
 
 static bool weather_entity_matches_locked(const char *entity_id)
@@ -90,6 +298,8 @@ esp_err_t ha_weather_model_init(void)
     s_weather.humidity = -1;
     weather_copy(s_weather.unit, sizeof(s_weather.unit), "C");
     s_weather_revision = 0;
+    memset(&s_today_persist, 0, sizeof(s_today_persist));
+    weather_persist_load_locked();
     xSemaphoreGive(s_weather_mutex);
     return ESP_OK;
 }
@@ -144,6 +354,10 @@ esp_err_t ha_weather_model_set_current(const char *entity_id, int local_date_key
         s_weather.observed_high = 0.0f;
         changed = true;
     }
+    if (weather_restore_persisted_today_locked(local_date_key)) {
+        changed = true;
+    }
+
     if (has_temp && local_date_key != 0) {
         if (!s_weather.has_observed_low || temp < s_weather.observed_low) {
             s_weather.observed_low = temp;
@@ -155,6 +369,7 @@ esp_err_t ha_weather_model_set_current(const char *entity_id, int local_date_key
             s_weather.has_observed_high = true;
             changed = true;
         }
+        weather_extend_persisted_with_observed_locked();
     }
 
     ha_weather_day_t before_today = {0};
@@ -214,11 +429,25 @@ esp_err_t ha_weather_model_replace_daily(const char *entity_id, const ha_weather
         }
     }
 
+    int local_date_key = weather_local_date_key();
     bool incoming_has_today = false;
     for (size_t i = 0; i < day_count; i++) {
-        if (days[i].valid && days[i].date_key == s_weather.observed_date_key) {
+        if (days[i].valid && days[i].date_key == local_date_key) {
             incoming_has_today = true;
+            weather_seed_persisted_today_locked(&days[i]);
             break;
+        }
+    }
+
+    if (!have_existing_today && local_date_key != 0 &&
+        weather_restore_persisted_today_locked(local_date_key)) {
+        for (size_t i = 0; i < s_weather.day_count; i++) {
+            if (s_weather.days[i].valid &&
+                s_weather.days[i].date_key == local_date_key) {
+                existing_today = s_weather.days[i];
+                have_existing_today = true;
+                break;
+            }
         }
     }
 
@@ -257,6 +486,7 @@ esp_err_t ha_weather_model_set_today_hourly_range(const char *entity_id, int loc
     xSemaphoreTake(s_weather_mutex, portMAX_DELAY);
     uint32_t before_revision = s_weather.revision;
     weather_select_entity_locked(entity_id);
+    weather_restore_persisted_today_locked(local_date_key);
 
     ha_weather_day_t before_days[HA_WEATHER_MODEL_MAX_DAYS] = {0};
     size_t before_count = s_weather.day_count;
