@@ -8,7 +8,7 @@
 #include "app_config.h"
 #include "esp_err.h"
 
-#define HA_WEATHER_MODEL_MAX_DAYS 6
+#define HA_WEATHER_MODEL_MAX_DAYS 10
 
 typedef struct {
     bool valid;
