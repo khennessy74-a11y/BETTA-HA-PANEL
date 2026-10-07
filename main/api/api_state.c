@@ -21,9 +21,31 @@ static void set_json_headers(httpd_req_t *req)
 static cJSON *state_to_json(const ha_state_t *state)
 {
     cJSON *obj = cJSON_CreateObject();
+    if (obj == NULL || state == NULL) {
+        cJSON_Delete(obj);
+        return NULL;
+    }
+
     cJSON_AddStringToObject(obj, "entity_id", state->entity_id);
     cJSON_AddStringToObject(obj, "state", state->state);
-    cJSON_AddStringToObject(obj, "attributes_json", state->attributes_json);
+
+    /* Keep image access tokens inside the HA model for widgets that require
+     * them (for example Roborock map/image fetches), but never expose those
+     * bearer-style attributes through the HTTP state API. */
+    const char *attributes_json = "{}";
+    char *redacted_json = NULL;
+    cJSON *attrs = cJSON_Parse(state->attributes_json);
+    if (cJSON_IsObject(attrs)) {
+        cJSON_DeleteItemFromObjectCaseSensitive(attrs, "access_token");
+        redacted_json = cJSON_PrintUnformatted(attrs);
+        if (redacted_json != NULL) {
+            attributes_json = redacted_json;
+        }
+    }
+    cJSON_Delete(attrs);
+
+    cJSON_AddStringToObject(obj, "attributes_json", attributes_json);
+    cJSON_free(redacted_json);
     cJSON_AddNumberToObject(obj, "last_changed_unix_ms", (double)state->last_changed_unix_ms);
     return obj;
 }
