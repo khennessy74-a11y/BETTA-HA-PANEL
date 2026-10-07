@@ -4418,14 +4418,28 @@ static esp_err_t ha_client_fetch_state_http(
         if (cJSON_IsObject(attrs)) {
             cJSON *forecast = cJSON_GetObjectItemCaseSensitive(attrs, "forecast");
             cJSON *forecast_daily = cJSON_GetObjectItemCaseSensitive(attrs, "forecast_daily");
-            if (!cJSON_IsArray(forecast) && !cJSON_IsArray(forecast_daily)) {
+
+            if (cJSON_IsArray(forecast)) {
+                ha_client_trace_recordf("weather REST forecast present entity=%s source=forecast", entity_id);
+                ha_client_weather_model_update_daily(entity_id, forecast);
+            } else if (cJSON_IsArray(forecast_daily)) {
+                ha_client_trace_recordf("weather REST forecast present entity=%s source=forecast_daily", entity_id);
+                ha_client_weather_model_update_daily(entity_id, forecast_daily);
+            } else {
                 cJSON *service_forecast = NULL;
                 esp_err_t forecast_err =
                     ha_client_fetch_weather_daily_forecast_http(base_url, host_header, entity_id, &service_forecast);
                 if (forecast_err == ESP_OK && cJSON_IsArray(service_forecast)) {
+                    ha_client_trace_recordf("weather REST forecast fetched entity=%s count=%d",
+                        entity_id, cJSON_GetArraySize(service_forecast));
+                    ha_client_weather_model_update_daily(entity_id, service_forecast);
                     cJSON_AddItemToObject(attrs, "forecast", service_forecast);
-                } else if (service_forecast != NULL) {
-                    cJSON_Delete(service_forecast);
+                } else {
+                    ha_client_trace_recordf("weather REST forecast fetch failed entity=%s err=%s",
+                        entity_id, esp_err_to_name(forecast_err));
+                    if (service_forecast != NULL) {
+                        cJSON_Delete(service_forecast);
+                    }
                 }
             }
         }
