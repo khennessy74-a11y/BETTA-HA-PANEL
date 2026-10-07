@@ -708,7 +708,6 @@ const WEB_I18N_BUILTIN = {
     "settings.info.password_stored": "Password stored",
     "settings.info.country": "Country",
     "settings.info.rssi": "RSSI (connected AP)",
-    "settings.info.connected_bssid": "Connected BSSID",
     "settings.info.channel": "Channel",
     "settings.info.token_stored": "Token stored",
     "settings.info.rest_fallback": "REST fallback",
@@ -1038,7 +1037,6 @@ const WEB_I18N_BUILTIN = {
     "settings.info.password_stored": "Passwort gespeichert",
     "settings.info.country": "Land",
     "settings.info.rssi": "RSSI (verbundener AP)",
-    "settings.info.connected_bssid": "Verbundener BSSID",
     "settings.info.channel": "Kanal",
     "settings.info.token_stored": "Token gespeichert",
     "settings.info.rest_fallback": "REST Fallback",
@@ -1260,7 +1258,6 @@ const WEB_I18N_BUILTIN = {
     "settings.info.password_stored": "Contrasena guardada",
     "settings.info.country": "Pais",
     "settings.info.rssi": "RSSI (AP conectado)",
-    "settings.info.connected_bssid": "BSSID conectado",
     "settings.info.channel": "Canal",
     "settings.info.token_stored": "Token guardado",
     "settings.info.rest_fallback": "Fallback REST",
@@ -1478,7 +1475,6 @@ const WEB_I18N_BUILTIN = {
     "settings.info.password_stored": "Mot de passe stocke",
     "settings.info.country": "Pays",
     "settings.info.rssi": "RSSI (AP connecte)",
-    "settings.info.connected_bssid": "BSSID connecte",
     "settings.info.channel": "Canal",
     "settings.info.token_stored": "Token stocke",
     "settings.info.rest_fallback": "Fallback REST",
@@ -3065,7 +3061,6 @@ function renderSettings() {
   const connectedRssiText = Number.isFinite(Number(wifi.rssi_dbm))
     ? `${Math.round(Number(wifi.rssi_dbm))} dBm`
     : "n/a";
-  const connectedBssid = normalizeBssid(wifi.connected_bssid || "");
   const connectedChannel = Number.isFinite(Number(wifi.connected_channel))
     ? String(Math.round(Number(wifi.connected_channel)))
     : "n/a";
@@ -3076,7 +3071,6 @@ function renderSettings() {
     `${t("settings.info.password_stored")}: ${wifi.password_set ? t("common.yes") : t("common.no")}`,
     `${t("settings.info.country")}: ${normalizeCountryCode(wifi.country_code) || "US"}`,
     `${t("settings.info.rssi")}: ${connectedRssiText}`,
-    `${t("settings.info.connected_bssid")}: ${connectedBssid || "n/a"}`,
     `${t("settings.info.channel")}: ${connectedChannel}`,
   ].join(" | ");
 
