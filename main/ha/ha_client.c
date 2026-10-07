@@ -40,6 +40,7 @@
 typedef struct {
     char *payload;
     int len;
+    int64_t enqueued_unix_ms;
 } ha_ws_rx_msg_t;
 
 typedef struct {
@@ -730,6 +731,7 @@ static void ha_client_enqueue_ws_text(const char *data, int len)
     memcpy(msg.payload, data, (size_t)len);
     msg.payload[len] = '\0';
     msg.len = len;
+    msg.enqueued_unix_ms = ha_client_now_ms();
 
     if (xQueueSend(s_client.ws_rx_queue, &msg, 0) != pdTRUE) {
         /* Keep freshest state changes: drop oldest queued message and retry once. */
@@ -6908,6 +6910,21 @@ static void ha_client_task(void *arg)
             int drained = 0;
             while (drained < HA_WS_RX_DRAIN_BUDGET && xQueueReceive(s_client.ws_rx_queue, &msg, 0) == pdTRUE) {
                 if (msg.payload != NULL && msg.len > 0) {
+                    if (strstr(msg.payload, "\"type\":\"auth_required\"") != NULL ||
+                        strstr(msg.payload, "\"type\": \"auth_required\"") != NULL) {
+                        int64_t handled_now_ms = ha_client_now_ms();
+                        int64_t connected_at_ms = 0;
+                        xSemaphoreTake(s_client.mutex, portMAX_DELAY);
+                        connected_at_ms = s_client.ws_last_connected_unix_ms;
+                        xSemaphoreGive(s_client.mutex);
+                        ha_client_trace_recordf(
+                            "auth_required timing queue_age=%" PRId64 "ms since_connect=%" PRId64 "ms native=%d",
+                            (msg.enqueued_unix_ms > 0) ?
+                                (handled_now_ms - msg.enqueued_unix_ms) : -1,
+                            (connected_at_ms > 0) ?
+                                (msg.enqueued_unix_ms - connected_at_ms) : -1,
+                            ha_ws_is_connected() ? 1 : 0);
+                    }
                     ha_client_handle_text_message(msg.payload, msg.len);
                 }
                 ha_client_free_ws_msg(&msg);
