@@ -220,6 +220,7 @@ typedef struct {
     const lv_font_t *last_icon_font;
     char last_condition_key[32];
     char last_condition_text[32];
+    uint32_t last_rendered_weather_revision;
 
     /* Today's daily extrema are deliberately latched per local calendar day.
      * Some HA weather providers stop returning a complete "today" daily row
@@ -3144,6 +3145,7 @@ esp_err_t w_weather_tile_create(const ui_widget_def_t *def, lv_obj_t *parent, ui
     ctx->last_icon_font = NULL;
     ctx->last_condition_key[0] = '\0';
     ctx->last_condition_text[0] = '\0';
+    ctx->last_rendered_weather_revision = UINT32_MAX;
 
     if (ctx->show_forecast) {
         for (int i = 0; i < WEATHER_3DAY_ROWS; i++) {
@@ -3231,6 +3233,13 @@ void w_weather_tile_apply_state(ui_widget_instance_t *instance, const ha_state_t
         return;
     }
 
+    /* No semantic weather change = no LVGL work. This is the final
+     * anti-twitch gate: duplicate HA state events may still arrive, but the
+     * normalized model revision only changes when visible weather data does. */
+    if (ctx->last_rendered_weather_revision == snapshot.revision) {
+        return;
+    }
+
     /* Deterministic icon behavior now follows the normalized current
      * condition instead of reparsing the legacy HA attributes payload. */
     weather_update_icon_cache_from_state(ctx, snapshot.current_condition);
@@ -3246,6 +3255,7 @@ void w_weather_tile_apply_state(ui_widget_instance_t *instance, const ha_state_t
         weather_copy_text(ctx->last_condition_text, sizeof(ctx->last_condition_text), values->condition);
     }
     weather_render(instance->obj, ctx, values, true);
+    ctx->last_rendered_weather_revision = snapshot.revision;
     free(values);
 }
 
