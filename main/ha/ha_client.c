@@ -6337,7 +6337,7 @@ static void ha_client_handle_event_message(cJSON *root)
             s_client.get_states_req_id = 0;
             s_client.initial_layout_sync_done = true;
             s_client.initial_layout_sync_imported = seen_count;
-            if (!s_client.rest_enabled && s_client.layout_needs_weather_forecast) {
+            if (!s_client.rest_enabled) {
                 queue_weather_bootstrap = true;
             }
             /* Clean sync completion -> no missing entities to report. */
@@ -6349,6 +6349,7 @@ static void ha_client_handle_event_message(cJSON *root)
         xSemaphoreGive(s_client.mutex);
 
         if (queue_weather_bootstrap) {
+            ha_client_trace_record("weather bootstrap scan after WS entities sync");
             ha_client_queue_weather_priority_sync_from_layout(now_ms);
         }
         if (mark_initial_done) {
