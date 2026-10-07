@@ -239,23 +239,10 @@ esp_err_t api_settings_get_handler(httpd_req_t *req)
     cJSON_AddStringToObject(wifi, "setup_ap_ssid", wifi_mgr_get_setup_ap_ssid());
     wifi_mgr_sta_ap_info_t sta_ap = {0};
     if (wifi_mgr_get_sta_ap_info(&sta_ap) == ESP_OK) {
-        char connected_bssid[APP_WIFI_BSSID_MAX_LEN] = {0};
-        snprintf(
-            connected_bssid,
-            sizeof(connected_bssid),
-            "%02X:%02X:%02X:%02X:%02X:%02X",
-            sta_ap.bssid[0],
-            sta_ap.bssid[1],
-            sta_ap.bssid[2],
-            sta_ap.bssid[3],
-            sta_ap.bssid[4],
-            sta_ap.bssid[5]);
         cJSON_AddNumberToObject(wifi, "rssi_dbm", (double)sta_ap.rssi);
-        cJSON_AddStringToObject(wifi, "connected_bssid", connected_bssid);
         cJSON_AddNumberToObject(wifi, "connected_channel", (double)sta_ap.channel);
     } else {
         cJSON_AddNullToObject(wifi, "rssi_dbm");
-        cJSON_AddNullToObject(wifi, "connected_bssid");
         cJSON_AddNullToObject(wifi, "connected_channel");
     }
     cJSON_AddBoolToObject(wifi, "scan_supported", true);
