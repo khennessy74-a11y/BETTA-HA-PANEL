@@ -397,9 +397,21 @@ static bool ota_project_is_betta_family(const char *name)
     if (name == NULL || name[0] == '\0') {
         return false;
     }
-    return strncmp(name, "betta-ha-panel", strlen("betta-ha-panel")) == 0 ||
-           strncmp(name, "betta86-ha-panel", strlen("betta86-ha-panel")) == 0 ||
-           strncmp(name, "BETTA-HA-PANEL", strlen("BETTA-HA-PANEL")) == 0;
+
+    static const char *const allowed_projects[] = {
+        "betta-ha-panel",
+        "betta-ha-panel-s3",
+        "betta-ha-panel-10.1",
+        "betta86-ha-panel",
+        "BETTA-HA-PANEL",
+    };
+
+    for (size_t i = 0; i < (sizeof(allowed_projects) / sizeof(allowed_projects[0])); i++) {
+        if (strcmp(name, allowed_projects[i]) == 0) {
+            return true;
+        }
+    }
+    return false;
 }
 
 static esp_err_t ota_stream_validate_header(api_ota_stream_t *stream)
