@@ -41,6 +41,27 @@ static void weather_mark_changed_locked(void)
     s_weather.revision = ++s_weather_revision;
 }
 
+static bool weather_day_equal(const ha_weather_day_t *a, const ha_weather_day_t *b)
+{
+    if (a == NULL || b == NULL) return false;
+    return a->valid == b->valid &&
+        a->date_key == b->date_key &&
+        a->has_low == b->has_low &&
+        a->has_high == b->has_high &&
+        (!a->has_low || a->low_temp == b->low_temp) &&
+        (!a->has_high || a->high_temp == b->high_temp) &&
+        strncmp(a->condition, b->condition, sizeof(a->condition)) == 0;
+}
+
+static bool weather_days_equal_locked(const ha_weather_day_t *days, size_t day_count)
+{
+    if (s_weather.day_count != day_count) return false;
+    for (size_t i = 0; i < day_count; i++) {
+        if (!weather_day_equal(&s_weather.days[i], &days[i])) return false;
+    }
+    return true;
+}
+
 static void weather_apply_observed_to_today_locked(void)
 {
     if (s_weather.observed_date_key == 0) return;
@@ -89,12 +110,31 @@ esp_err_t ha_weather_model_set_current(const char *entity_id, int local_date_key
 {
     if (!s_weather_mutex || !entity_id || entity_id[0] == '\0') return ESP_ERR_INVALID_STATE;
     xSemaphoreTake(s_weather_mutex, portMAX_DELAY);
+    uint32_t before_revision = s_weather.revision;
     weather_select_entity_locked(entity_id);
-    s_weather.has_current_temp = has_temp;
-    s_weather.current_temp = temp;
-    s_weather.humidity = humidity;
-    if (unit && unit[0] != '\0') weather_copy(s_weather.unit, sizeof(s_weather.unit), unit);
-    weather_copy(s_weather.current_condition, sizeof(s_weather.current_condition), condition);
+    bool changed = (s_weather.revision != before_revision);
+
+    if (s_weather.has_current_temp != has_temp ||
+        (has_temp && s_weather.current_temp != temp)) {
+        s_weather.has_current_temp = has_temp;
+        s_weather.current_temp = temp;
+        changed = true;
+    }
+    if (s_weather.humidity != humidity) {
+        s_weather.humidity = humidity;
+        changed = true;
+    }
+    if (unit && unit[0] != '\0' &&
+        strncmp(s_weather.unit, unit, sizeof(s_weather.unit)) != 0) {
+        weather_copy(s_weather.unit, sizeof(s_weather.unit), unit);
+        changed = true;
+    }
+    const char *safe_condition = condition ? condition : "";
+    if (strncmp(s_weather.current_condition, safe_condition,
+            sizeof(s_weather.current_condition)) != 0) {
+        weather_copy(s_weather.current_condition, sizeof(s_weather.current_condition), safe_condition);
+        changed = true;
+    }
 
     if (local_date_key != 0 && s_weather.observed_date_key != local_date_key) {
         s_weather.observed_date_key = local_date_key;
@@ -102,17 +142,46 @@ esp_err_t ha_weather_model_set_current(const char *entity_id, int local_date_key
         s_weather.has_observed_high = false;
         s_weather.observed_low = 0.0f;
         s_weather.observed_high = 0.0f;
+        changed = true;
     }
     if (has_temp && local_date_key != 0) {
         if (!s_weather.has_observed_low || temp < s_weather.observed_low) {
-            s_weather.observed_low = temp; s_weather.has_observed_low = true;
+            s_weather.observed_low = temp;
+            s_weather.has_observed_low = true;
+            changed = true;
         }
         if (!s_weather.has_observed_high || temp > s_weather.observed_high) {
-            s_weather.observed_high = temp; s_weather.has_observed_high = true;
+            s_weather.observed_high = temp;
+            s_weather.has_observed_high = true;
+            changed = true;
+        }
+    }
+
+    ha_weather_day_t before_today = {0};
+    bool had_today = false;
+    for (size_t i = 0; i < s_weather.day_count; i++) {
+        if (s_weather.days[i].valid &&
+            s_weather.days[i].date_key == s_weather.observed_date_key) {
+            before_today = s_weather.days[i];
+            had_today = true;
+            break;
         }
     }
     weather_apply_observed_to_today_locked();
-    weather_mark_changed_locked();
+    if (had_today) {
+        for (size_t i = 0; i < s_weather.day_count; i++) {
+            if (s_weather.days[i].valid &&
+                s_weather.days[i].date_key == s_weather.observed_date_key &&
+                !weather_day_equal(&before_today, &s_weather.days[i])) {
+                changed = true;
+                break;
+            }
+        }
+    }
+
+    if (changed && s_weather.revision == before_revision) {
+        weather_mark_changed_locked();
+    }
     xSemaphoreGive(s_weather_mutex);
     return ESP_OK;
 }
@@ -121,13 +190,62 @@ esp_err_t ha_weather_model_replace_daily(const char *entity_id, const ha_weather
 {
     if (!s_weather_mutex || !entity_id || entity_id[0] == '\0') return ESP_ERR_INVALID_STATE;
     if (day_count > HA_WEATHER_MODEL_MAX_DAYS || (day_count > 0 && !days)) return ESP_ERR_INVALID_ARG;
+
     xSemaphoreTake(s_weather_mutex, portMAX_DELAY);
+    uint32_t before_revision = s_weather.revision;
     weather_select_entity_locked(entity_id);
-    memset(s_weather.days, 0, sizeof(s_weather.days));
-    s_weather.day_count = day_count;
-    if (day_count > 0) memcpy(s_weather.days, days, day_count * sizeof(s_weather.days[0]));
-    weather_apply_observed_to_today_locked();
-    weather_mark_changed_locked();
+
+    ha_weather_day_t merged[HA_WEATHER_MODEL_MAX_DAYS] = {0};
+    size_t merged_count = 0;
+
+    /* Preserve an already-normalized Today row when the daily provider has
+     * rolled Today out of its response. The later hourly refresh can update
+     * that row in place instead of making the model oscillate 6 -> 5 -> 6. */
+    ha_weather_day_t existing_today = {0};
+    bool have_existing_today = false;
+    if (s_weather.observed_date_key != 0) {
+        for (size_t i = 0; i < s_weather.day_count; i++) {
+            if (s_weather.days[i].valid &&
+                s_weather.days[i].date_key == s_weather.observed_date_key) {
+                existing_today = s_weather.days[i];
+                have_existing_today = true;
+                break;
+            }
+        }
+    }
+
+    bool incoming_has_today = false;
+    for (size_t i = 0; i < day_count; i++) {
+        if (days[i].valid && days[i].date_key == s_weather.observed_date_key) {
+            incoming_has_today = true;
+            break;
+        }
+    }
+
+    if (have_existing_today && !incoming_has_today &&
+        merged_count < HA_WEATHER_MODEL_MAX_DAYS) {
+        merged[merged_count++] = existing_today;
+    }
+
+    for (size_t i = 0; i < day_count && merged_count < HA_WEATHER_MODEL_MAX_DAYS; i++) {
+        merged[merged_count++] = days[i];
+    }
+
+    bool changed = (s_weather.revision != before_revision) ||
+        !weather_days_equal_locked(merged, merged_count);
+
+    if (changed) {
+        memset(s_weather.days, 0, sizeof(s_weather.days));
+        s_weather.day_count = merged_count;
+        if (merged_count > 0) {
+            memcpy(s_weather.days, merged, merged_count * sizeof(s_weather.days[0]));
+        }
+        weather_apply_observed_to_today_locked();
+        if (s_weather.revision == before_revision) {
+            weather_mark_changed_locked();
+        }
+    }
+
     xSemaphoreGive(s_weather_mutex);
     return ESP_OK;
 }
@@ -137,7 +255,12 @@ esp_err_t ha_weather_model_set_today_hourly_range(const char *entity_id, int loc
 {
     if (!s_weather_mutex || !entity_id || entity_id[0] == '\0' || local_date_key == 0) return ESP_ERR_INVALID_ARG;
     xSemaphoreTake(s_weather_mutex, portMAX_DELAY);
+    uint32_t before_revision = s_weather.revision;
     weather_select_entity_locked(entity_id);
+
+    ha_weather_day_t before_days[HA_WEATHER_MODEL_MAX_DAYS] = {0};
+    size_t before_count = s_weather.day_count;
+    memcpy(before_days, s_weather.days, sizeof(before_days));
 
     ha_weather_day_t *today = NULL;
     for (size_t i = 0; i < s_weather.day_count; i++) {
@@ -156,11 +279,34 @@ esp_err_t ha_weather_model_set_today_hourly_range(const char *entity_id, int loc
         today->valid = true;
         today->date_key = local_date_key;
     }
-    if (!today->has_low && has_low) { today->has_low = true; today->low_temp = low_temp; }
-    if (!today->has_high && has_high) { today->has_high = true; today->high_temp = high_temp; }
-    if (today->condition[0] == '\0' && condition) weather_copy(today->condition, sizeof(today->condition), condition);
+    if (!today->has_low && has_low) {
+        today->has_low = true;
+        today->low_temp = low_temp;
+    }
+    if (!today->has_high && has_high) {
+        today->has_high = true;
+        today->high_temp = high_temp;
+    }
+    if (today->condition[0] == '\0' && condition) {
+        weather_copy(today->condition, sizeof(today->condition), condition);
+    }
+
     weather_apply_observed_to_today_locked();
-    weather_mark_changed_locked();
+
+    bool changed = (s_weather.revision != before_revision) ||
+        (before_count != s_weather.day_count);
+    if (!changed) {
+        for (size_t i = 0; i < s_weather.day_count; i++) {
+            if (!weather_day_equal(&before_days[i], &s_weather.days[i])) {
+                changed = true;
+                break;
+            }
+        }
+    }
+    if (changed && s_weather.revision == before_revision) {
+        weather_mark_changed_locked();
+    }
+
     xSemaphoreGive(s_weather_mutex);
     return ESP_OK;
 }
