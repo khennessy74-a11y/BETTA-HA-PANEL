@@ -25,6 +25,7 @@
 #include "ui/ui_i18n.h"
 #include "ui/theme/theme_default.h"
 #include "ui/widgets/widget_display_options.h"
+#include "ha/ha_weather_model.h"
 
 #ifndef APP_UI_WEATHER_ICON_DEBUG
 #define APP_UI_WEATHER_ICON_DEBUG 0
@@ -90,11 +91,7 @@
 #define WEATHER_3DAY_SUBMETA_FONT APP_FONT_TEXT_22
 #endif
 
-#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
-#define WEATHER_3DAY_MAX_FORECAST 5
-#else
-#define WEATHER_3DAY_MAX_FORECAST 5
-#endif
+#define WEATHER_3DAY_MAX_FORECAST (HA_WEATHER_MODEL_MAX_DAYS - 1)
 #define WEATHER_3DAY_ROWS (1 + WEATHER_3DAY_MAX_FORECAST)
 /* Fixed visual row metrics for the forecast list.  The visible row count
  * adapts to the tile height (see weather_3day_visible_rows), but the
@@ -1423,6 +1420,69 @@ static void weather_values_default(weather_values_t *values)
         weather_copy_text(values->forecast[i].day, sizeof(values->forecast[i].day), "--");
         values->forecast[i].condition_key[0] = '\0';
         weather_copy_text(values->forecast[i].condition, sizeof(values->forecast[i].condition), "--");
+    }
+}
+
+static void weather_values_from_model(
+    const ha_weather_snapshot_t *snapshot,
+    weather_values_t *out)
+{
+    if (snapshot == NULL || out == NULL) {
+        return;
+    }
+
+    weather_values_default(out);
+    out->has_temp = snapshot->has_current_temp;
+    out->temp = snapshot->current_temp;
+    out->humidity = snapshot->humidity;
+    weather_copy_text(out->unit, sizeof(out->unit),
+        snapshot->unit[0] != '\0' ? snapshot->unit : "C");
+    weather_normalize_condition_key(snapshot->current_condition,
+        out->condition_key, sizeof(out->condition_key));
+    weather_humanize_condition(snapshot->current_condition,
+        out->condition, sizeof(out->condition));
+
+    const int today_key = weather_local_date_key();
+    size_t forecast_out = 0;
+
+    for (size_t i = 0;
+         i < snapshot->day_count && forecast_out < WEATHER_3DAY_MAX_FORECAST;
+         i++) {
+        const ha_weather_day_t *src = &snapshot->days[i];
+        if (!src->valid) {
+            continue;
+        }
+
+        if (src->date_key == today_key) {
+            out->today_has_low = src->has_low;
+            out->today_has_high = src->has_high;
+            out->today_daily_has_low = src->has_low;
+            out->today_daily_has_high = src->has_high;
+            out->today_low_temp = src->low_temp;
+            out->today_high_temp = src->high_temp;
+            weather_normalize_condition_key(src->condition,
+                out->today_condition_key, sizeof(out->today_condition_key));
+            continue;
+        }
+
+        weather_forecast_t *dst = &out->forecast[forecast_out++];
+        dst->valid = true;
+        dst->has_low = src->has_low;
+        dst->has_high = src->has_high;
+        dst->low_temp = src->low_temp;
+        dst->high_temp = src->high_temp;
+
+        int year = src->date_key / 10000;
+        int month = (src->date_key / 100) % 100;
+        int day = src->date_key % 100;
+        char date_text[16] = {0};
+        snprintf(date_text, sizeof(date_text), "%04d-%02d-%02d", year, month, day);
+        weather_day_from_datetime(date_text, dst->day, sizeof(dst->day));
+
+        weather_normalize_condition_key(src->condition,
+            dst->condition_key, sizeof(dst->condition_key));
+        weather_humanize_condition(src->condition,
+            dst->condition, sizeof(dst->condition));
     }
 }
 
@@ -3165,10 +3225,15 @@ void w_weather_tile_apply_state(ui_widget_instance_t *instance, const ha_state_t
         return;
     }
 
-    /* Deterministic icon behavior:
-     * As soon as a weather condition maps to an icon, keep showing that icon
-     * until a new valid weather condition arrives. */
-    weather_update_icon_cache_from_state(ctx, state->state);
+    ha_weather_snapshot_t snapshot = {0};
+    if (!ha_weather_model_get_snapshot(instance->entity_id, &snapshot)) {
+        weather_render(instance->obj, ctx, NULL, false);
+        return;
+    }
+
+    /* Deterministic icon behavior now follows the normalized current
+     * condition instead of reparsing the legacy HA attributes payload. */
+    weather_update_icon_cache_from_state(ctx, snapshot.current_condition);
 
     weather_values_t *values = weather_calloc(1, sizeof(*values));
     if (values == NULL) {
@@ -3176,8 +3241,7 @@ void w_weather_tile_apply_state(ui_widget_instance_t *instance, const ha_state_t
         return;
     }
 
-    weather_extract_values(state, ctx->show_forecast, values);
-    weather_apply_today_extrema_cache(ctx, values);
+    weather_values_from_model(&snapshot, values);
     if (ctx->last_condition_text[0] == '\0' && weather_has_alpha(values->condition)) {
         weather_copy_text(ctx->last_condition_text, sizeof(ctx->last_condition_text), values->condition);
     }
