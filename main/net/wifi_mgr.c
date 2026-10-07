@@ -952,10 +952,9 @@ esp_err_t wifi_mgr_init(const wifi_mgr_config_t *cfg)
         if (wifi_mgr_parse_bssid(cfg->bssid, bssid)) {
             memcpy(wifi_cfg.sta.bssid, bssid, sizeof(bssid));
             wifi_cfg.sta.bssid_set = true;
-            ESP_LOGI(TAG_WIFI, "Wi-Fi BSSID lock enabled: %02X:%02X:%02X:%02X:%02X:%02X",
-                bssid[0], bssid[1], bssid[2], bssid[3], bssid[4], bssid[5]);
+            ESP_LOGI(TAG_WIFI, "Wi-Fi BSSID lock enabled");
         } else {
-            ESP_LOGW(TAG_WIFI, "Ignoring invalid Wi-Fi BSSID lock value: %s", cfg->bssid);
+            ESP_LOGW(TAG_WIFI, "Ignoring invalid Wi-Fi BSSID lock value");
         }
     }
     wifi_cfg.sta.threshold.authmode =
