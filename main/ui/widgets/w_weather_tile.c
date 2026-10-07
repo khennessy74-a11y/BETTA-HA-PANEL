@@ -15,6 +15,7 @@
 #include "cJSON.h"
 #include "esp_heap_caps.h"
 #include "esp_log.h"
+#include "nvs.h"
 #if !defined(CONFIG_APP_PANEL_VARIANT_S3_480) && defined(CONFIG_SPIRAM) && CONFIG_SPIRAM
 #include "esp_memory_utils.h"
 #endif
@@ -1668,6 +1669,85 @@ static bool weather_unit_is_fahrenheit(const char *unit)
     return false;
 }
 
+#define WEATHER_TODAY_CACHE_NS "weather_day"
+
+static void weather_today_cache_load(w_weather_tile_ctx_t *ctx, int date_key)
+{
+    if (ctx == NULL || date_key == 0) {
+        return;
+    }
+
+    nvs_handle_t handle;
+    if (nvs_open(WEATHER_TODAY_CACHE_NS, NVS_READONLY, &handle) != ESP_OK) {
+        return;
+    }
+
+    int32_t stored_date = 0;
+    uint8_t has_high = 0;
+    uint8_t has_low = 0;
+    float high = 0.0f;
+    float low = 0.0f;
+    size_t value_size = sizeof(float);
+
+    bool valid = nvs_get_i32(handle, "date", &stored_date) == ESP_OK &&
+                 stored_date == date_key;
+
+    if (valid &&
+        nvs_get_u8(handle, "has_high", &has_high) == ESP_OK &&
+        has_high != 0) {
+        value_size = sizeof(float);
+        if (nvs_get_blob(handle, "high", &high, &value_size) == ESP_OK &&
+            value_size == sizeof(float)) {
+            ctx->today_cache_high_temp = high;
+            ctx->today_cache_has_high = true;
+        }
+    }
+
+    if (valid &&
+        nvs_get_u8(handle, "has_low", &has_low) == ESP_OK &&
+        has_low != 0) {
+        value_size = sizeof(float);
+        if (nvs_get_blob(handle, "low", &low, &value_size) == ESP_OK &&
+            value_size == sizeof(float)) {
+            ctx->today_cache_low_temp = low;
+            ctx->today_cache_has_low = true;
+        }
+    }
+
+    nvs_close(handle);
+}
+
+static void weather_today_cache_save(const w_weather_tile_ctx_t *ctx)
+{
+    if (ctx == NULL || ctx->today_cache_date_key == 0) {
+        return;
+    }
+
+    nvs_handle_t handle;
+    if (nvs_open(WEATHER_TODAY_CACHE_NS, NVS_READWRITE, &handle) != ESP_OK) {
+        return;
+    }
+
+    esp_err_t err = nvs_set_i32(handle, "date", ctx->today_cache_date_key);
+    if (err == ESP_OK) {
+        err = nvs_set_u8(handle, "has_high", ctx->today_cache_has_high ? 1 : 0);
+    }
+    if (err == ESP_OK) {
+        err = nvs_set_u8(handle, "has_low", ctx->today_cache_has_low ? 1 : 0);
+    }
+    if (err == ESP_OK && ctx->today_cache_has_high) {
+        err = nvs_set_blob(handle, "high", &ctx->today_cache_high_temp, sizeof(float));
+    }
+    if (err == ESP_OK && ctx->today_cache_has_low) {
+        err = nvs_set_blob(handle, "low", &ctx->today_cache_low_temp, sizeof(float));
+    }
+    if (err == ESP_OK) {
+        nvs_commit(handle);
+    }
+
+    nvs_close(handle);
+}
+
 static void weather_apply_today_extrema_cache(
     w_weather_tile_ctx_t *ctx,
     weather_values_t *values)
@@ -1687,7 +1767,15 @@ static void weather_apply_today_extrema_cache(
         ctx->today_cache_has_low = false;
         ctx->today_cache_high_temp = 0.0f;
         ctx->today_cache_low_temp = 0.0f;
+
+        /* Restore today's first-seen daily extrema after a reboot/flash.
+         * The previous RAM-only cache was lost on restart, which meant the
+         * Today row disappeared once the provider had rolled Today out of
+         * its daily payload. */
+        weather_today_cache_load(ctx, date_key);
     }
+
+    bool cache_changed = false;
 
     /* Only explicit daily entries dated today are allowed to seed the
      * all-day cache. Hourly fallback is intentionally not latched because
@@ -1695,10 +1783,12 @@ static void weather_apply_today_extrema_cache(
     if (!ctx->today_cache_has_high && values->today_daily_has_high) {
         ctx->today_cache_high_temp = values->today_high_temp;
         ctx->today_cache_has_high = true;
+        cache_changed = true;
     }
     if (!ctx->today_cache_has_low && values->today_daily_has_low) {
         ctx->today_cache_low_temp = values->today_low_temp;
         ctx->today_cache_has_low = true;
+        cache_changed = true;
     }
 
     /* Combine the forecast range with temperatures actually observed today.
@@ -1708,10 +1798,16 @@ static void weather_apply_today_extrema_cache(
     if (values->has_temp) {
         if (ctx->today_cache_has_low && values->temp < ctx->today_cache_low_temp) {
             ctx->today_cache_low_temp = values->temp;
+            cache_changed = true;
         }
         if (ctx->today_cache_has_high && values->temp > ctx->today_cache_high_temp) {
             ctx->today_cache_high_temp = values->temp;
+            cache_changed = true;
         }
+    }
+
+    if (cache_changed) {
+        weather_today_cache_save(ctx);
     }
 
     /* Once captured for this calendar day, keep displaying those extrema
