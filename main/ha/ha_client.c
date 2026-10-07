@@ -6337,9 +6337,7 @@ static void ha_client_handle_event_message(cJSON *root)
             s_client.get_states_req_id = 0;
             s_client.initial_layout_sync_done = true;
             s_client.initial_layout_sync_imported = seen_count;
-            if (!s_client.rest_enabled) {
-                queue_weather_bootstrap = true;
-            }
+            queue_weather_bootstrap = true;
             /* Clean sync completion -> no missing entities to report. */
             s_client.missing_entities_total = 0;
             s_client.missing_entities_count = 0;
@@ -7964,15 +7962,12 @@ static void ha_client_task(void *arg)
                     ha_client_trace_recordf("initial_sync_done imported=%u/%u",
                         (unsigned)imported, (unsigned)entity_count);
                     ha_client_publish_event(EV_HA_CONNECTED, NULL);
-                    if (!rest_enabled) {
-                        /* Rebuild path: derive weather work from the live layout at
-                         * sync completion instead of trusting the cached
-                         * layout_needs_weather_forecast flag.  That flag has proven
-                         * stale on this branch, preventing any forecast subscription
-                         * from being sent even though weather.home is present. */
-                        ha_client_trace_record("weather bootstrap scan after initial sync");
-                        ha_client_queue_weather_priority_sync_from_layout(now_ms);
-                    }
+                    /* Weather work is transport-agnostic here: always derive it
+                     * from the live layout after sync. The priority-sync path
+                     * decides whether to use REST or WS. */
+                    ha_client_trace_recordf("weather bootstrap scan after initial sync rest=%d",
+                        rest_enabled ? 1 : 0);
+                    ha_client_queue_weather_priority_sync_from_layout(now_ms);
                 }
             }
         }
