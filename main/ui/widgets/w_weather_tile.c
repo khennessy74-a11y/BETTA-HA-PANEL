@@ -1701,6 +1701,19 @@ static void weather_apply_today_extrema_cache(
         ctx->today_cache_has_low = true;
     }
 
+    /* Combine the forecast range with temperatures actually observed today.
+     * A live reading may extend a known forecast endpoint (for example an
+     * observed 3.6 C below a forecast low of 5 C), but it must not invent a
+     * missing daily low/high when the provider did not supply that endpoint. */
+    if (values->has_temp) {
+        if (ctx->today_cache_has_low && values->temp < ctx->today_cache_low_temp) {
+            ctx->today_cache_low_temp = values->temp;
+        }
+        if (ctx->today_cache_has_high && values->temp > ctx->today_cache_high_temp) {
+            ctx->today_cache_high_temp = values->temp;
+        }
+    }
+
     /* Once captured for this calendar day, keep displaying those extrema
      * even if later HA forecast payloads omit or alter the Today row. */
     if (ctx->today_cache_has_high) {
