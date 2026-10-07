@@ -1597,38 +1597,42 @@ static void ha_client_weather_model_log_snapshot(const char *reason, const char 
 
     ha_weather_snapshot_t snapshot = {0};
     if (!ha_weather_model_get_snapshot(entity_id, &snapshot)) {
-        ESP_LOGI("ha_weather_model", "%s entity=%s snapshot=missing",
+        char trace[160] = {0};
+        snprintf(trace, sizeof(trace), "weather %s %s snapshot=missing",
             reason != NULL ? reason : "update", entity_id);
+        ha_client_trace_record(trace);
         return;
     }
 
-    ESP_LOGI("ha_weather_model",
-        "%s entity=%s rev=%" PRIu32 " current=%s%.1f humidity=%d days=%u observed_date=%d observed_low=%s%.1f observed_high=%s%.1f",
+    char trace[224] = {0};
+    snprintf(trace, sizeof(trace),
+        "weather %s rev=%" PRIu32 " cur=%s%.1f hum=%d days=%u obs=%d low=%s%.1f high=%s%.1f",
         reason != NULL ? reason : "update",
-        entity_id,
         snapshot.revision,
-        snapshot.has_current_temp ? "" : "n/a:",
+        snapshot.has_current_temp ? "" : "na/",
         snapshot.current_temp,
         snapshot.humidity,
         (unsigned)snapshot.day_count,
         snapshot.observed_date_key,
-        snapshot.has_observed_low ? "" : "n/a:",
+        snapshot.has_observed_low ? "" : "na/",
         snapshot.observed_low,
-        snapshot.has_observed_high ? "" : "n/a:",
+        snapshot.has_observed_high ? "" : "na/",
         snapshot.observed_high);
+    ha_client_trace_record(trace);
 
     for (size_t i = 0; i < snapshot.day_count && i < 4U; i++) {
         const ha_weather_day_t *day = &snapshot.days[i];
-        ESP_LOGI("ha_weather_model",
-            "day[%u] date=%d valid=%d low=%s%.1f high=%s%.1f condition=%s",
+        snprintf(trace, sizeof(trace),
+            "weather day[%u] date=%d valid=%d low=%s%.1f high=%s%.1f cond=%s",
             (unsigned)i,
             day->date_key,
             day->valid ? 1 : 0,
-            day->has_low ? "" : "n/a:",
+            day->has_low ? "" : "na/",
             day->low_temp,
-            day->has_high ? "" : "n/a:",
+            day->has_high ? "" : "na/",
             day->high_temp,
-            day->condition[0] != '\0' ? day->condition : "(none)");
+            day->condition[0] != '\0' ? day->condition : "-");
+        ha_client_trace_record(trace);
     }
 }
 
