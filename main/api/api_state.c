@@ -18,6 +18,48 @@ static void set_json_headers(httpd_req_t *req)
     httpd_resp_set_hdr(req, "Cache-Control", "no-store");
 }
 
+static bool state_api_sensitive_key(const char *key)
+{
+    if (key == NULL) {
+        return false;
+    }
+    return strcmp(key, "access_token") == 0 ||
+           strcmp(key, "token") == 0 ||
+           strcmp(key, "bearer_token") == 0 ||
+           strcmp(key, "authorization") == 0 ||
+           strcmp(key, "api_key") == 0 ||
+           strcmp(key, "password") == 0;
+}
+
+static void state_api_redact_sensitive(cJSON *node)
+{
+    if (node == NULL) {
+        return;
+    }
+
+    if (cJSON_IsObject(node)) {
+        cJSON *child = node->child;
+        while (child != NULL) {
+            cJSON *next = child->next;
+            if (child->string != NULL && state_api_sensitive_key(child->string)) {
+                cJSON_DeleteItemFromObjectCaseSensitive(node, child->string);
+            } else {
+                state_api_redact_sensitive(child);
+            }
+            child = next;
+        }
+        return;
+    }
+
+    if (cJSON_IsArray(node)) {
+        cJSON *child = NULL;
+        cJSON_ArrayForEach(child, node)
+        {
+            state_api_redact_sensitive(child);
+        }
+    }
+}
+
 static cJSON *state_to_json(const ha_state_t *state)
 {
     cJSON *obj = cJSON_CreateObject();
@@ -36,7 +78,7 @@ static cJSON *state_to_json(const ha_state_t *state)
     char *redacted_json = NULL;
     cJSON *attrs = cJSON_Parse(state->attributes_json);
     if (cJSON_IsObject(attrs)) {
-        cJSON_DeleteItemFromObjectCaseSensitive(attrs, "access_token");
+        state_api_redact_sensitive(attrs);
         redacted_json = cJSON_PrintUnformatted(attrs);
         if (redacted_json != NULL) {
             attributes_json = redacted_json;
