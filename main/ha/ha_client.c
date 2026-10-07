@@ -4450,7 +4450,7 @@ static esp_err_t ha_client_fetch_state_http(
                     ha_client_trace_recordf("weather REST forecast fetched entity=%s count=%d",
                         entity_id, cJSON_GetArraySize(service_forecast));
                     ha_client_weather_model_update_daily(entity_id, service_forecast);
-                    cJSON_AddItemToObject(attrs, "forecast", service_forecast);
+                    cJSON_Delete(service_forecast);
                 } else {
                     ha_client_trace_recordf("weather REST forecast fetch failed entity=%s err=%s",
                         entity_id, esp_err_to_name(forecast_err));
@@ -6081,24 +6081,8 @@ static void ha_client_handle_result_message(cJSON *root)
             if (compact_forecast != NULL) {
                 forecast_found = true;
                 ha_client_weather_model_update_daily(weather_entity_id, compact_forecast);
-                ha_state_t state = {0};
-                if (ha_model_get_state(weather_entity_id, &state)) {
-                    if (state.attributes_json[0] == '\0') {
-                        snprintf(state.attributes_json, sizeof(state.attributes_json), "{}");
-                    }
-                    if (ha_client_append_compact_forecast_to_attrs_json(
-                            state.attributes_json, sizeof(state.attributes_json), compact_forecast)) {
-                        state.last_changed_unix_ms = esp_timer_get_time() / 1000;
-                        ha_model_upsert_state(&state);
-                        ha_client_publish_event(EV_HA_STATE_CHANGED, weather_entity_id);
-                        updated = true;
-                    } else {
-                        merge_failed = true;
-                    }
-                } else {
-                    state_missing = true;
-                    cJSON_Delete(compact_forecast);
-                }
+                cJSON_Delete(compact_forecast);
+                updated = true;
             }
         }
 
@@ -6302,22 +6286,7 @@ static void ha_client_handle_event_message(cJSON *root)
             hourly = hourly_extrema;
         }
         if (hourly != NULL) {
-            ha_state_t state = {0};
-            if (ha_model_get_state(weather_hourly_entity_id, &state)) {
-                if (state.attributes_json[0] == '\0') snprintf(state.attributes_json, sizeof(state.attributes_json), "{}");
-                if (ha_client_append_named_forecast_to_attrs_json(
-                        state.attributes_json, sizeof(state.attributes_json), "forecast_hourly", hourly)) {
-                    state.last_changed_unix_ms = ha_client_now_ms();
-                    ha_model_upsert_state(&state);
-                    ha_client_publish_event(EV_HA_STATE_CHANGED, weather_hourly_entity_id);
-                    ESP_LOGI(TAG_HA_CLIENT, "WS hourly weather extrema updated for %s", weather_hourly_entity_id);
-                } else {
-                    ESP_LOGW(TAG_HA_CLIENT, "WS hourly weather extrema merge failed for %s (attrs cap=%u)",
-                        weather_hourly_entity_id, (unsigned)sizeof(state.attributes_json));
-                }
-            } else {
-                cJSON_Delete(hourly);
-            }
+            cJSON_Delete(hourly);
         }
         return;
     }
@@ -6343,35 +6312,13 @@ static void ha_client_handle_event_message(cJSON *root)
         if (compact_forecast != NULL) {
             ha_client_trace_recordf("weather daily event parsed entity=%s", weather_event_entity_id);
             ha_client_weather_model_update_daily(weather_event_entity_id, compact_forecast);
-            ha_state_t state = {0};
-            if (ha_model_get_state(weather_event_entity_id, &state)) {
-                if (state.attributes_json[0] == '\0') {
-                    snprintf(state.attributes_json, sizeof(state.attributes_json), "{}");
-                }
-                if (ha_client_append_compact_forecast_to_attrs_json(
-                        state.attributes_json, sizeof(state.attributes_json), compact_forecast)) {
-                    state.last_changed_unix_ms = ha_client_now_ms();
-                    ha_model_upsert_state(&state);
-                    ha_client_publish_event(EV_HA_STATE_CHANGED, weather_event_entity_id);
-                    ESP_LOGI(TAG_HA_CLIENT, "WS weather forecast event updated for %s",
-                        weather_event_entity_id);
-                    xSemaphoreTake(s_client.mutex, portMAX_DELAY);
-                    if (s_client.weather_hourly_ws_req_id == 0 &&
-                        !s_client.weather_hourly_req_inflight) {
-                        s_client.weather_hourly_pending = true;
-                    }
-                    xSemaphoreGive(s_client.mutex);
-                } else {
-                    ESP_LOGW(TAG_HA_CLIENT,
-                        "WS weather forecast event merge failed for %s",
-                        weather_event_entity_id);
-                }
-            } else {
-                cJSON_Delete(compact_forecast);
-                ESP_LOGD(TAG_HA_CLIENT,
-                    "WS weather forecast event arrived before state model existed for %s",
-                    weather_event_entity_id);
+            cJSON_Delete(compact_forecast);
+            xSemaphoreTake(s_client.mutex, portMAX_DELAY);
+            if (s_client.weather_hourly_ws_req_id == 0 &&
+                !s_client.weather_hourly_req_inflight) {
+                s_client.weather_hourly_pending = true;
             }
+            xSemaphoreGive(s_client.mutex);
         } else {
             ESP_LOGW(TAG_HA_CLIENT, "WS weather forecast event had no usable forecast for %s",
                 weather_event_entity_id);
@@ -7890,7 +7837,7 @@ static void ha_client_task(void *arg)
                     if (has_work) {
                         esp_err_t sync_err =
                             ha_client_fetch_state_http(entity_id, layout_needs_weather_forecast, false);
-                        if (sync_err == ESP_OK) {
+                        if (sync_err == ESP_OK && !ha_client_entity_is_weather(entity_id)) {
                             ha_client_publish_event(EV_HA_STATE_CHANGED, entity_id);
                         }
 
