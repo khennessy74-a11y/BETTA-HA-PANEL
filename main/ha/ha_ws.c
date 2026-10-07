@@ -380,10 +380,14 @@ void ha_ws_stop(void)
     s_connected = false;
 #if HA_WS_HAS_ESP_WS_CLIENT
     if (s_ws_client != NULL) {
-        /* Avoid noisy "Client was not started" warnings after transport errors:
-           stop only if the client still reports active connection. */
-        if (esp_websocket_client_is_connected(s_ws_client)) {
-            esp_websocket_client_stop(s_ws_client);
+        /* A websocket client can still own a running task/transport while
+         * esp_websocket_client_is_connected() is false (for example during
+         * DNS/TLS/HTTP upgrade or a failed auth exchange).  Always request a
+         * clean stop before destroy so warm reboot/reconnect cannot inherit a
+         * half-open client.  INVALID_STATE simply means it was already stopped. */
+        esp_err_t stop_err = esp_websocket_client_stop(s_ws_client);
+        if (stop_err != ESP_OK && stop_err != ESP_ERR_INVALID_STATE) {
+            ESP_LOGW(TAG_HA_WS, "WebSocket stop returned %s", esp_err_to_name(stop_err));
         }
         esp_websocket_client_destroy(s_ws_client);
         s_ws_client = NULL;
