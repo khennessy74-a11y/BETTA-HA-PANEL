@@ -9,6 +9,7 @@ on:
       - development-next
       - recovery-admin-stable
       - weather-rebuild
+      - twitch-topbar-diagnostic
 
 jobs:
   build:
