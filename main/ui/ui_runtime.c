@@ -1622,7 +1622,10 @@ static void ui_runtime_task(void *arg)
             s_last_model_reconcile_ms = now_ms;
         }
 
-        if ((now_ms - s_last_topbar_refresh_ms) >= 1000) {
+        /* Diagnostic: slow the periodic topbar poll so we can verify whether
+         * the visible panels3 twitch follows this cadence. HA connection
+         * changes still refresh immediately through their normal events. */
+        if ((now_ms - s_last_topbar_refresh_ms) >= 10000) {
             if (display_lock(20)) {
                 ui_runtime_refresh_topbar();
                 display_unlock();
