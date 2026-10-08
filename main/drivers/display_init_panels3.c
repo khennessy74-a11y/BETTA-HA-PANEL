@@ -76,13 +76,11 @@
 #define BL_LEDC_FREQUENCY_HZ 150U
 
 /* â”€â”€ RGB panel timing (Guition manufacturer demo confirmed) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
-/* PCLK lowered to 12 MHz: the manufacturer demo uses 16 MHz but runs
- * Arduino_GFX without a bounce buffer (single-FB, partial updates).
- * Our setup has the FB in PSRAM with a 10-line bounce buffer + 64-B
- * GDMA bursts (PSRAM HW limit), so 16 MHz starves the buffer and shows
- * as stripe artifacts. 10 MHz did not improve the panel's bright-to-dark
- * bleed and reduces refresh rate too much, so 12 MHz is the safer compromise. */
-#define PANELS3_PCLK_HZ      (12 * 1000 * 1000)
+/* Diagnostic PCLK: temporarily lowered from 12 MHz to 10 MHz to test
+ * whether the intermittent header/side-line twitch is caused by RGB DMA
+ * starvation while full-frame buffers live in PSRAM. Keep this isolated on
+ * the twitch-diagnostics branch until hardware A/B testing confirms it. */
+#define PANELS3_PCLK_HZ      (10 * 1000 * 1000)
 #define PANELS3_H_PULSE      8
 #define PANELS3_H_FRONT      10
 #define PANELS3_H_BACK       50                    /* manufacturer: hsync_back_porch=50 */
