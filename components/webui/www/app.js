@@ -2053,6 +2053,10 @@ const entityAutocomplete = {
     timerId: null,
     requestSeq: 0,
   },
+  visibility: {
+    timerId: null,
+    requestSeq: 0,
+  },
 };
 
 function normalizeSliderDirection(value) {
@@ -4767,6 +4771,58 @@ function scheduleEntityAutocomplete(kind, immediate = false) {
 
     try {
       const remoteResults = await fetchEntitySuggestions(domain, search, ENTITY_AUTOCOMPLETE_MAX_ITEMS);
+      if (requestSeq !== state.requestSeq) return;
+      if (remoteResults.length > 0) {
+        setEntityOptionsList(options, remoteResults);
+      }
+    } catch (_) {
+      // Keep local fallback options.
+    }
+  };
+
+  if (immediate) {
+    void run();
+    return;
+  }
+
+  state.timerId = window.setTimeout(() => {
+    state.timerId = null;
+    void run();
+  }, ENTITY_AUTOCOMPLETE_DEBOUNCE_MS);
+}
+
+function scheduleVisibilityEntityAutocomplete(immediate = false) {
+  const state = entityAutocomplete.visibility;
+  const input = el.fVisibilityEntity;
+  const options = el.visibilityEntityOptions;
+  if (!input || !options || input.disabled) return;
+
+  if (state.timerId !== null) {
+    window.clearTimeout(state.timerId);
+    state.timerId = null;
+  }
+
+  const run = async () => {
+    const requestSeq = ++state.requestSeq;
+    const raw = input.value || "";
+    const { domain, search } = parseEntitySearchInput(raw, "");
+    const localResults = filterLocalEntitySuggestions(
+      editor.entities,
+      domain,
+      search,
+      ENTITY_AUTOCOMPLETE_MAX_ITEMS,
+    );
+    setEntityOptionsList(options, localResults);
+
+    const shouldQueryApi = domain.length > 0 || search.length >= 2;
+    if (!shouldQueryApi) return;
+
+    try {
+      const remoteResults = await fetchEntitySuggestions(
+        domain,
+        search,
+        ENTITY_AUTOCOMPLETE_MAX_ITEMS,
+      );
       if (requestSeq !== state.requestSeq) return;
       if (remoteResults.length > 0) {
         setEntityOptionsList(options, remoteResults);
@@ -8327,6 +8383,28 @@ if (el.fSliderShowState) {
     el.fSecondaryEntity.onchange = () => autoApplyInspector();
     el.fSecondaryEntity.onblur = () => autoApplyInspector();
   }
+  if (el.fVisibilityEntity) {
+    el.fVisibilityEntity.oninput = () => scheduleVisibilityEntityAutocomplete();
+    el.fVisibilityEntity.onfocus = () => scheduleVisibilityEntityAutocomplete(true);
+    el.fVisibilityEntity.onchange = () => autoApplyInspector();
+    el.fVisibilityEntity.onblur = () => autoApplyInspector();
+  }
+  if (el.fVisibilityMode) {
+    el.fVisibilityMode.addEventListener("change", () => {
+      if (el.visibilityConditionOptions) {
+        el.visibilityConditionOptions.classList.toggle(
+          "hidden",
+          el.fVisibilityMode.value === "always",
+        );
+      }
+      if (el.fVisibilityMode.value !== "always") {
+        scheduleVisibilityEntityAutocomplete(true);
+      }
+      autoApplyInspector();
+    });
+  }
+  bindInspectorAutoApply(el.fVisibilityState, ["input", "change"], { softEntityValidation: true });
+
   bindInspectorAutoApply(el.fTitle, ["input"], { softEntityValidation: true });
   bindInspectorAutoApply(
   el.fSensorShowTitle,
