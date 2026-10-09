@@ -13,6 +13,7 @@
 #include "ha/ha_model.h"
 #include "app_events.h"
 #include "layout/layout_store.h"
+#include "ha/ha_client.h"
 
 #include "ui/fonts/app_text_fonts.h"
 #include "ui/theme/theme_default.h"
@@ -922,16 +923,23 @@ static const char *button_profile_for_mode(w_button_mode_t mode)
 
 static void button_run_primary_action(w_button_ctx_t *ctx)
 {
-    if (ctx == NULL || ctx->unavailable) {
+    if (ctx == NULL) {
         return;
     }
 
     const char *profile = button_profile_for_mode(ctx->mode);
     if (profile != NULL) {
+        /* Profile buttons are local UI controls and must remain usable even
+         * while Home Assistant is disconnected or entity state is unavailable. */
         if (layout_store_set_active_profile(profile) == ESP_OK) {
             app_event_t event = {.type = EV_LAYOUT_UPDATED};
             (void)app_events_publish(&event, pdMS_TO_TICKS(20));
+            (void)ha_client_notify_layout_updated();
         }
+        return;
+    }
+
+    if (ctx->unavailable) {
         return;
     }
 
@@ -1252,6 +1260,12 @@ void w_button_mark_unavailable(ui_widget_instance_t *instance)
 
     w_button_ctx_t *ctx = (w_button_ctx_t *)instance->ctx;
     if (ctx == NULL) {
+        return;
+    }
+
+    if (button_profile_for_mode(ctx->mode) != NULL) {
+        ctx->unavailable = false;
+        button_apply_visual(instance->obj, ctx, false, false, "");
         return;
     }
 
