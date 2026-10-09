@@ -12,6 +12,7 @@
 #include "esp_err.h"
 #include "esp_lcd_touch.h"
 #include "esp_log.h"
+#include "esp_timer.h"
 #include "esp_lvgl_port.h"
 #include "lvgl.h"
 
@@ -28,7 +29,7 @@ static const uint32_t TOUCH_POLL_PERIOD_MS = 10;
 
 static void touch_activity_event_cb(lv_event_t *event)
 {
-    s_last_touch_activity_ms = lv_tick_get();
+    s_last_touch_activity_ms = (uint32_t)(esp_timer_get_time() / 1000ULL);
     (void)event;
     display_note_activity();
 }
