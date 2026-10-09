@@ -1844,6 +1844,7 @@ const el = {
   fStatusSeverity: document.getElementById("fStatusSeverity"),
   fStatusMessage: document.getElementById("fStatusMessage"),
   fStatusAppendState: document.getElementById("fStatusAppendState"),
+  fStatusTimeout: document.getElementById("fStatusTimeout"),
   interactionOptionsGroup: document.getElementById("interactionOptionsGroup"),
   fTapAction: document.getElementById("fTapAction"),
   tapTargetPageWrap: document.getElementById("tapTargetPageWrap"),
@@ -2178,10 +2179,15 @@ function normalizeLayoutWidgets(layout) {
         widget.status_append_state = typeof widget.status_append_state === "boolean"
           ? widget.status_append_state
           : true;
+        widget.status_timeout_sec = [0, 5, 10, 30, 60].includes(Number(widget.status_timeout_sec))
+          ? Number(widget.status_timeout_sec)
+          : 0;
       } else {
         delete widget.status_severity;
         delete widget.status_message;
         delete widget.status_append_state;
+    delete widget.status_timeout_sec;
+        delete widget.status_timeout_sec;
       }
 
       if (TAP_ACTION_WIDGET_TYPES.has(widget.type)) {
@@ -2226,6 +2232,12 @@ function normalizeLayoutWidgets(layout) {
     el.fStatusAppendState.value = widget.type === "status_banner" && widget.status_append_state === false
       ? "false"
       : "true";
+  }
+  if (el.fStatusTimeout) {
+    const timeout = [0, 5, 10, 30, 60].includes(Number(widget.status_timeout_sec))
+      ? Number(widget.status_timeout_sec)
+      : 0;
+    el.fStatusTimeout.value = String(timeout);
   }
 
   const visibilityMode = ["equals", "not_equals"].includes(widget.visibility_mode)
@@ -6284,6 +6296,7 @@ function renderInspector() {
     if (el.fStatusSeverity) el.fStatusSeverity.value = "info";
     if (el.fStatusMessage) el.fStatusMessage.value = "";
     if (el.fStatusAppendState) el.fStatusAppendState.value = "true";
+    if (el.fStatusTimeout) el.fStatusTimeout.value = "0";
     if (el.fVisibilityMode) el.fVisibilityMode.value = "always";
     if (el.fVisibilityEntity) el.fVisibilityEntity.value = "";
     if (el.fVisibilityState) el.fVisibilityState.value = "";
@@ -6943,6 +6956,7 @@ function addWidget(type, options = {}) {
     widget.status_severity = "info";
     widget.status_message = "";
     widget.status_append_state = true;
+    widget.status_timeout_sec = 0;
   }
   if (COMMON_DISPLAY_WIDGET_TYPES.has(type)) {
     widget.icon = "";
@@ -7226,6 +7240,9 @@ function applyInspector(options = {}) {
       : "info";
     widget.status_message = (el.fStatusMessage?.value || "").trim().slice(0, 95);
     widget.status_append_state = el.fStatusAppendState?.value !== "false";
+    widget.status_timeout_sec = [0, 5, 10, 30, 60].includes(Number(el.fStatusTimeout?.value))
+      ? Number(el.fStatusTimeout.value)
+      : 0;
   } else {
     delete widget.status_severity;
     delete widget.status_message;
@@ -7748,6 +7765,7 @@ function bindUi() {
   bindInspectorAutoApply(el.fStatusSeverity, ["change"], { refreshInspector: true });
   bindInspectorAutoApply(el.fStatusMessage, ["input", "change"], { softEntityValidation: true });
   bindInspectorAutoApply(el.fStatusAppendState, ["change"], { refreshInspector: true, softEntityValidation: true });
+  bindInspectorAutoApply(el.fStatusTimeout, ["change"], { refreshInspector: true, softEntityValidation: true });
   if (el.fTapAction) {
     el.fTapAction.addEventListener("change", () => {
       if (el.tapTargetPageWrap) {

@@ -852,6 +852,8 @@ static bool validate_widget(
         cJSON_GetObjectItemCaseSensitive(widget, "status_message");
     cJSON *status_append_state =
         cJSON_GetObjectItemCaseSensitive(widget, "status_append_state");
+    cJSON *status_timeout_sec =
+        cJSON_GetObjectItemCaseSensitive(widget, "status_timeout_sec");
 
     cJSON *slider_direction =
         cJSON_GetObjectItemCaseSensitive(
@@ -937,6 +939,21 @@ static bool validate_widget(
         snprintf(msg, sizeof(msg), "widget %s: invalid status append state",
             cJSON_IsString(id) ? id->valuestring : "?");
         layout_validation_add(result, msg);
+    }
+
+    if (status_timeout_sec != NULL) {
+        bool timeout_ok =
+            cJSON_IsNumber(status_timeout_sec) &&
+            (status_timeout_sec->valueint == 0 ||
+             status_timeout_sec->valueint == 5 ||
+             status_timeout_sec->valueint == 10 ||
+             status_timeout_sec->valueint == 30 ||
+             status_timeout_sec->valueint == 60);
+        if (!timeout_ok) {
+            snprintf(msg, sizeof(msg), "widget %s: invalid status timeout",
+                cJSON_IsString(id) ? id->valuestring : "?");
+            layout_validation_add(result, msg);
+        }
     }
 
     if (tap_action != NULL) {

@@ -502,6 +502,9 @@ static void ui_runtime_apply_entity_state_ex(
         }
 
         if (is_visibility) {
+            if (strcmp(s_widgets[i].type, "status_banner") == 0) {
+                s_widgets[i].status_dismissed = false;
+            }
             const char *current_page = ui_pages_current_id();
             if (current_page != NULL && current_page[0] != '\0') {
                 ui_runtime_update_widget_visibility(current_page, false);
@@ -513,6 +516,10 @@ static void ui_runtime_apply_entity_state_ex(
         }
 
         if (found) {
+            if (is_primary &&
+                strcmp(s_widgets[i].type, "status_banner") == 0) {
+                s_widgets[i].status_dismissed = false;
+            }
             ui_widget_factory_apply_state(
                 &s_widgets[i],
                 &s_state_scratch);
@@ -620,7 +627,9 @@ static void ui_runtime_update_widget_visibility(
                 s_widgets[i].page_id,
                 page_id,
                 APP_MAX_PAGE_ID_LEN) == 0) &&
-            ui_runtime_widget_condition_matches(&s_widgets[i]);
+            ui_runtime_widget_condition_matches(&s_widgets[i]) &&
+            !(strcmp(s_widgets[i].type, "status_banner") == 0 &&
+              s_widgets[i].status_dismissed);
 
         ui_widget_factory_set_visible(
             &s_widgets[i],
@@ -731,6 +740,8 @@ static bool ui_runtime_widget_from_json(
         cJSON_GetObjectItemCaseSensitive(widget_json, "status_message");
     cJSON *status_append_state =
         cJSON_GetObjectItemCaseSensitive(widget_json, "status_append_state");
+    cJSON *status_timeout_sec =
+        cJSON_GetObjectItemCaseSensitive(widget_json, "status_timeout_sec");
 
     cJSON *slider_direction =
         cJSON_GetObjectItemCaseSensitive(
@@ -976,6 +987,11 @@ static bool ui_runtime_widget_from_json(
             cJSON_IsBool(status_append_state)
                 ? cJSON_IsTrue(status_append_state)
                 : true;
+
+        out->status_timeout_sec =
+            cJSON_IsNumber(status_timeout_sec)
+                ? status_timeout_sec->valueint
+                : 0;
     }
 
     if (cJSON_IsString(slider_direction) &&

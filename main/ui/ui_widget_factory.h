@@ -26,6 +26,7 @@ typedef struct {
     char status_severity[16];
     char status_message[APP_MAX_NAME_LEN];
     bool status_append_state;
+    int status_timeout_sec;
 
     char icon[APP_MAX_ICON_LEN];
     bool show_icon;
@@ -76,6 +77,8 @@ typedef struct {
     char status_severity[16];
     char status_message[APP_MAX_NAME_LEN];
     bool status_append_state;
+    int status_timeout_sec;
+    bool status_dismissed;
 
     char icon[APP_MAX_ICON_LEN];
     bool show_icon;

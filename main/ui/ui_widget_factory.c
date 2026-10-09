@@ -215,6 +215,8 @@ out_instance->timer_show_finish = def->timer_show_finish;
     snprintf(out_instance->status_severity, sizeof(out_instance->status_severity), "%s", def->status_severity);
     snprintf(out_instance->status_message, sizeof(out_instance->status_message), "%s", def->status_message);
     out_instance->status_append_state = def->status_append_state;
+    out_instance->status_timeout_sec = def->status_timeout_sec;
+    out_instance->status_dismissed = false;
     snprintf(out_instance->slider_direction, sizeof(out_instance->slider_direction), "%s", def->slider_direction);
     snprintf(out_instance->slider_accent_color, sizeof(out_instance->slider_accent_color), "%s", def->slider_accent_color);
     snprintf(out_instance->button_accent_color, sizeof(out_instance->button_accent_color), "%s", def->button_accent_color);

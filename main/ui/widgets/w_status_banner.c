@@ -17,7 +17,47 @@ typedef struct {
     lv_obj_t *state;
     char message[APP_MAX_NAME_LEN];
     bool append_state;
+    int timeout_sec;
+    lv_timer_t *dismiss_timer;
+    ui_widget_instance_t *instance;
 } w_status_banner_ctx_t;
+
+static void status_banner_dismiss_timer_cb(lv_timer_t *timer)
+{
+    w_status_banner_ctx_t *ctx =
+        (w_status_banner_ctx_t *)lv_timer_get_user_data(timer);
+
+    if (ctx == NULL || ctx->instance == NULL) {
+        return;
+    }
+
+    ctx->instance->status_dismissed = true;
+    ui_widget_factory_set_visible(ctx->instance, false);
+}
+
+static void status_banner_restart_dismiss_timer(w_status_banner_ctx_t *ctx)
+{
+    if (ctx == NULL || ctx->timeout_sec <= 0) {
+        return;
+    }
+
+    if (ctx->dismiss_timer == NULL) {
+        ctx->dismiss_timer =
+            lv_timer_create(
+                status_banner_dismiss_timer_cb,
+                (uint32_t)ctx->timeout_sec * 1000U,
+                ctx);
+        if (ctx->dismiss_timer != NULL) {
+            lv_timer_set_repeat_count(ctx->dismiss_timer, 1);
+        }
+    } else {
+        lv_timer_set_period(
+            ctx->dismiss_timer,
+            (uint32_t)ctx->timeout_sec * 1000U);
+        lv_timer_reset(ctx->dismiss_timer);
+        lv_timer_resume(ctx->dismiss_timer);
+    }
+}
 
 static bool status_banner_is_inactive(const char *state)
 {
@@ -115,6 +155,8 @@ esp_err_t w_status_banner_create(
     ctx->state = state;
     snprintf(ctx->message, sizeof(ctx->message), "%s", def->status_message);
     ctx->append_state = def->status_append_state;
+    ctx->timeout_sec = def->status_timeout_sec;
+    ctx->instance = out_instance;
     status_banner_apply_visual(ctx, false, def->status_severity);
 
     out_instance->obj = card;
@@ -130,6 +172,9 @@ void w_status_banner_apply_state(ui_widget_instance_t *instance, const ha_state_
     char text[192] = {0};
     char live_state[128] = {0};
     const char *unit = "";
+    instance->status_dismissed = false;
+    status_banner_restart_dismiss_timer(ctx);
+
     cJSON *attrs = cJSON_Parse(state->attributes_json);
     if (attrs != NULL) {
         cJSON *unit_item = cJSON_GetObjectItemCaseSensitive(attrs, "unit_of_measurement");
