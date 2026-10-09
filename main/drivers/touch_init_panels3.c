@@ -18,6 +18,7 @@
 #include "esp_lcd_touch.h"
 #include "esp_lcd_touch_gt911.h"
 #include "esp_log.h"
+#include "esp_timer.h"
 #include "esp_lvgl_port.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -48,7 +49,7 @@ static uint8_t s_gt911_addr = ESP_LCD_TOUCH_IO_I2C_GT911_ADDRESS;
 
 static void touch_activity_event_cb(lv_event_t *event)
 {
-    s_last_touch_activity_ms = lv_tick_get();
+    s_last_touch_activity_ms = (uint32_t)(esp_timer_get_time() / 1000ULL);
     if (display_is_screen_off()) {
         display_note_activity();
         lv_indev_t *indev = lv_event_get_indev(event);
