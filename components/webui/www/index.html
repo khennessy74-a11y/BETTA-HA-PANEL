@@ -86,6 +86,21 @@
           </div>
           <div id="pagesSectionBody" class="section-body">
             <ul id="pagesList" class="list"></ul>
+            <div class="form" style="margin-top: 8px;">
+              <h2>Dashboard Profile</h2>
+              <label><span>Active profile</span>
+                <select id="activeProfileSelect">
+                  <option value="all">All Profiles</option>
+                  <option value="day">Day</option>
+                  <option value="night">Night</option>
+                  <option value="guest">Guest</option>
+                  <option value="away">Away</option>
+                </select>
+              </label>
+              <label><span>Profile home page</span>
+                <select id="profileDefaultPageSelect"></select>
+              </label>
+            </div>
             <!-- Hidden legacy controls (kept for event-handler compatibility) -->
             <div class="legacy-hidden">
               <button id="addPageBtn" type="button">+ Page</button>
@@ -97,6 +112,15 @@
             <div class="form" style="margin-top: 8px;">
               <div id="pageAppearanceOptions">
                 <h2>Page Appearance</h2>
+                <label><span>Profile</span>
+                  <select id="pageProfileSelect">
+                    <option value="all">All Profiles</option>
+                    <option value="day">Day</option>
+                    <option value="night">Night</option>
+                    <option value="guest">Guest</option>
+                    <option value="away">Away</option>
+                  </select>
+                </label>
                 <label><span>Background</span>
                   <select id="pageBackgroundMode">
                     <option value="theme">Theme default</option>

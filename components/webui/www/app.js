@@ -64,6 +64,7 @@ const WIDGET_PRESETS_STORAGE_KEY = "betta.widgetPresets.v1";
 const SYNC_ENTITY_MAP_STORAGE_KEY = "betta.syncEntityMap.v1";
 const SYNC_BUNDLE_SCHEMA = "betta-panel-sync";
 const SYNC_BUNDLE_VERSION = 1;
+const DASHBOARD_PROFILES = new Set(["all", "day", "night", "guest", "away"]);
 const TAP_ACTION_WIDGET_TYPES = new Set([
   "sensor", "binary_sensor", "person", "device_tracker",
   "graph", "status_banner", "empty_tile", "weather_tile", "weather_3day",
@@ -1737,6 +1738,9 @@ const el = {
   deletePageBtn: document.getElementById("deletePageBtn"),
   pageTitleInput: document.getElementById("pageTitleInput"),
   applyPageBtn: document.getElementById("applyPageBtn"),
+  activeProfileSelect: document.getElementById("activeProfileSelect"),
+  profileDefaultPageSelect: document.getElementById("profileDefaultPageSelect"),
+  pageProfileSelect: document.getElementById("pageProfileSelect"),
   pageAppearanceOptions: document.getElementById("pageAppearanceOptions"),
   pageBackgroundMode: document.getElementById("pageBackgroundMode"),
   pageBackgroundColorOptions: document.getElementById("pageBackgroundColorOptions"),
@@ -2108,8 +2112,23 @@ function normalizeGraphBarBucketMin(value) {
 
 function normalizeLayoutWidgets(layout) {
   if (!layout || !Array.isArray(layout.pages)) return;
+
+  layout.active_profile = DASHBOARD_PROFILES.has(layout.active_profile)
+    ? layout.active_profile
+    : "all";
+
+  if (!layout.profile_defaults || typeof layout.profile_defaults !== "object" || Array.isArray(layout.profile_defaults)) {
+    layout.profile_defaults = {};
+  }
+
+  for (const profile of ["day", "night", "guest", "away"]) {
+    if (typeof layout.profile_defaults[profile] !== "string" || !layout.profile_defaults[profile].trim()) {
+      delete layout.profile_defaults[profile];
+    }
+  }
   for (const page of layout.pages) {
     if (page && typeof page === "object") {
+      page.profile = DASHBOARD_PROFILES.has(page.profile) ? page.profile : "all";
       const mode = ["solid", "gradient"].includes(page.background_mode) ? page.background_mode : "theme";
       if (mode === "theme") {
         delete page.background_mode; delete page.background_color; delete page.background_color2;
@@ -5382,6 +5401,32 @@ function movePage(draggedPageId, targetPageId, placeAfter = false) {
 }
 function renderPages() {
   el.pagesList.innerHTML = "";
+
+  const activeProfile = DASHBOARD_PROFILES.has(editor.layout?.active_profile)
+    ? editor.layout.active_profile
+    : "all";
+  if (el.activeProfileSelect) el.activeProfileSelect.value = activeProfile;
+
+  if (el.profileDefaultPageSelect) {
+    el.profileDefaultPageSelect.innerHTML = "";
+    const eligiblePages = (editor.layout?.pages || []).filter((page) => {
+      const profile = DASHBOARD_PROFILES.has(page?.profile) ? page.profile : "all";
+      return activeProfile === "all" || profile === "all" || profile === activeProfile;
+    });
+    for (const page of eligiblePages) {
+      const option = document.createElement("option");
+      option.value = page.id;
+      option.textContent = page.title || page.id;
+      el.profileDefaultPageSelect.appendChild(option);
+    }
+    const savedDefault = editor.layout?.profile_defaults?.[activeProfile];
+    if (savedDefault && eligiblePages.some((page) => page.id === savedDefault)) {
+      el.profileDefaultPageSelect.value = savedDefault;
+    } else if (eligiblePages[0]) {
+      el.profileDefaultPageSelect.value = eligiblePages[0].id;
+    }
+    el.profileDefaultPageSelect.disabled = activeProfile === "all" || eligiblePages.length === 0;
+  }
   for (const page of pagesInPhysicalNavOrder()) {
     const li = document.createElement("li");
     li.className = `list-item ${page.id === editor.selectedPageId ? "active selected" : ""}`;
@@ -5457,7 +5502,9 @@ li.appendChild(dragHandle);
 
     const label = document.createElement("span");
     const badge = isEnergyPage(page) ? " ⚡" : "";
-    label.textContent = `${page.title || page.id}${badge}`;
+    const pageProfile = DASHBOARD_PROFILES.has(page.profile) ? page.profile : "all";
+    const profileBadge = pageProfile !== "all" ? ` · ${pageProfile}` : "";
+    label.textContent = `${page.title || page.id}${badge}${profileBadge}`;
     label.title = `[${page.id}] ${isEnergyPage(page) ? "energy" : "page"}`;
     label.className = "list-item-label";
     li.appendChild(label);
@@ -5561,12 +5608,16 @@ function renderPageEditor() {
     el.applyPageBtn.disabled = true;
     if (el.energyPageOptions) el.energyPageOptions.classList.add("hidden");
     if (el.pageAppearanceOptions) el.pageAppearanceOptions.classList.add("hidden");
+    if (el.pageProfileSelect) el.pageProfileSelect.value = "all";
     return;
   }
   el.pageTitleInput.disabled = false;
   el.applyPageBtn.disabled = false;
   el.pageTitleInput.value = page.title || page.id;
   if (el.pageAppearanceOptions) el.pageAppearanceOptions.classList.remove("hidden");
+  if (el.pageProfileSelect) {
+    el.pageProfileSelect.value = DASHBOARD_PROFILES.has(page.profile) ? page.profile : "all";
+  }
   const backgroundMode = ["solid", "gradient"].includes(page.background_mode) ? page.background_mode : "theme";
   if (el.pageBackgroundMode) el.pageBackgroundMode.value = backgroundMode;
   if (el.pageBackgroundColor) el.pageBackgroundColor.value = normalizeHexColor(page.background_color, "#101820");
@@ -6751,6 +6802,10 @@ function applyPageName() {
 
 function applyPageAppearance(options = {}) {
   const page = selectedPage(); if (!page) return false;
+
+  page.profile = DASHBOARD_PROFILES.has(el.pageProfileSelect?.value)
+    ? el.pageProfileSelect.value
+    : "all";
   const mode = ["solid", "gradient"].includes(el.pageBackgroundMode?.value) ? el.pageBackgroundMode.value : "theme";
   if (mode === "theme") { delete page.background_mode; delete page.background_color; delete page.background_color2; }
   else { page.background_mode = mode; page.background_color = normalizeHexColor(el.pageBackgroundColor?.value, "#101820");
@@ -7672,6 +7727,27 @@ function bindUi() {
   }
   el.deletePageBtn.onclick = deletePage;
   el.applyPageBtn.onclick = applyPageName;
+  if (el.activeProfileSelect) {
+    el.activeProfileSelect.onchange = () => {
+      editor.layout.active_profile = DASHBOARD_PROFILES.has(el.activeProfileSelect.value)
+        ? el.activeProfileSelect.value
+        : "all";
+      renderAll();
+    };
+  }
+  if (el.profileDefaultPageSelect) {
+    el.profileDefaultPageSelect.onchange = () => {
+      const profile = DASHBOARD_PROFILES.has(editor.layout?.active_profile)
+        ? editor.layout.active_profile
+        : "all";
+      if (profile !== "all") {
+        editor.layout.profile_defaults = editor.layout.profile_defaults || {};
+        editor.layout.profile_defaults[profile] = el.profileDefaultPageSelect.value;
+      }
+      renderAll();
+    };
+  }
+  if (el.pageProfileSelect) el.pageProfileSelect.onchange = () => applyPageAppearance();
   if (el.pageBackgroundMode) el.pageBackgroundMode.onchange = () => applyPageAppearance();
   if (el.pageBackgroundColor) el.pageBackgroundColor.onchange = () => applyPageAppearance();
   if (el.pageBackgroundColor2) el.pageBackgroundColor2.onchange = () => applyPageAppearance();

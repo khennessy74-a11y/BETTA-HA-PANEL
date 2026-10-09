@@ -1792,12 +1792,35 @@ bool layout_validate_json(
             root,
             "pages");
 
+    cJSON *active_profile =
+        cJSON_GetObjectItemCaseSensitive(root, "active_profile");
+    cJSON *profile_defaults =
+        cJSON_GetObjectItemCaseSensitive(root, "profile_defaults");
+
     if (!cJSON_IsNumber(version) ||
         version->valueint != 1) {
 
         layout_validation_add(
             result,
             "layout version must be 1");
+    }
+
+    if (active_profile != NULL) {
+        bool active_ok =
+            cJSON_IsString(active_profile) &&
+            active_profile->valuestring != NULL &&
+            (strcmp(active_profile->valuestring, "all") == 0 ||
+             strcmp(active_profile->valuestring, "day") == 0 ||
+             strcmp(active_profile->valuestring, "night") == 0 ||
+             strcmp(active_profile->valuestring, "guest") == 0 ||
+             strcmp(active_profile->valuestring, "away") == 0);
+        if (!active_ok) {
+            layout_validation_add(result, "invalid active_profile");
+        }
+    }
+
+    if (profile_defaults != NULL && !cJSON_IsObject(profile_defaults)) {
+        layout_validation_add(result, "profile_defaults must be an object");
     }
 
     if (!cJSON_IsArray(pages)) {
@@ -1886,11 +1909,30 @@ bool layout_validate_json(
                 page,
                 "widgets");
 
+        cJSON *page_profile =
+            cJSON_GetObjectItemCaseSensitive(page, "profile");
+
         cJSON *background_mode = cJSON_GetObjectItemCaseSensitive(page, "background_mode");
         cJSON *background_color = cJSON_GetObjectItemCaseSensitive(page, "background_color");
         cJSON *background_color2 = cJSON_GetObjectItemCaseSensitive(page, "background_color2");
 
         char msg[96];
+
+        if (page_profile != NULL) {
+            bool profile_ok =
+                cJSON_IsString(page_profile) &&
+                page_profile->valuestring != NULL &&
+                (strcmp(page_profile->valuestring, "all") == 0 ||
+                 strcmp(page_profile->valuestring, "day") == 0 ||
+                 strcmp(page_profile->valuestring, "night") == 0 ||
+                 strcmp(page_profile->valuestring, "guest") == 0 ||
+                 strcmp(page_profile->valuestring, "away") == 0);
+            if (!profile_ok) {
+                snprintf(msg, sizeof(msg), "page[%u]: invalid profile", (unsigned)i);
+                layout_validation_add(result, msg);
+            }
+        }
+
         if (background_mode != NULL) {
             bool mode_ok = cJSON_IsString(background_mode) && background_mode->valuestring != NULL &&
                 (strcmp(background_mode->valuestring, "solid") == 0 || strcmp(background_mode->valuestring, "gradient") == 0);

@@ -1354,6 +1354,40 @@ esp_err_t ui_runtime_load_layout(const char *layout_json)
             root,
             "pages");
 
+    cJSON *active_profile_json =
+        cJSON_GetObjectItemCaseSensitive(root, "active_profile");
+    cJSON *profile_defaults =
+        cJSON_GetObjectItemCaseSensitive(root, "profile_defaults");
+
+    const char *active_profile =
+        (cJSON_IsString(active_profile_json) &&
+         active_profile_json->valuestring != NULL)
+            ? active_profile_json->valuestring
+            : "all";
+
+    if (strcmp(active_profile, "all") != 0 &&
+        strcmp(active_profile, "day") != 0 &&
+        strcmp(active_profile, "night") != 0 &&
+        strcmp(active_profile, "guest") != 0 &&
+        strcmp(active_profile, "away") != 0) {
+        active_profile = "all";
+    }
+
+    char profile_home_page[APP_MAX_PAGE_ID_LEN] = {0};
+    if (strcmp(active_profile, "all") != 0 &&
+        cJSON_IsObject(profile_defaults)) {
+        cJSON *profile_home =
+            cJSON_GetObjectItemCaseSensitive(profile_defaults, active_profile);
+        if (cJSON_IsString(profile_home) &&
+            profile_home->valuestring != NULL) {
+            snprintf(
+                profile_home_page,
+                sizeof(profile_home_page),
+                "%s",
+                profile_home->valuestring);
+        }
+    }
+
     if (!cJSON_IsArray(pages)) {
         cJSON_Delete(root);
         return ESP_ERR_INVALID_ARG;
@@ -1409,11 +1443,26 @@ esp_err_t ui_runtime_load_layout(const char *layout_json)
                 page,
                 "widgets");
 
+        cJSON *page_profile =
+            cJSON_GetObjectItemCaseSensitive(page, "profile");
+
         cJSON *background_mode = cJSON_GetObjectItemCaseSensitive(page, "background_mode");
         cJSON *background_color = cJSON_GetObjectItemCaseSensitive(page, "background_color");
         cJSON *background_color2 = cJSON_GetObjectItemCaseSensitive(page, "background_color2");
 
         if (!cJSON_IsString(page_id)) {
+            continue;
+        }
+
+        const char *page_profile_value =
+            (cJSON_IsString(page_profile) &&
+             page_profile->valuestring != NULL)
+                ? page_profile->valuestring
+                : "all";
+
+        if (strcmp(active_profile, "all") != 0 &&
+            strcmp(page_profile_value, "all") != 0 &&
+            strcmp(page_profile_value, active_profile) != 0) {
             continue;
         }
 
@@ -1530,7 +1579,13 @@ esp_err_t ui_runtime_load_layout(const char *layout_json)
     cJSON_Delete(root);
 
     if (ui_pages_count() > 0) {
-        ui_pages_show_index(0);
+        bool profile_home_shown =
+            profile_home_page[0] != '\0' &&
+            ui_pages_show(profile_home_page);
+
+        if (!profile_home_shown) {
+            ui_pages_show_index(0);
+        }
     }
 
     ui_runtime_apply_all_states();
