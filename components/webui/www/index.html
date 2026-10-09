@@ -1037,6 +1037,17 @@
               <input id="importFile" type="file" accept="application/json" />
             </div>
             <textarea id="jsonPaste" placeholder="Paste layout JSON here"></textarea>
+            <details class="inspector-group">
+              <summary>Fleet Sync entity remapping</summary>
+              <div class="inspector-group-body">
+                <div class="meta">Optional per-target mappings. One per line: source_entity=destination_entity</div>
+                <textarea id="syncEntityMapText" placeholder="light.room_main=light.kitchen_main&#10;climate.room=climate.kitchen"></textarea>
+                <div class="row">
+                  <button id="saveSyncEntityMapBtn" class="btn small" type="button">Save Mappings</button>
+                  <button id="clearSyncEntityMapBtn" class="btn small" type="button">Clear</button>
+                </div>
+              </div>
+            </details>
           </section>
         </aside>
       </div>

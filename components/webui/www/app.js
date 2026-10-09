@@ -61,6 +61,7 @@ const SETUP_WIZARD_PENDING_STORAGE_KEY = "betta.setupWizard.pending";
 const SETUP_WIZARD_DISMISSED_STORAGE_KEY = "betta.setupWizard.dismissed";
 const WIDGET_CLIPBOARD_STORAGE_KEY = "betta.widgetClipboard.v1";
 const WIDGET_PRESETS_STORAGE_KEY = "betta.widgetPresets.v1";
+const SYNC_ENTITY_MAP_STORAGE_KEY = "betta.syncEntityMap.v1";
 const SYNC_BUNDLE_SCHEMA = "betta-panel-sync";
 const SYNC_BUNDLE_VERSION = 1;
 const TAP_ACTION_WIDGET_TYPES = new Set([
@@ -1816,6 +1817,9 @@ const el = {
   importBtn: document.getElementById("importBtn"),
   importFile: document.getElementById("importFile"),
   jsonPaste: document.getElementById("jsonPaste"),
+  syncEntityMapText: document.getElementById("syncEntityMapText"),
+  saveSyncEntityMapBtn: document.getElementById("saveSyncEntityMapBtn"),
+  clearSyncEntityMapBtn: document.getElementById("clearSyncEntityMapBtn"),
   fTitle: document.getElementById("fTitle"),
   fType: document.getElementById("fType"),
   fEntityWrap: document.getElementById("fEntityWrap"),
@@ -7429,6 +7433,55 @@ async function saveLayout() {
   setStatus(t("layout.status.saved"));
 }
 
+function parseSyncEntityMap(text) {
+  const result = {};
+  for (const rawLine of String(text || "").split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith("#")) continue;
+    const eq = line.indexOf("=");
+    if (eq <= 0) continue;
+    const source = line.slice(0, eq).trim();
+    const target = line.slice(eq + 1).trim();
+    if (source.includes(".") && target.includes(".")) {
+      result[source] = target;
+    }
+  }
+  return result;
+}
+
+function formatSyncEntityMap(entityMap) {
+  if (!entityMap || typeof entityMap !== "object") return "";
+  return Object.entries(entityMap)
+    .filter(([source, target]) => typeof source === "string" && typeof target === "string" && source && target)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([source, target]) => `${source}=${target}`)
+    .join("\n");
+}
+
+function currentSyncEntityMap() {
+  return parseSyncEntityMap(el.syncEntityMapText?.value || "");
+}
+
+function loadSyncEntityMapEditor() {
+  if (!el.syncEntityMapText) return;
+  try {
+    el.syncEntityMapText.value = localStorage.getItem(SYNC_ENTITY_MAP_STORAGE_KEY) || "";
+  } catch (_) {
+    el.syncEntityMapText.value = "";
+  }
+}
+
+function saveSyncEntityMapEditor() {
+  if (!el.syncEntityMapText) return;
+  const normalized = formatSyncEntityMap(currentSyncEntityMap());
+  el.syncEntityMapText.value = normalized;
+  try {
+    localStorage.setItem(SYNC_ENTITY_MAP_STORAGE_KEY, normalized);
+  } catch (_) {}
+  const count = Object.keys(parseSyncEntityMap(normalized)).length;
+  setStatus(`Saved ${count} Fleet Sync mapping${count === 1 ? "" : "s"}`);
+}
+
 function buildSyncBundle() {
   normalizeLayoutWidgets(editor.layout);
   return {
@@ -7445,7 +7498,7 @@ function buildSyncBundle() {
     },
     layout: JSON.parse(JSON.stringify(editor.layout)),
     overrides: {
-      entity_map: {},
+      entity_map: currentSyncEntityMap(),
     },
   };
 }
@@ -7502,7 +7555,14 @@ function importLayoutFromText(text) {
   }
 
   if (isSyncBundle) {
-    applySyncEntityMap(layout, parsed?.overrides?.entity_map);
+    const bundleMap = parsed?.overrides?.entity_map;
+    applySyncEntityMap(layout, bundleMap);
+    if (el.syncEntityMapText && bundleMap && typeof bundleMap === "object") {
+      el.syncEntityMapText.value = formatSyncEntityMap(bundleMap);
+      try {
+        localStorage.setItem(SYNC_ENTITY_MAP_STORAGE_KEY, el.syncEntityMapText.value);
+      } catch (_) {}
+    }
   }
 
   normalizeLayoutWidgets(layout);
@@ -8274,6 +8334,15 @@ bindInspectorAutoApply(
     }
   };
   el.exportBtn.onclick = exportLayout;
+  loadSyncEntityMapEditor();
+  if (el.saveSyncEntityMapBtn) el.saveSyncEntityMapBtn.onclick = saveSyncEntityMapEditor;
+  if (el.clearSyncEntityMapBtn) {
+    el.clearSyncEntityMapBtn.onclick = () => {
+      if (el.syncEntityMapText) el.syncEntityMapText.value = "";
+      try { localStorage.removeItem(SYNC_ENTITY_MAP_STORAGE_KEY); } catch (_) {}
+      setStatus("Fleet Sync mappings cleared");
+    };
+  }
   el.importBtn.onclick = () => {
     const text = el.jsonPaste.value.trim();
     if (!text) return;
