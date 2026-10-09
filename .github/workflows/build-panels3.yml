@@ -9,6 +9,7 @@ on:
       - development-next
       - recovery-admin-stable
       - weather-rebuild
+      - v0.10-development
 
 jobs:
   build:
