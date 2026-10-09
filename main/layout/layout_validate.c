@@ -768,6 +768,21 @@ static void validate_energy_page(
     }
 }
 
+static bool layout_color_is_hex6(const char *value)
+{
+    if (value == NULL || strlen(value) != 7U || value[0] != '#') {
+        return false;
+    }
+
+    for (size_t i = 1U; i < 7U; i++) {
+        if (!isxdigit((unsigned char)value[i])) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 void layout_validation_clear(
     layout_validation_result_t *result)
 {
@@ -2007,13 +2022,38 @@ bool layout_validate_json(
         }
 
         if (background_mode != NULL) {
-            bool mode_ok = cJSON_IsString(background_mode) && background_mode->valuestring != NULL &&
-                (strcmp(background_mode->valuestring, "solid") == 0 || strcmp(background_mode->valuestring, "gradient") == 0);
-            bool color_ok = cJSON_IsString(background_color) && background_color->valuestring != NULL && strlen(background_color->valuestring) == 7U && background_color->valuestring[0] == '#';
-            if (!mode_ok || !color_ok) { snprintf(msg, sizeof(msg), "page[%u]: invalid background", (unsigned)i); layout_validation_add(result, msg); }
-            else if (strcmp(background_mode->valuestring, "gradient") == 0) {
-                bool color2_ok = cJSON_IsString(background_color2) && background_color2->valuestring != NULL && strlen(background_color2->valuestring) == 7U && background_color2->valuestring[0] == '#';
-                if (!color2_ok) { snprintf(msg, sizeof(msg), "page[%u]: invalid gradient colour", (unsigned)i); layout_validation_add(result, msg); }
+            bool mode_ok =
+                cJSON_IsString(background_mode) &&
+                background_mode->valuestring != NULL &&
+                (strcmp(background_mode->valuestring, "solid") == 0 ||
+                 strcmp(background_mode->valuestring, "gradient") == 0);
+
+            bool color_ok =
+                cJSON_IsString(background_color) &&
+                background_color->valuestring != NULL &&
+                layout_color_is_hex6(background_color->valuestring);
+
+            if (!mode_ok || !color_ok) {
+                snprintf(
+                    msg,
+                    sizeof(msg),
+                    "page[%u]: invalid background",
+                    (unsigned)i);
+                layout_validation_add(result, msg);
+            } else if (strcmp(background_mode->valuestring, "gradient") == 0) {
+                bool color2_ok =
+                    cJSON_IsString(background_color2) &&
+                    background_color2->valuestring != NULL &&
+                    layout_color_is_hex6(background_color2->valuestring);
+
+                if (!color2_ok) {
+                    snprintf(
+                        msg,
+                        sizeof(msg),
+                        "page[%u]: invalid gradient colour",
+                        (unsigned)i);
+                    layout_validation_add(result, msg);
+                }
             }
         }
 
@@ -2252,6 +2292,66 @@ bool layout_validate_json(
                     id->valuestring);
 
                 known_widget_ids_len++;
+            }
+        }
+    }
+
+    /* Validate page-navigation targets only after the first pass has
+     * collected every valid page id. This allows a widget on an earlier
+     * page to navigate to a page that appears later in the layout. */
+    for (int i = 0; i < page_count; i++) {
+        cJSON *page = cJSON_GetArrayItem(pages, i);
+        if (!cJSON_IsObject(page)) {
+            continue;
+        }
+
+        cJSON *widgets =
+            cJSON_GetObjectItemCaseSensitive(page, "widgets");
+        if (!cJSON_IsArray(widgets)) {
+            continue;
+        }
+
+        const int widget_count = cJSON_GetArraySize(widgets);
+
+        for (int w = 0; w < widget_count; w++) {
+            cJSON *widget = cJSON_GetArrayItem(widgets, w);
+            if (!cJSON_IsObject(widget)) {
+                continue;
+            }
+
+            cJSON *tap_action =
+                cJSON_GetObjectItemCaseSensitive(widget, "tap_action");
+            cJSON *tap_target_page =
+                cJSON_GetObjectItemCaseSensitive(widget, "tap_target_page");
+
+            if (!cJSON_IsString(tap_action) ||
+                tap_action->valuestring == NULL ||
+                strcmp(tap_action->valuestring, "navigate") != 0) {
+                continue;
+            }
+
+            if (!cJSON_IsString(tap_target_page) ||
+                tap_target_page->valuestring == NULL ||
+                !str_in_list(
+                    tap_target_page->valuestring,
+                    known_page_ids,
+                    APP_MAX_PAGE_ID_LEN,
+                    known_page_ids_len)) {
+
+                cJSON *widget_id =
+                    cJSON_GetObjectItemCaseSensitive(widget, "id");
+
+                char msg[96];
+                snprintf(
+                    msg,
+                    sizeof(msg),
+                    "widget %s: unknown tap target page",
+                    cJSON_IsString(widget_id) &&
+                    widget_id->valuestring != NULL
+                        ? widget_id->valuestring
+                        : "?");
+
+                layout_validation_add(result, msg);
             }
         }
     }
