@@ -2,7 +2,7 @@
 
 # Release Notes
 
-## v0.9 — Release Candidate
+## v0.9
 
 BETTA HA Panel v0.9 is the largest development update since v0.8.2, expanding dashboard controls, editor capabilities, display behaviour, diagnostics, and three-panel release validation.
 
@@ -49,10 +49,10 @@ BETTA HA Panel v0.9 is the largest development update since v0.8.2, expanding da
 - GitHub Actions now builds `panel4`, `panel10`, and `panels3` in one matrix workflow.
 - All three variants are built against ESP-IDF 5.5.2 with their correct target/default configuration.
 - CI creates versioned factory and OTA images for every variant and uploads a separate artifact set for each.
-- The release packaging pipeline is green for all three variants at commit `9c43d32`.
-- Latest firmware behaviour confirmed on physical hardware before release-pipeline-only changes: `7bd95d7`.
+- The final release-candidate pipeline completed successfully for all three variants.
+- The validated v0.9 code was promoted to `main` and published as the `V0.9` GitHub Release.
 
-### Release Candidate Validation
+### Release Validation
 
 ESP32-S3 `panels3` hardware validation completed on the v0.9 development line:
 
@@ -63,7 +63,7 @@ ESP32-S3 `panels3` hardware validation completed on the v0.9 development line:
 - Night Mode / Auto Dim behaviour, Save & Reboot, diagnostics, and OTA update paths have been exercised on hardware.
 - The 60-second return-to-Home path is now independent of the configurable Auto Dim timeout, preventing a 30-second dim setting from forcing early navigation.
 
-Before publishing v0.9 as the stable release, run one final consolidated release build and publish the resulting versioned artifacts.
+Final consolidated CI completed successfully and the v0.9 release assets were published for all three supported variants.
 
 ### Known Investigation
 
