@@ -73,12 +73,12 @@ Before publishing v0.9 as the stable release, run one final consolidated release
 
 The release pipeline produces:
 
-- `betta86-ha-panel-v0.9-panel4.factory.bin`
-- `betta86-ha-panel-v0.9-panel4.ota.bin`
-- `betta86-ha-panel-v0.9-panel10.factory.bin`
-- `betta86-ha-panel-v0.9-panel10.ota.bin`
-- `betta86-ha-panel-v0.9-panels3.factory.bin`
-- `betta86-ha-panel-v0.9-panels3.ota.bin`
+- `betta-ha-panel-v0.9-panel4.factory.bin`
+- `betta-ha-panel-v0.9-panel4.ota.bin`
+- `betta-ha-panel-v0.9-panel10.factory.bin`
+- `betta-ha-panel-v0.9-panel10.ota.bin`
+- `betta-ha-panel-v0.9-panels3.factory.bin`
+- `betta-ha-panel-v0.9-panels3.ota.bin`
 
 ## v0.8.2
 
