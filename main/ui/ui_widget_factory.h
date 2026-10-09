@@ -18,6 +18,9 @@ typedef struct {
     char title[APP_MAX_NAME_LEN];
     char entity_id[APP_MAX_ENTITY_ID_LEN];
     char secondary_entity_id[APP_MAX_ENTITY_ID_LEN];
+    char visibility_mode[16];
+    char visibility_entity_id[APP_MAX_ENTITY_ID_LEN];
+    char visibility_state[APP_MAX_STATE_LEN];
 
     char icon[APP_MAX_ICON_LEN];
     bool show_icon;
@@ -60,6 +63,9 @@ typedef struct {
     char title[APP_MAX_NAME_LEN];
     char entity_id[APP_MAX_ENTITY_ID_LEN];
     char secondary_entity_id[APP_MAX_ENTITY_ID_LEN];
+    char visibility_mode[16];
+    char visibility_entity_id[APP_MAX_ENTITY_ID_LEN];
+    char visibility_state[APP_MAX_STATE_LEN];
 
     char icon[APP_MAX_ICON_LEN];
     bool show_icon;

@@ -297,6 +297,28 @@
                 </div>
               </details>
 
+              <details class="inspector-group">
+                <summary><span>Visibility</span></summary>
+                <div class="inspector-group-body">
+                  <label><span>Show widget</span>
+                    <select id="fVisibilityMode">
+                      <option value="always">Always</option>
+                      <option value="equals">When entity state equals</option>
+                      <option value="not_equals">When entity state does not equal</option>
+                    </select>
+                  </label>
+                  <div id="visibilityConditionOptions" class="hidden">
+                    <label><span>Condition entity</span>
+                      <input id="fVisibilityEntity" type="text" list="visibilityEntityOptions" placeholder="switch.heating" />
+                      <datalist id="visibilityEntityOptions"></datalist>
+                    </label>
+                    <label><span>State value</span>
+                      <input id="fVisibilityState" type="text" placeholder="on" maxlength="127" />
+                    </label>
+                  </div>
+                </div>
+              </details>
+
               <!-- Style group -->
               <details class="inspector-group" open>
                 <summary><span id="inspectorGroupStyleLabel">Style</span></summary>

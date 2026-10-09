@@ -1807,6 +1807,11 @@ const el = {
   fSecondaryEntityWrap: document.getElementById("fSecondaryEntityWrap"),
   fSecondaryEntityLabel: document.getElementById("fSecondaryEntityLabel"),
   fSecondaryEntity: document.getElementById("fSecondaryEntity"),
+  fVisibilityMode: document.getElementById("fVisibilityMode"),
+  visibilityConditionOptions: document.getElementById("visibilityConditionOptions"),
+  fVisibilityEntity: document.getElementById("fVisibilityEntity"),
+  visibilityEntityOptions: document.getElementById("visibilityEntityOptions"),
+  fVisibilityState: document.getElementById("fVisibilityState"),
   buttonOptions: document.getElementById("buttonOptions"),
   fButtonAppearance: document.getElementById("fButtonAppearance"),
   fButtonIconMode: document.getElementById("fButtonIconMode"),
@@ -2091,6 +2096,31 @@ function normalizeLayoutWidgets(layout) {
        * (for example the 480 px Weather readability floor). */
       if (widget.rect && typeof widget.rect === "object") {
         widget.rect = clampRectToCanvas(widget.rect, widget.type);
+      }
+
+      const visibilityMode = ["equals", "not_equals"].includes(widget.visibility_mode)
+        ? widget.visibility_mode
+        : "always";
+      if (visibilityMode === "always") {
+        delete widget.visibility_mode;
+        delete widget.visibility_entity_id;
+        delete widget.visibility_state;
+      } else {
+        const visibilityEntity = typeof widget.visibility_entity_id === "string"
+          ? widget.visibility_entity_id.trim()
+          : "";
+        const visibilityState = typeof widget.visibility_state === "string"
+          ? widget.visibility_state.trim()
+          : "";
+        if (visibilityEntity.includes(".") && visibilityState) {
+          widget.visibility_mode = visibilityMode;
+          widget.visibility_entity_id = visibilityEntity;
+          widget.visibility_state = visibilityState;
+        } else {
+          delete widget.visibility_mode;
+          delete widget.visibility_entity_id;
+          delete widget.visibility_state;
+        }
       }
 
       if (widget.type === "button") {
@@ -5117,6 +5147,9 @@ function renderEntityOptions() {
   if (el.energyEntityOptions) {
     setEntityOptionsList(el.energyEntityOptions, listEntitiesByDomain("sensor").slice(0, ENTITY_AUTOCOMPLETE_MAX_ITEMS));
   }
+  if (el.visibilityEntityOptions) {
+    setEntityOptionsList(el.visibilityEntityOptions, editor.entities.slice(0, ENTITY_AUTOCOMPLETE_MAX_ITEMS));
+  }
 
   if (el.fSecondaryEntityLabel) {
     el.fSecondaryEntityLabel.textContent = t(secondaryConfig.labelKey, {}, secondaryConfig.labelFallback);
@@ -6069,6 +6102,10 @@ function renderInspector() {
     el.fType.value = "sensor";
     el.fEntity.value = "";
     el.fSecondaryEntity.value = "";
+    if (el.fVisibilityMode) el.fVisibilityMode.value = "always";
+    if (el.fVisibilityEntity) el.fVisibilityEntity.value = "";
+    if (el.fVisibilityState) el.fVisibilityState.value = "";
+    if (el.visibilityConditionOptions) el.visibilityConditionOptions.classList.add("hidden");
     el.fX.value = "";
     el.fY.value = "";
     el.fW.value = "";
@@ -6145,6 +6182,15 @@ function renderInspector() {
   el.fType.value = widget.type;
   el.fEntity.value = widget.entity_id || "";
   el.fSecondaryEntity.value = widget.secondary_entity_id || "";
+  const visibilityMode = ["equals", "not_equals"].includes(widget.visibility_mode)
+    ? widget.visibility_mode
+    : "always";
+  if (el.fVisibilityMode) el.fVisibilityMode.value = visibilityMode;
+  if (el.fVisibilityEntity) el.fVisibilityEntity.value = widget.visibility_entity_id || "";
+  if (el.fVisibilityState) el.fVisibilityState.value = widget.visibility_state || "";
+  if (el.visibilityConditionOptions) {
+    el.visibilityConditionOptions.classList.toggle("hidden", visibilityMode === "always");
+  }
   el.fX.value = widget.rect.x;
   el.fY.value = widget.rect.y;
   el.fW.value = widget.rect.w;
@@ -6836,6 +6882,29 @@ function applyInspector(options = {}) {
   }
 
   widget.title = el.fTitle.value.trim();
+
+  const visibilityMode = ["equals", "not_equals"].includes(el.fVisibilityMode?.value)
+    ? el.fVisibilityMode.value
+    : "always";
+  if (visibilityMode === "always") {
+    delete widget.visibility_mode;
+    delete widget.visibility_entity_id;
+    delete widget.visibility_state;
+  } else {
+    const visibilityEntity = el.fVisibilityEntity?.value?.trim() || "";
+    const visibilityState = el.fVisibilityState?.value?.trim() || "";
+    if (!visibilityEntity.includes(".") || !visibilityState) {
+      if (!softEntityValidation) {
+        setStatus("Visibility condition needs an entity and state value", true);
+        return false;
+      }
+    } else {
+      widget.visibility_mode = visibilityMode;
+      widget.visibility_entity_id = visibilityEntity;
+      widget.visibility_state = visibilityState;
+    }
+  }
+
   if (primaryEntityValid) {
     widget.entity_id = nextEntityId;
   }
@@ -7193,6 +7262,17 @@ function bindUi() {
     });
   }
   bindInspectorAutoApply(el.fCommonCustomIcon, ["change"], { refreshInspector: true });
+  if (el.fVisibilityMode) {
+    el.fVisibilityMode.addEventListener("change", () => {
+      const conditional = el.fVisibilityMode.value !== "always";
+      if (el.visibilityConditionOptions) {
+        el.visibilityConditionOptions.classList.toggle("hidden", !conditional);
+      }
+      autoApplyInspector({ softEntityValidation: true });
+    });
+  }
+  bindInspectorAutoApply(el.fVisibilityEntity, ["change", "blur"], { softEntityValidation: true });
+  bindInspectorAutoApply(el.fVisibilityState, ["change", "blur"], { softEntityValidation: true });
 
   for (const button of el.settingsNavButtons || []) {
     button.onclick = () => setActiveSettingsSection(button.dataset.settingsSection);

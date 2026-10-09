@@ -811,6 +811,13 @@ static bool validate_widget(
             widget,
             "secondary_entity_id");
 
+    cJSON *visibility_mode =
+        cJSON_GetObjectItemCaseSensitive(widget, "visibility_mode");
+    cJSON *visibility_entity_id =
+        cJSON_GetObjectItemCaseSensitive(widget, "visibility_entity_id");
+    cJSON *visibility_state =
+        cJSON_GetObjectItemCaseSensitive(widget, "visibility_state");
+
     cJSON *slider_direction =
         cJSON_GetObjectItemCaseSensitive(
             widget,
@@ -865,6 +872,36 @@ static bool validate_widget(
         cJSON_GetObjectItemCaseSensitive(
             widget,
             "rect");
+
+    if (visibility_mode != NULL) {
+        bool mode_ok =
+            cJSON_IsString(visibility_mode) &&
+            visibility_mode->valuestring != NULL &&
+            (strcmp(visibility_mode->valuestring, "equals") == 0 ||
+             strcmp(visibility_mode->valuestring, "not_equals") == 0);
+
+        if (!mode_ok) {
+            snprintf(msg, sizeof(msg), "widget %s: invalid visibility_mode",
+                cJSON_IsString(id) ? id->valuestring : "?");
+            layout_validation_add(result, msg);
+        } else {
+            if (!cJSON_IsString(visibility_entity_id) ||
+                visibility_entity_id->valuestring == NULL ||
+                !is_valid_entity_id(visibility_entity_id->valuestring)) {
+                snprintf(msg, sizeof(msg), "widget %s: invalid visibility entity",
+                    cJSON_IsString(id) ? id->valuestring : "?");
+                layout_validation_add(result, msg);
+            }
+            if (!cJSON_IsString(visibility_state) ||
+                visibility_state->valuestring == NULL ||
+                visibility_state->valuestring[0] == '\0' ||
+                strlen(visibility_state->valuestring) >= APP_MAX_STATE_LEN) {
+                snprintf(msg, sizeof(msg), "widget %s: invalid visibility state",
+                    cJSON_IsString(id) ? id->valuestring : "?");
+                layout_validation_add(result, msg);
+            }
+        }
+    }
 
     if (!cJSON_IsString(id) ||
         id->valuestring == NULL ||

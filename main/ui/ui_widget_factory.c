@@ -170,6 +170,9 @@ out_instance->timer_show_pause = def->timer_show_pause;
 out_instance->timer_show_cancel = def->timer_show_cancel;
 out_instance->timer_show_finish = def->timer_show_finish;
     snprintf(out_instance->secondary_entity_id, sizeof(out_instance->secondary_entity_id), "%s", def->secondary_entity_id);
+    snprintf(out_instance->visibility_mode, sizeof(out_instance->visibility_mode), "%s", def->visibility_mode);
+    snprintf(out_instance->visibility_entity_id, sizeof(out_instance->visibility_entity_id), "%s", def->visibility_entity_id);
+    snprintf(out_instance->visibility_state, sizeof(out_instance->visibility_state), "%s", def->visibility_state);
     snprintf(out_instance->slider_direction, sizeof(out_instance->slider_direction), "%s", def->slider_direction);
     snprintf(out_instance->slider_accent_color, sizeof(out_instance->slider_accent_color), "%s", def->slider_accent_color);
     snprintf(out_instance->button_accent_color, sizeof(out_instance->button_accent_color), "%s", def->button_accent_color);
@@ -213,6 +216,12 @@ void ui_widget_factory_set_visible(ui_widget_instance_t *instance, bool visible)
         return;
     }
     instance->visible = visible;
+
+    if (visible) {
+        lv_obj_clear_flag(instance->obj, LV_OBJ_FLAG_HIDDEN);
+    } else {
+        lv_obj_add_flag(instance->obj, LV_OBJ_FLAG_HIDDEN);
+    }
 
     if (strcmp(instance->type, "media_player") == 0) {
         w_media_player_set_visible(instance, visible);

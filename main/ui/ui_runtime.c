@@ -480,6 +480,24 @@ static void ui_runtime_apply_entity_state_ex(
                 s_widgets[i].secondary_entity_id,
                 APP_MAX_ENTITY_ID_LEN) == 0);
 
+        bool is_visibility =
+            (s_widgets[i].visibility_entity_id[0] != '\0') &&
+            (strncmp(
+                entity_id,
+                s_widgets[i].visibility_entity_id,
+                APP_MAX_ENTITY_ID_LEN) == 0);
+
+        if (!is_primary && !is_secondary && !is_visibility) {
+            continue;
+        }
+
+        if (is_visibility) {
+            const char *current_page = ui_pages_current_id();
+            if (current_page != NULL && current_page[0] != '\0') {
+                ui_runtime_update_widget_visibility(current_page, false);
+            }
+        }
+
         if (!is_primary && !is_secondary) {
             continue;
         }
@@ -559,6 +577,25 @@ static void ui_runtime_apply_widget_current_state(
     }
 }
 
+static bool ui_runtime_widget_condition_matches(
+    const ui_widget_instance_t *widget)
+{
+    if (widget == NULL ||
+        widget->visibility_mode[0] == '\0' ||
+        strcmp(widget->visibility_mode, "always") == 0 ||
+        widget->visibility_entity_id[0] == '\0') {
+        return true;
+    }
+
+    ha_state_t condition_state = {0};
+    if (!ha_model_get_state(widget->visibility_entity_id, &condition_state)) {
+        return false;
+    }
+
+    bool equal = strcmp(condition_state.state, widget->visibility_state) == 0;
+    return strcmp(widget->visibility_mode, "not_equals") == 0 ? !equal : equal;
+}
+
 static void ui_runtime_update_widget_visibility(
     const char *page_id,
     bool refresh_visible_widgets)
@@ -572,7 +609,8 @@ static void ui_runtime_update_widget_visibility(
             (strncmp(
                 s_widgets[i].page_id,
                 page_id,
-                APP_MAX_PAGE_ID_LEN) == 0);
+                APP_MAX_PAGE_ID_LEN) == 0) &&
+            ui_runtime_widget_condition_matches(&s_widgets[i]);
 
         ui_widget_factory_set_visible(
             &s_widgets[i],
@@ -666,6 +704,13 @@ static bool ui_runtime_widget_from_json(
         cJSON_GetObjectItemCaseSensitive(
             widget_json,
             "secondary_entity_id");
+
+    cJSON *visibility_mode =
+        cJSON_GetObjectItemCaseSensitive(widget_json, "visibility_mode");
+    cJSON *visibility_entity_id =
+        cJSON_GetObjectItemCaseSensitive(widget_json, "visibility_entity_id");
+    cJSON *visibility_state =
+        cJSON_GetObjectItemCaseSensitive(widget_json, "visibility_state");
 
     cJSON *slider_direction =
         cJSON_GetObjectItemCaseSensitive(
@@ -861,6 +906,23 @@ static bool ui_runtime_widget_from_json(
             sizeof(out->secondary_entity_id),
             "%s",
             secondary_entity_id->valuestring);
+    }
+
+    snprintf(
+        out->visibility_mode,
+        sizeof(out->visibility_mode),
+        "%s",
+        (cJSON_IsString(visibility_mode) && visibility_mode->valuestring != NULL)
+            ? visibility_mode->valuestring
+            : "always");
+
+    if (cJSON_IsString(visibility_entity_id) && visibility_entity_id->valuestring != NULL) {
+        snprintf(out->visibility_entity_id, sizeof(out->visibility_entity_id), "%s",
+                 visibility_entity_id->valuestring);
+    }
+    if (cJSON_IsString(visibility_state) && visibility_state->valuestring != NULL) {
+        snprintf(out->visibility_state, sizeof(out->visibility_state), "%s",
+                 visibility_state->valuestring);
     }
 
     if (cJSON_IsString(slider_direction) &&
