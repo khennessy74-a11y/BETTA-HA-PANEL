@@ -60,6 +60,7 @@ const ENTITY_PICKER_SEARCH_DEBOUNCE_MS = 350;
 const SETUP_WIZARD_PENDING_STORAGE_KEY = "betta.setupWizard.pending";
 const SETUP_WIZARD_DISMISSED_STORAGE_KEY = "betta.setupWizard.dismissed";
 const WIDGET_CLIPBOARD_STORAGE_KEY = "betta.widgetClipboard.v1";
+const WIDGET_PRESETS_STORAGE_KEY = "betta.widgetPresets.v1";
 const SYNC_BUNDLE_SCHEMA = "betta-panel-sync";
 const SYNC_BUNDLE_VERSION = 1;
 
@@ -1793,6 +1794,10 @@ const el = {
   duplicateWidgetBtn: document.getElementById("duplicateWidgetBtn"),
   copyWidgetBtn: document.getElementById("copyWidgetBtn"),
   pasteWidgetBtn: document.getElementById("pasteWidgetBtn"),
+  widgetPresetSelect: document.getElementById("widgetPresetSelect"),
+  saveWidgetPresetBtn: document.getElementById("saveWidgetPresetBtn"),
+  addWidgetPresetBtn: document.getElementById("addWidgetPresetBtn"),
+  deleteWidgetPresetBtn: document.getElementById("deleteWidgetPresetBtn"),
   deleteWidgetBtn: document.getElementById("deleteWidgetBtn"),
   reloadBtn: document.getElementById("reloadBtn"),
   saveBtn: document.getElementById("saveBtn"),
@@ -5558,6 +5563,7 @@ function renderWidgets() {
   if (el.pasteWidgetBtn) {
     el.pasteWidgetBtn.disabled = energyPage || !readCopiedWidget();
   }
+  renderWidgetPresets();
 
   if (energyPage) {
     const li = document.createElement("li");
@@ -6784,6 +6790,100 @@ function cloneWidgetForPage(sourceWidget, page, options = {}) {
   return clone;
 }
 
+function loadWidgetPresets() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(WIDGET_PRESETS_STORAGE_KEY) || "[]");
+    return Array.isArray(parsed)
+      ? parsed.filter((item) => item && typeof item.name === "string" && item.widget && typeof item.widget.type === "string")
+      : [];
+  } catch (_) {
+    return [];
+  }
+}
+
+function storeWidgetPresets(presets) {
+  localStorage.setItem(WIDGET_PRESETS_STORAGE_KEY, JSON.stringify(presets));
+}
+
+function renderWidgetPresets() {
+  if (!el.widgetPresetSelect) return;
+  const selected = el.widgetPresetSelect.value;
+  const presets = loadWidgetPresets();
+  el.widgetPresetSelect.innerHTML = "";
+  const blank = document.createElement("option");
+  blank.value = "";
+  blank.textContent = presets.length ? "Saved presets..." : "No saved presets";
+  el.widgetPresetSelect.appendChild(blank);
+  presets.forEach((preset, index) => {
+    const option = document.createElement("option");
+    option.value = String(index);
+    option.textContent = preset.name;
+    el.widgetPresetSelect.appendChild(option);
+  });
+  if (selected && Number(selected) < presets.length) {
+    el.widgetPresetSelect.value = selected;
+  }
+  const hasSelection = el.widgetPresetSelect.value !== "";
+  const energyPage = isEnergyPage(selectedPage());
+  if (el.addWidgetPresetBtn) el.addWidgetPresetBtn.disabled = energyPage || !hasSelection;
+  if (el.deleteWidgetPresetBtn) el.deleteWidgetPresetBtn.disabled = !hasSelection;
+  if (el.saveWidgetPresetBtn) el.saveWidgetPresetBtn.disabled = energyPage || !editor.selectedWidgetId;
+}
+
+function saveSelectedWidgetAsPreset() {
+  const widget = selectedWidget();
+  if (!widget) return;
+  const defaultName = (widget.title || widget.type || "Widget").trim();
+  const name = window.prompt("Preset name", defaultName);
+  if (!name || !name.trim()) return;
+
+  const presets = loadWidgetPresets();
+  const normalizedName = name.trim();
+  const presetWidget = JSON.parse(JSON.stringify(widget));
+  delete presetWidget.id;
+
+  const existing = presets.findIndex((preset) => preset.name.toLowerCase() === normalizedName.toLowerCase());
+  const entry = { name: normalizedName, widget: presetWidget };
+  if (existing >= 0) {
+    if (!window.confirm(`Replace existing preset "${presets[existing].name}"?`)) return;
+    presets[existing] = entry;
+  } else {
+    presets.push(entry);
+  }
+
+  storeWidgetPresets(presets);
+  renderWidgetPresets();
+  setStatus(`Saved widget preset: ${normalizedName}`);
+}
+
+function addSelectedWidgetPreset() {
+  const page = selectedPage();
+  if (!page || isEnergyPage(page) || !el.widgetPresetSelect) return;
+  const index = Number(el.widgetPresetSelect.value);
+  const presets = loadWidgetPresets();
+  if (!Number.isInteger(index) || index < 0 || index >= presets.length) return;
+
+  const clone = cloneWidgetForPage(presets[index].widget, page, { rename: false });
+  if (!clone) return;
+  page.widgets.push(clone);
+  editor.selectedWidgetId = clone.id;
+  renderAll();
+  setStatus(`Added widget preset: ${presets[index].name}`);
+}
+
+function deleteSelectedWidgetPreset() {
+  if (!el.widgetPresetSelect) return;
+  const index = Number(el.widgetPresetSelect.value);
+  const presets = loadWidgetPresets();
+  if (!Number.isInteger(index) || index < 0 || index >= presets.length) return;
+  const name = presets[index].name;
+  if (!window.confirm(`Delete preset "${name}"?`)) return;
+  presets.splice(index, 1);
+  storeWidgetPresets(presets);
+  renderWidgetPresets();
+  setStatus(`Deleted widget preset: ${name}`);
+}
+
 function duplicateWidget() {
   const page = selectedPage();
   const widget = selectedWidget();
@@ -7505,6 +7605,10 @@ if (el.addAutomationBtn) {
   if (el.duplicateWidgetBtn) el.duplicateWidgetBtn.onclick = duplicateWidget;
   if (el.copyWidgetBtn) el.copyWidgetBtn.onclick = copyWidget;
   if (el.pasteWidgetBtn) el.pasteWidgetBtn.onclick = pasteWidget;
+  if (el.widgetPresetSelect) el.widgetPresetSelect.onchange = renderWidgetPresets;
+  if (el.saveWidgetPresetBtn) el.saveWidgetPresetBtn.onclick = saveSelectedWidgetAsPreset;
+  if (el.addWidgetPresetBtn) el.addWidgetPresetBtn.onclick = addSelectedWidgetPreset;
+  if (el.deleteWidgetPresetBtn) el.deleteWidgetPresetBtn.onclick = deleteSelectedWidgetPreset;
   el.deleteWidgetBtn.onclick = deleteWidget;
   if (el.applyInspectorBtn) {
     el.applyInspectorBtn.onclick = () => applyInspector();
