@@ -59,6 +59,9 @@ const LIGHT_ENTITY_PICKER_MAX_POLLS = 90;
 const ENTITY_PICKER_SEARCH_DEBOUNCE_MS = 350;
 const SETUP_WIZARD_PENDING_STORAGE_KEY = "betta.setupWizard.pending";
 const SETUP_WIZARD_DISMISSED_STORAGE_KEY = "betta.setupWizard.dismissed";
+const WIDGET_CLIPBOARD_STORAGE_KEY = "betta.widgetClipboard.v1";
+const SYNC_BUNDLE_SCHEMA = "betta-panel-sync";
+const SYNC_BUNDLE_VERSION = 1;
 
 const ENTITY_PICKER_CONFIGS = {
   binary_sensor: {
@@ -560,6 +563,13 @@ const WEB_I18N_BUILTIN = {
     "entity_picker.widget_graph": "Graph tile",
     "entity_picker.widget_heating": "Heating tile",
     "entity_picker.widget_roborock": "Roborock tile",
+    "layout.widgets.duplicate": "Duplicate Widget",
+    "layout.widgets.copy": "Copy Widget",
+    "layout.widgets.paste": "Paste Widget",
+    "layout.status.widget_duplicated": "Widget duplicated",
+    "layout.status.widget_copied": "Widget copied",
+    "layout.status.widget_pasted": "Widget pasted",
+    "layout.status.clipboard_empty": "No copied widget is available",
     "layout.inspector.heading": "Inspector",
     "layout.inspector.title": "Title",
     "layout.inspector.entity": "Entity",
@@ -1780,6 +1790,9 @@ const el = {
   addTimerBtn: document.getElementById("addTimerBtn"),
   addMediaPlayerBtn: document.getElementById("addMediaPlayerBtn"),
   addRoborockTileBtn: document.getElementById("addRoborockTileBtn"),
+  duplicateWidgetBtn: document.getElementById("duplicateWidgetBtn"),
+  copyWidgetBtn: document.getElementById("copyWidgetBtn"),
+  pasteWidgetBtn: document.getElementById("pasteWidgetBtn"),
   deleteWidgetBtn: document.getElementById("deleteWidgetBtn"),
   reloadBtn: document.getElementById("reloadBtn"),
   saveBtn: document.getElementById("saveBtn"),
@@ -2563,6 +2576,9 @@ function applyWebTranslations() {
   setTextById("addTodoListBtn", "layout.widgets.add_todo");
   setTextById("addMediaPlayerBtn", "layout.widgets.add_media_player");
   setTextById("addRoborockTileBtn", "layout.widgets.add_roborock");
+  setTextById("duplicateWidgetBtn", "layout.widgets.duplicate");
+  setTextById("copyWidgetBtn", "layout.widgets.copy");
+  setTextById("pasteWidgetBtn", "layout.widgets.paste");
   setTextById("deleteWidgetBtn", "layout.widgets.delete");
   setTextById("lightEntityPickerTitle", "entity_picker.title");
   setTextById("lightEntityPickerRefreshBtn", "entity_picker.refresh");
@@ -5500,6 +5516,15 @@ function renderWidgets() {
   if (el.deleteWidgetBtn) {
     el.deleteWidgetBtn.disabled = energyPage || !editor.selectedWidgetId;
   }
+  if (el.duplicateWidgetBtn) {
+    el.duplicateWidgetBtn.disabled = energyPage || !editor.selectedWidgetId;
+  }
+  if (el.copyWidgetBtn) {
+    el.copyWidgetBtn.disabled = energyPage || !editor.selectedWidgetId;
+  }
+  if (el.pasteWidgetBtn) {
+    el.pasteWidgetBtn.disabled = energyPage || !readCopiedWidget();
+  }
 
   if (energyPage) {
     const li = document.createElement("li");
@@ -6695,6 +6720,75 @@ onSetupWizardWidgetAdded(widget);
 return widget;
 }
 
+function cloneWidgetForPage(sourceWidget, page, options = {}) {
+  if (!sourceWidget || !page || isEnergyPage(page)) return null;
+  const clone = JSON.parse(JSON.stringify(sourceWidget));
+  clone.id = createWidgetIdForPage(page, clone.type || "widget");
+  if (options.rename !== false && typeof clone.title === "string" && clone.title.trim()) {
+    clone.title = `${clone.title.trim()} Copy`;
+  }
+  if (clone.rect && typeof clone.rect === "object") {
+    const offset = options.offset === false ? 0 : 20;
+    clone.rect = clampRectToCanvas({
+      ...clone.rect,
+      x: Number(clone.rect.x || 0) + offset,
+      y: Number(clone.rect.y || 0) + offset,
+    }, clone.type);
+  }
+  return clone;
+}
+
+function duplicateWidget() {
+  const page = selectedPage();
+  const widget = selectedWidget();
+  if (!page || !widget || isEnergyPage(page)) return;
+  const clone = cloneWidgetForPage(widget, page);
+  if (!clone) return;
+  page.widgets.push(clone);
+  editor.selectedWidgetId = clone.id;
+  renderAll();
+  setStatus(t("layout.status.widget_duplicated"));
+}
+
+function copyWidget() {
+  const widget = selectedWidget();
+  if (!widget) return;
+  try {
+    localStorage.setItem(WIDGET_CLIPBOARD_STORAGE_KEY, JSON.stringify(widget));
+    setStatus(t("layout.status.widget_copied"));
+    if (el.pasteWidgetBtn) el.pasteWidgetBtn.disabled = false;
+  } catch (err) {
+    setStatus(String(err?.message || err), true);
+  }
+}
+
+function readCopiedWidget() {
+  try {
+    const raw = localStorage.getItem(WIDGET_CLIPBOARD_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" && typeof parsed.type === "string" ? parsed : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+function pasteWidget() {
+  const page = selectedPage();
+  if (!page || isEnergyPage(page)) return;
+  const copied = readCopiedWidget();
+  if (!copied) {
+    setStatus(t("layout.status.clipboard_empty"), true);
+    return;
+  }
+  const clone = cloneWidgetForPage(copied, page, { rename: false });
+  if (!clone) return;
+  page.widgets.push(clone);
+  editor.selectedWidgetId = clone.id;
+  renderAll();
+  setStatus(t("layout.status.widget_pasted"));
+}
+
 function deleteWidget() {
   const page = selectedPage();
   if (!page || !editor.selectedWidgetId) return;
@@ -7030,28 +7124,48 @@ async function saveLayout() {
   setStatus(t("layout.status.saved"));
 }
 
+function buildSyncBundle() {
+  normalizeLayoutWidgets(editor.layout);
+  return {
+    schema: SYNC_BUNDLE_SCHEMA,
+    version: SYNC_BUNDLE_VERSION,
+    exported_at: new Date().toISOString(),
+    source: {
+      project: editor.appProject || "BETTA-HA-PANEL",
+      firmware: editor.appVersion || "",
+      screen: {
+        width: Number(editor.appScreenW || CANVAS_WIDTH),
+        height: Number(editor.appScreenH || CANVAS_HEIGHT),
+      },
+    },
+    layout: JSON.parse(JSON.stringify(editor.layout)),
+    overrides: {},
+  };
+}
+
 function exportLayout() {
   if (isEnergyPage(selectedPage())) {
     applyEnergyPageConfig({ render: false });
   }
-  normalizeLayoutWidgets(editor.layout);
-  const blob = new Blob([JSON.stringify(editor.layout, null, 2)], { type: "application/json" });
+  const bundle = buildSyncBundle();
+  const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = "betta-layout.json";
+  a.download = "betta-panel-sync.json";
   a.click();
   URL.revokeObjectURL(url);
 }
 
 function importLayoutFromText(text) {
   const parsed = JSON.parse(text);
-  if (!parsed || !Array.isArray(parsed.pages)) {
+  const layout = parsed?.schema === SYNC_BUNDLE_SCHEMA ? parsed.layout : parsed;
+  if (!layout || !Array.isArray(layout.pages)) {
     throw new Error(t("layout.status.invalid_json"));
   }
-  normalizeLayoutWidgets(parsed);
-  editor.layout = parsed;
-  editor.selectedPageId = parsed.pages[0]?.id || null;
+  normalizeLayoutWidgets(layout);
+  editor.layout = layout;
+  editor.selectedPageId = layout.pages[0]?.id || null;
   editor.selectedWidgetId = null;
   renderAll();
   setStatus(t("layout.status.imported"));
@@ -7308,6 +7422,9 @@ if (el.addAutomationBtn) {
       }
     });
   }
+  if (el.duplicateWidgetBtn) el.duplicateWidgetBtn.onclick = duplicateWidget;
+  if (el.copyWidgetBtn) el.copyWidgetBtn.onclick = copyWidget;
+  if (el.pasteWidgetBtn) el.pasteWidgetBtn.onclick = pasteWidget;
   el.deleteWidgetBtn.onclick = deleteWidget;
   if (el.applyInspectorBtn) {
     el.applyInspectorBtn.onclick = () => applyInspector();
