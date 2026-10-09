@@ -6246,6 +6246,12 @@ function renderCanvas() {
     if (widget.type === "status_banner" && widget.status_presentation === "overlay") {
       extraHint = '<div class="w-hint">Overlay notification</div>';
     }
+    if (widget.tap_action === "navigate" && widget.tap_target_page) {
+      const targetPage = (editor.layout?.pages || []).find((candidate) => candidate?.id === widget.tap_target_page);
+      const targetLabel = targetPage?.title || targetPage?.id || widget.tap_target_page;
+      const targetProfile = DASHBOARD_PROFILES.has(targetPage?.profile) ? targetPage.profile : "all";
+      extraHint = `<div class="w-hint">→ ${escapeHtml(targetLabel)}${targetProfile !== "all" ? ` · ${escapeHtml(targetProfile)}` : ""}</div>`;
+    }
     if (widget.type === "button") {
   const appearance = normalizeButtonAppearance(
     widget.button_appearance
@@ -6447,16 +6453,42 @@ function renderInspector() {
     if (el.fTapAction) el.fTapAction.value = tapAction;
     if (el.fTapTargetPage) {
       el.fTapTargetPage.innerHTML = "";
-      for (const pageOption of editor.layout?.pages || []) {
+      const activeProfile = DASHBOARD_PROFILES.has(editor.layout?.active_profile)
+        ? editor.layout.active_profile
+        : "all";
+      const currentTarget = widget.tap_target_page || "";
+      const pageOptions = editor.layout?.pages || [];
+      for (const pageOption of pageOptions) {
+        const pageProfile = DASHBOARD_PROFILES.has(pageOption?.profile) ? pageOption.profile : "all";
+        const eligible =
+          activeProfile === "all" ||
+          pageProfile === "all" ||
+          pageProfile === activeProfile;
+
+        /* Keep an existing incompatible target visible so it can be repaired,
+         * but do not offer new targets that cannot exist in this profile. */
+        if (!eligible && pageOption.id !== currentTarget) {
+          continue;
+        }
+
         const option = document.createElement("option");
         option.value = pageOption.id;
-        option.textContent = pageOption.title || pageOption.id;
+        const profileSuffix = pageProfile !== "all" ? ` · ${pageProfile}` : "";
+        const hiddenSuffix = !eligible ? " · hidden in active profile" : "";
+        option.textContent = `${pageOption.title || pageOption.id}${profileSuffix}${hiddenSuffix}`;
+        option.disabled = !eligible;
         el.fTapTargetPage.appendChild(option);
       }
-      if (widget.tap_target_page) {
-        el.fTapTargetPage.value = widget.tap_target_page;
-      } else if (editor.layout?.pages?.[0]) {
-        el.fTapTargetPage.value = editor.layout.pages[0].id;
+      if (currentTarget) {
+        el.fTapTargetPage.value = currentTarget;
+      } else {
+        const firstEligible = pageOptions.find((pageOption) => {
+          const pageProfile = DASHBOARD_PROFILES.has(pageOption?.profile) ? pageOption.profile : "all";
+          return activeProfile === "all" || pageProfile === "all" || pageProfile === activeProfile;
+        });
+        if (firstEligible) {
+          el.fTapTargetPage.value = firstEligible.id;
+        }
       }
     }
     if (el.tapTargetPageWrap) {
