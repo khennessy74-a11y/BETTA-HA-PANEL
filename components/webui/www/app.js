@@ -1842,6 +1842,8 @@ const el = {
   fVisibilityState: document.getElementById("fVisibilityState"),
   statusBannerOptions: document.getElementById("statusBannerOptions"),
   fStatusSeverity: document.getElementById("fStatusSeverity"),
+  fStatusMessage: document.getElementById("fStatusMessage"),
+  fStatusAppendState: document.getElementById("fStatusAppendState"),
   interactionOptionsGroup: document.getElementById("interactionOptionsGroup"),
   fTapAction: document.getElementById("fTapAction"),
   tapTargetPageWrap: document.getElementById("tapTargetPageWrap"),
@@ -2170,8 +2172,16 @@ function normalizeLayoutWidgets(layout) {
         widget.status_severity = ["info", "success", "warning", "critical"].includes(widget.status_severity)
           ? widget.status_severity
           : "info";
+        widget.status_message = typeof widget.status_message === "string"
+          ? widget.status_message.trim().slice(0, 95)
+          : "";
+        widget.status_append_state = typeof widget.status_append_state === "boolean"
+          ? widget.status_append_state
+          : true;
       } else {
         delete widget.status_severity;
+        delete widget.status_message;
+        delete widget.status_append_state;
       }
 
       if (TAP_ACTION_WIDGET_TYPES.has(widget.type)) {
@@ -2206,6 +2216,16 @@ function normalizeLayoutWidgets(layout) {
     el.fStatusSeverity.value = ["info", "success", "warning", "critical"].includes(widget.status_severity)
       ? widget.status_severity
       : "info";
+  }
+  if (el.fStatusMessage) {
+    el.fStatusMessage.value = widget.type === "status_banner" && typeof widget.status_message === "string"
+      ? widget.status_message
+      : "";
+  }
+  if (el.fStatusAppendState) {
+    el.fStatusAppendState.value = widget.type === "status_banner" && widget.status_append_state === false
+      ? "false"
+      : "true";
   }
 
   const visibilityMode = ["equals", "not_equals"].includes(widget.visibility_mode)
@@ -6262,6 +6282,8 @@ function renderInspector() {
     el.fSecondaryEntity.value = "";
     if (el.statusBannerOptions) el.statusBannerOptions.classList.add("hidden");
     if (el.fStatusSeverity) el.fStatusSeverity.value = "info";
+    if (el.fStatusMessage) el.fStatusMessage.value = "";
+    if (el.fStatusAppendState) el.fStatusAppendState.value = "true";
     if (el.fVisibilityMode) el.fVisibilityMode.value = "always";
     if (el.fVisibilityEntity) el.fVisibilityEntity.value = "";
     if (el.fVisibilityState) el.fVisibilityState.value = "";
@@ -6919,6 +6941,8 @@ function addWidget(type, options = {}) {
   };
   if (type === "status_banner") {
     widget.status_severity = "info";
+    widget.status_message = "";
+    widget.status_append_state = true;
   }
   if (COMMON_DISPLAY_WIDGET_TYPES.has(type)) {
     widget.icon = "";
@@ -7200,8 +7224,12 @@ function applyInspector(options = {}) {
     widget.status_severity = ["info", "success", "warning", "critical"].includes(el.fStatusSeverity?.value)
       ? el.fStatusSeverity.value
       : "info";
+    widget.status_message = (el.fStatusMessage?.value || "").trim().slice(0, 95);
+    widget.status_append_state = el.fStatusAppendState?.value !== "false";
   } else {
     delete widget.status_severity;
+    delete widget.status_message;
+    delete widget.status_append_state;
   }
 
   const visibilityMode = ["equals", "not_equals"].includes(el.fVisibilityMode?.value)
@@ -7718,6 +7746,8 @@ function bindUi() {
   bindInspectorAutoApply(el.fVisibilityEntity, ["change", "blur"], { softEntityValidation: true });
   bindInspectorAutoApply(el.fVisibilityState, ["change", "blur"], { softEntityValidation: true });
   bindInspectorAutoApply(el.fStatusSeverity, ["change"], { refreshInspector: true });
+  bindInspectorAutoApply(el.fStatusMessage, ["input", "change"], { softEntityValidation: true });
+  bindInspectorAutoApply(el.fStatusAppendState, ["change"], { refreshInspector: true, softEntityValidation: true });
   if (el.fTapAction) {
     el.fTapAction.addEventListener("change", () => {
       if (el.tapTargetPageWrap) {

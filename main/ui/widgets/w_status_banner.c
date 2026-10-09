@@ -15,6 +15,8 @@ typedef struct {
     lv_obj_t *card;
     lv_obj_t *title;
     lv_obj_t *state;
+    char message[APP_MAX_NAME_LEN];
+    bool append_state;
 } w_status_banner_ctx_t;
 
 static bool status_banner_is_inactive(const char *state)
@@ -111,6 +113,8 @@ esp_err_t w_status_banner_create(
     ctx->card = card;
     ctx->title = title;
     ctx->state = state;
+    snprintf(ctx->message, sizeof(ctx->message), "%s", def->status_message);
+    ctx->append_state = def->status_append_state;
     status_banner_apply_visual(ctx, false, def->status_severity);
 
     out_instance->obj = card;
@@ -123,7 +127,8 @@ void w_status_banner_apply_state(ui_widget_instance_t *instance, const ha_state_
     if (instance == NULL || state == NULL || instance->ctx == NULL) return;
     w_status_banner_ctx_t *ctx = (w_status_banner_ctx_t *)instance->ctx;
 
-    char text[128] = {0};
+    char text[192] = {0};
+    char live_state[128] = {0};
     const char *unit = "";
     cJSON *attrs = cJSON_Parse(state->attributes_json);
     if (attrs != NULL) {
@@ -132,7 +137,22 @@ void w_status_banner_apply_state(ui_widget_instance_t *instance, const ha_state_
             unit = unit_item->valuestring;
         }
     }
-    snprintf(text, sizeof(text), "%s%s%s", state->state, unit[0] ? " " : "", unit);
+    snprintf(
+        live_state,
+        sizeof(live_state),
+        "%s%s%s",
+        state->state,
+        unit[0] ? " " : "",
+        unit);
+
+    if (ctx->message[0] != '\0' && ctx->append_state) {
+        snprintf(text, sizeof(text), "%s · %s", ctx->message, live_state);
+    } else if (ctx->message[0] != '\0') {
+        snprintf(text, sizeof(text), "%s", ctx->message);
+    } else {
+        snprintf(text, sizeof(text), "%s", live_state);
+    }
+
     lv_label_set_text(ctx->state, text);
     status_banner_apply_visual(ctx, !status_banner_is_inactive(state->state), instance->status_severity);
     if (attrs != NULL) cJSON_Delete(attrs);
@@ -142,6 +162,14 @@ void w_status_banner_mark_unavailable(ui_widget_instance_t *instance)
 {
     if (instance == NULL || instance->ctx == NULL) return;
     w_status_banner_ctx_t *ctx = (w_status_banner_ctx_t *)instance->ctx;
-    lv_label_set_text(ctx->state, "unavailable");
+    if (ctx->message[0] != '\0' && !ctx->append_state) {
+        lv_label_set_text(ctx->state, ctx->message);
+    } else if (ctx->message[0] != '\0') {
+        char text[192] = {0};
+        snprintf(text, sizeof(text), "%s · unavailable", ctx->message);
+        lv_label_set_text(ctx->state, text);
+    } else {
+        lv_label_set_text(ctx->state, "unavailable");
+    }
     status_banner_apply_visual(ctx, false, instance->status_severity);
 }

@@ -848,6 +848,10 @@ static bool validate_widget(
         cJSON_GetObjectItemCaseSensitive(widget, "tap_target_page");
     cJSON *status_severity =
         cJSON_GetObjectItemCaseSensitive(widget, "status_severity");
+    cJSON *status_message =
+        cJSON_GetObjectItemCaseSensitive(widget, "status_message");
+    cJSON *status_append_state =
+        cJSON_GetObjectItemCaseSensitive(widget, "status_append_state");
 
     cJSON *slider_direction =
         cJSON_GetObjectItemCaseSensitive(
@@ -917,6 +921,22 @@ static bool validate_widget(
                 cJSON_IsString(id) ? id->valuestring : "?");
             layout_validation_add(result, msg);
         }
+    }
+
+    if (status_message != NULL &&
+        (!cJSON_IsString(status_message) ||
+         status_message->valuestring == NULL ||
+         strlen(status_message->valuestring) >= APP_MAX_NAME_LEN)) {
+        snprintf(msg, sizeof(msg), "widget %s: invalid status message",
+            cJSON_IsString(id) ? id->valuestring : "?");
+        layout_validation_add(result, msg);
+    }
+
+    if (status_append_state != NULL &&
+        !cJSON_IsBool(status_append_state)) {
+        snprintf(msg, sizeof(msg), "widget %s: invalid status append state",
+            cJSON_IsString(id) ? id->valuestring : "?");
+        layout_validation_add(result, msg);
     }
 
     if (tap_action != NULL) {

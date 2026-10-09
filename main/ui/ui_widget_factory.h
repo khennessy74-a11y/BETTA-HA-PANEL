@@ -24,6 +24,8 @@ typedef struct {
     char tap_action[16];
     char tap_target_page[APP_MAX_PAGE_ID_LEN];
     char status_severity[16];
+    char status_message[APP_MAX_NAME_LEN];
+    bool status_append_state;
 
     char icon[APP_MAX_ICON_LEN];
     bool show_icon;
@@ -72,6 +74,8 @@ typedef struct {
     char tap_action[16];
     char tap_target_page[APP_MAX_PAGE_ID_LEN];
     char status_severity[16];
+    char status_message[APP_MAX_NAME_LEN];
+    bool status_append_state;
 
     char icon[APP_MAX_ICON_LEN];
     bool show_icon;
