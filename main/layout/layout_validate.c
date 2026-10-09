@@ -817,6 +817,10 @@ static bool validate_widget(
         cJSON_GetObjectItemCaseSensitive(widget, "visibility_entity_id");
     cJSON *visibility_state =
         cJSON_GetObjectItemCaseSensitive(widget, "visibility_state");
+    cJSON *tap_action =
+        cJSON_GetObjectItemCaseSensitive(widget, "tap_action");
+    cJSON *tap_target_page =
+        cJSON_GetObjectItemCaseSensitive(widget, "tap_target_page");
 
     cJSON *slider_direction =
         cJSON_GetObjectItemCaseSensitive(
@@ -872,6 +876,29 @@ static bool validate_widget(
         cJSON_GetObjectItemCaseSensitive(
             widget,
             "rect");
+
+    if (tap_action != NULL) {
+        bool action_ok =
+            cJSON_IsString(tap_action) &&
+            tap_action->valuestring != NULL &&
+            (strcmp(tap_action->valuestring, "detail") == 0 ||
+             strcmp(tap_action->valuestring, "navigate") == 0);
+
+        if (!action_ok) {
+            snprintf(msg, sizeof(msg), "widget %s: invalid tap_action",
+                cJSON_IsString(id) ? id->valuestring : "?");
+            layout_validation_add(result, msg);
+        } else if (strcmp(tap_action->valuestring, "navigate") == 0) {
+            if (!cJSON_IsString(tap_target_page) ||
+                tap_target_page->valuestring == NULL ||
+                tap_target_page->valuestring[0] == '\0' ||
+                strlen(tap_target_page->valuestring) >= APP_MAX_PAGE_ID_LEN) {
+                snprintf(msg, sizeof(msg), "widget %s: invalid tap target",
+                    cJSON_IsString(id) ? id->valuestring : "?");
+                layout_validation_add(result, msg);
+            }
+        }
+    }
 
     if (visibility_mode != NULL) {
         bool mode_ok =

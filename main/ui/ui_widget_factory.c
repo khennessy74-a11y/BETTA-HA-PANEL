@@ -4,6 +4,9 @@
  */
 #include "ui/ui_widget_factory.h"
 
+#include "ui/ui_pages.h"
+#include "ui/ui_widget_detail_popup.h"
+
 #include <stdio.h>
 #include <string.h>
 
@@ -135,6 +138,34 @@ static const widget_factory_entry_t WIDGET_FACTORY[] = {
     {"timer", w_timer_create, w_timer_apply_state, w_timer_mark_unavailable},
 };
 
+static bool widget_supports_tap_action(const char *type)
+{
+    return type != NULL &&
+        (strcmp(type, "sensor") == 0 ||
+         strcmp(type, "binary_sensor") == 0 ||
+         strcmp(type, "person") == 0 ||
+         strcmp(type, "device_tracker") == 0 ||
+         strcmp(type, "graph") == 0 ||
+         strcmp(type, "empty_tile") == 0 ||
+         strcmp(type, "weather_tile") == 0 ||
+         strcmp(type, "weather_3day") == 0);
+}
+
+static void ui_widget_tap_action_cb(lv_event_t *event)
+{
+    if (lv_event_get_code(event) != LV_EVENT_CLICKED) return;
+    ui_widget_instance_t *instance =
+        (ui_widget_instance_t *)lv_event_get_user_data(event);
+    if (instance == NULL) return;
+
+    if (strcmp(instance->tap_action, "detail") == 0) {
+        ui_widget_detail_popup_show(instance->title, instance->entity_id);
+    } else if (strcmp(instance->tap_action, "navigate") == 0 &&
+               instance->tap_target_page[0] != '\0') {
+        (void)ui_pages_show(instance->tap_target_page);
+    }
+}
+
 static const widget_factory_entry_t *widget_factory_entry(const char *type)
 {
     if (type == NULL) return NULL;
@@ -173,6 +204,8 @@ out_instance->timer_show_finish = def->timer_show_finish;
     snprintf(out_instance->visibility_mode, sizeof(out_instance->visibility_mode), "%s", def->visibility_mode);
     snprintf(out_instance->visibility_entity_id, sizeof(out_instance->visibility_entity_id), "%s", def->visibility_entity_id);
     snprintf(out_instance->visibility_state, sizeof(out_instance->visibility_state), "%s", def->visibility_state);
+    snprintf(out_instance->tap_action, sizeof(out_instance->tap_action), "%s", def->tap_action);
+    snprintf(out_instance->tap_target_page, sizeof(out_instance->tap_target_page), "%s", def->tap_target_page);
     snprintf(out_instance->slider_direction, sizeof(out_instance->slider_direction), "%s", def->slider_direction);
     snprintf(out_instance->slider_accent_color, sizeof(out_instance->slider_accent_color), "%s", def->slider_accent_color);
     snprintf(out_instance->button_accent_color, sizeof(out_instance->button_accent_color), "%s", def->button_accent_color);
@@ -190,7 +223,18 @@ out_instance->timer_show_finish = def->timer_show_finish;
     out_instance->ctx = NULL;
 
     const widget_factory_entry_t *entry = widget_factory_entry(def->type);
-    return entry != NULL ? entry->create(def, parent, out_instance) : ESP_ERR_NOT_SUPPORTED;
+    if (entry == NULL) return ESP_ERR_NOT_SUPPORTED;
+
+    esp_err_t err = entry->create(def, parent, out_instance);
+    if (err == ESP_OK &&
+        out_instance->obj != NULL &&
+        widget_supports_tap_action(out_instance->type) &&
+        out_instance->tap_action[0] != '\0' &&
+        strcmp(out_instance->tap_action, "default") != 0) {
+        lv_obj_add_flag(out_instance->obj, LV_OBJ_FLAG_CLICKABLE);
+        lv_obj_add_event_cb(out_instance->obj, ui_widget_tap_action_cb, LV_EVENT_CLICKED, out_instance);
+    }
+    return err;
 }
 
 void ui_widget_factory_apply_state(ui_widget_instance_t *instance, const ha_state_t *state)

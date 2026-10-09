@@ -21,6 +21,8 @@ typedef struct {
     char visibility_mode[16];
     char visibility_entity_id[APP_MAX_ENTITY_ID_LEN];
     char visibility_state[APP_MAX_STATE_LEN];
+    char tap_action[16];
+    char tap_target_page[APP_MAX_PAGE_ID_LEN];
 
     char icon[APP_MAX_ICON_LEN];
     bool show_icon;
@@ -66,6 +68,8 @@ typedef struct {
     char visibility_mode[16];
     char visibility_entity_id[APP_MAX_ENTITY_ID_LEN];
     char visibility_state[APP_MAX_STATE_LEN];
+    char tap_action[16];
+    char tap_target_page[APP_MAX_PAGE_ID_LEN];
 
     char icon[APP_MAX_ICON_LEN];
     bool show_icon;

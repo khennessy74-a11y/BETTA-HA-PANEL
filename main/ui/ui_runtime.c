@@ -711,6 +711,10 @@ static bool ui_runtime_widget_from_json(
         cJSON_GetObjectItemCaseSensitive(widget_json, "visibility_entity_id");
     cJSON *visibility_state =
         cJSON_GetObjectItemCaseSensitive(widget_json, "visibility_state");
+    cJSON *tap_action =
+        cJSON_GetObjectItemCaseSensitive(widget_json, "tap_action");
+    cJSON *tap_target_page =
+        cJSON_GetObjectItemCaseSensitive(widget_json, "tap_target_page");
 
     cJSON *slider_direction =
         cJSON_GetObjectItemCaseSensitive(
@@ -923,6 +927,13 @@ static bool ui_runtime_widget_from_json(
     if (cJSON_IsString(visibility_state) && visibility_state->valuestring != NULL) {
         snprintf(out->visibility_state, sizeof(out->visibility_state), "%s",
                  visibility_state->valuestring);
+    }
+
+    if (cJSON_IsString(tap_action) && tap_action->valuestring != NULL) {
+        snprintf(out->tap_action, sizeof(out->tap_action), "%s", tap_action->valuestring);
+    }
+    if (cJSON_IsString(tap_target_page) && tap_target_page->valuestring != NULL) {
+        snprintf(out->tap_target_page, sizeof(out->tap_target_page), "%s", tap_target_page->valuestring);
     }
 
     if (cJSON_IsString(slider_direction) &&

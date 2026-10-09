@@ -63,6 +63,10 @@ const WIDGET_CLIPBOARD_STORAGE_KEY = "betta.widgetClipboard.v1";
 const WIDGET_PRESETS_STORAGE_KEY = "betta.widgetPresets.v1";
 const SYNC_BUNDLE_SCHEMA = "betta-panel-sync";
 const SYNC_BUNDLE_VERSION = 1;
+const TAP_ACTION_WIDGET_TYPES = new Set([
+  "sensor", "binary_sensor", "person", "device_tracker",
+  "graph", "empty_tile", "weather_tile", "weather_3day",
+]);
 
 const ENTITY_PICKER_CONFIGS = {
   binary_sensor: {
@@ -1817,6 +1821,10 @@ const el = {
   fVisibilityEntity: document.getElementById("fVisibilityEntity"),
   visibilityEntityOptions: document.getElementById("visibilityEntityOptions"),
   fVisibilityState: document.getElementById("fVisibilityState"),
+  interactionOptionsGroup: document.getElementById("interactionOptionsGroup"),
+  fTapAction: document.getElementById("fTapAction"),
+  tapTargetPageWrap: document.getElementById("tapTargetPageWrap"),
+  fTapTargetPage: document.getElementById("fTapTargetPage"),
   buttonOptions: document.getElementById("buttonOptions"),
   fButtonAppearance: document.getElementById("fButtonAppearance"),
   fButtonIconMode: document.getElementById("fButtonIconMode"),
@@ -2101,6 +2109,31 @@ function normalizeLayoutWidgets(layout) {
        * (for example the 480 px Weather readability floor). */
       if (widget.rect && typeof widget.rect === "object") {
         widget.rect = clampRectToCanvas(widget.rect, widget.type);
+      }
+
+      if (TAP_ACTION_WIDGET_TYPES.has(widget.type)) {
+        const tapAction = ["detail", "navigate"].includes(widget.tap_action)
+          ? widget.tap_action
+          : "default";
+        if (tapAction === "default") {
+          delete widget.tap_action;
+          delete widget.tap_target_page;
+        } else if (tapAction === "detail") {
+          widget.tap_action = "detail";
+          delete widget.tap_target_page;
+        } else {
+          const target = typeof widget.tap_target_page === "string" ? widget.tap_target_page.trim() : "";
+          if (target) {
+            widget.tap_action = "navigate";
+            widget.tap_target_page = target;
+          } else {
+            delete widget.tap_action;
+            delete widget.tap_target_page;
+          }
+        }
+      } else {
+        delete widget.tap_action;
+        delete widget.tap_target_page;
       }
 
       const visibilityMode = ["equals", "not_equals"].includes(widget.visibility_mode)
@@ -6112,6 +6145,10 @@ function renderInspector() {
     if (el.fVisibilityEntity) el.fVisibilityEntity.value = "";
     if (el.fVisibilityState) el.fVisibilityState.value = "";
     if (el.visibilityConditionOptions) el.visibilityConditionOptions.classList.add("hidden");
+    if (el.fTapAction) el.fTapAction.value = "default";
+    if (el.fTapTargetPage) el.fTapTargetPage.innerHTML = "";
+    if (el.tapTargetPageWrap) el.tapTargetPageWrap.classList.add("hidden");
+    if (el.interactionOptionsGroup) el.interactionOptionsGroup.classList.add("hidden");
     el.fX.value = "";
     el.fY.value = "";
     el.fW.value = "";
@@ -6196,6 +6233,34 @@ function renderInspector() {
   if (el.fVisibilityState) el.fVisibilityState.value = widget.visibility_state || "";
   if (el.visibilityConditionOptions) {
     el.visibilityConditionOptions.classList.toggle("hidden", visibilityMode === "always");
+  }
+
+  const supportsTapAction = TAP_ACTION_WIDGET_TYPES.has(widget.type);
+  if (el.interactionOptionsGroup) {
+    el.interactionOptionsGroup.classList.toggle("hidden", !supportsTapAction);
+  }
+  if (supportsTapAction) {
+    const tapAction = ["detail", "navigate"].includes(widget.tap_action)
+      ? widget.tap_action
+      : "default";
+    if (el.fTapAction) el.fTapAction.value = tapAction;
+    if (el.fTapTargetPage) {
+      el.fTapTargetPage.innerHTML = "";
+      for (const pageOption of editor.layout?.pages || []) {
+        const option = document.createElement("option");
+        option.value = pageOption.id;
+        option.textContent = pageOption.title || pageOption.id;
+        el.fTapTargetPage.appendChild(option);
+      }
+      if (widget.tap_target_page) {
+        el.fTapTargetPage.value = widget.tap_target_page;
+      } else if (editor.layout?.pages?.[0]) {
+        el.fTapTargetPage.value = editor.layout.pages[0].id;
+      }
+    }
+    if (el.tapTargetPageWrap) {
+      el.tapTargetPageWrap.classList.toggle("hidden", tapAction !== "navigate");
+    }
   }
   el.fX.value = widget.rect.x;
   el.fY.value = widget.rect.y;
@@ -7005,6 +7070,33 @@ function applyInspector(options = {}) {
     }
   }
 
+  if (TAP_ACTION_WIDGET_TYPES.has(widgetType)) {
+    const tapAction = ["detail", "navigate"].includes(el.fTapAction?.value)
+      ? el.fTapAction.value
+      : "default";
+    if (tapAction === "default") {
+      delete widget.tap_action;
+      delete widget.tap_target_page;
+    } else if (tapAction === "detail") {
+      widget.tap_action = "detail";
+      delete widget.tap_target_page;
+    } else {
+      const targetPage = el.fTapTargetPage?.value?.trim() || "";
+      if (!targetPage) {
+        if (!softEntityValidation) {
+          setStatus("Choose a target page for the tap action", true);
+          return false;
+        }
+      } else {
+        widget.tap_action = "navigate";
+        widget.tap_target_page = targetPage;
+      }
+    }
+  } else {
+    delete widget.tap_action;
+    delete widget.tap_target_page;
+  }
+
   if (primaryEntityValid) {
     widget.entity_id = nextEntityId;
   }
@@ -7373,6 +7465,15 @@ function bindUi() {
   }
   bindInspectorAutoApply(el.fVisibilityEntity, ["change", "blur"], { softEntityValidation: true });
   bindInspectorAutoApply(el.fVisibilityState, ["change", "blur"], { softEntityValidation: true });
+  if (el.fTapAction) {
+    el.fTapAction.addEventListener("change", () => {
+      if (el.tapTargetPageWrap) {
+        el.tapTargetPageWrap.classList.toggle("hidden", el.fTapAction.value !== "navigate");
+      }
+      autoApplyInspector({ softEntityValidation: true });
+    });
+  }
+  bindInspectorAutoApply(el.fTapTargetPage, ["change"], { softEntityValidation: true });
 
   for (const button of el.settingsNavButtons || []) {
     button.onclick = () => setActiveSettingsSection(button.dataset.settingsSection);

@@ -63,6 +63,7 @@ idf_component_register(
         "ui/ui_energy_page.c"
         "ui/ui_i18n.c"
         "ui/ui_widget_factory.c"
+        "ui/ui_widget_detail_popup.c"
         "ui/ui_bindings.c"
         "ui/widgets/w_sensor.c"
         "ui/widgets/w_button.c"

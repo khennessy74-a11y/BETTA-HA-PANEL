@@ -327,6 +327,22 @@
                 </div>
               </details>
 
+              <details id="interactionOptionsGroup" class="inspector-group">
+                <summary><span>Tap action</span></summary>
+                <div class="inspector-group-body">
+                  <label><span>When tapped</span>
+                    <select id="fTapAction">
+                      <option value="default">Default</option>
+                      <option value="detail">Open details</option>
+                      <option value="navigate">Go to page</option>
+                    </select>
+                  </label>
+                  <label id="tapTargetPageWrap" class="hidden"><span>Target page</span>
+                    <select id="fTapTargetPage"></select>
+                  </label>
+                </div>
+              </details>
+
               <!-- Style group -->
               <details class="inspector-group" open>
                 <summary><span id="inspectorGroupStyleLabel">Style</span></summary>
