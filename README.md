@@ -18,9 +18,9 @@ BETTA HA Panel ships as **three firmware variants**, one per supported device:
 
 | Variant    | Device                                                  | Resolution | Factory image                                                                     |
 |------------|---------------------------------------------------------|------------|-----------------------------------------------------------------------------------|
-| `panel4`   | Waveshare **ESP32-P4-WIFI6-Touch-LCD-4B** (4")       | 720 × 720  | [betta-ha-panel-v0.9-panel4.factory.bin](https://github.com/khennessy74-a11y/BETTA-HA-PANEL/releases/latest/download/betta-ha-panel-v0.9-panel4.factory.bin) |
-| `panel10`  | Waveshare **ESP32-P4 Module Nano + 10.1" DSI panel** | 1280 × 800 | [betta-ha-panel-v0.9-panel10.factory.bin](https://github.com/khennessy74-a11y/BETTA-HA-PANEL/releases/latest/download/betta-ha-panel-v0.9-panel10.factory.bin) |
-| `panels3`  | Guition **ESP32-S3-4848S040** (4")                   | 480 × 480  | [betta-ha-panel-v0.9-panels3.factory.bin](https://github.com/khennessy74-a11y/BETTA-HA-PANEL/releases/latest/download/betta-ha-panel-v0.9-panels3.factory.bin) |
+| `panel4`   | Waveshare **ESP32-P4-WIFI6-Touch-LCD-4B** (4")       | 720 × 720  | [betta-ha-panel-v0.9-panel4.factory.bin](https://github.com/khennessy74-a11y/BETTA-HA-PANEL/releases/download/v0.9/betta-ha-panel-v0.9-panel4.factory.bin) |
+| `panel10`  | Waveshare **ESP32-P4 Module Nano + 10.1" DSI panel** | 1280 × 800 | [betta-ha-panel-v0.9-panel10.factory.bin](https://github.com/khennessy74-a11y/BETTA-HA-PANEL/releases/download/v0.9/betta-ha-panel-v0.9-panel10.factory.bin) |
+| `panels3`  | Guition **ESP32-S3-4848S040** (4")                   | 480 × 480  | [betta-ha-panel-v0.9-panels3.factory.bin](https://github.com/khennessy74-a11y/BETTA-HA-PANEL/releases/download/v0.9/betta-ha-panel-v0.9-panels3.factory.bin) |
 
 All variants share the same dashboard engine, web editor, and Home Assistant integration. Pick the image that matches your board.
 
