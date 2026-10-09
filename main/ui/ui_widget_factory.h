@@ -23,6 +23,7 @@ typedef struct {
     char visibility_state[APP_MAX_STATE_LEN];
     char tap_action[16];
     char tap_target_page[APP_MAX_PAGE_ID_LEN];
+    char status_severity[16];
 
     char icon[APP_MAX_ICON_LEN];
     bool show_icon;
@@ -70,6 +71,7 @@ typedef struct {
     char visibility_state[APP_MAX_STATE_LEN];
     char tap_action[16];
     char tap_target_page[APP_MAX_PAGE_ID_LEN];
+    char status_severity[16];
 
     char icon[APP_MAX_ICON_LEN];
     bool show_icon;

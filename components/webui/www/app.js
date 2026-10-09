@@ -1832,6 +1832,8 @@ const el = {
   fVisibilityEntity: document.getElementById("fVisibilityEntity"),
   visibilityEntityOptions: document.getElementById("visibilityEntityOptions"),
   fVisibilityState: document.getElementById("fVisibilityState"),
+  statusBannerOptions: document.getElementById("statusBannerOptions"),
+  fStatusSeverity: document.getElementById("fStatusSeverity"),
   interactionOptionsGroup: document.getElementById("interactionOptionsGroup"),
   fTapAction: document.getElementById("fTapAction"),
   tapTargetPageWrap: document.getElementById("tapTargetPageWrap"),
@@ -2133,6 +2135,14 @@ function normalizeLayoutWidgets(layout) {
         widget.rect = clampRectToCanvas(widget.rect, widget.type);
       }
 
+      if (widget.type === "status_banner") {
+        widget.status_severity = ["info", "success", "warning", "critical"].includes(widget.status_severity)
+          ? widget.status_severity
+          : "info";
+      } else {
+        delete widget.status_severity;
+      }
+
       if (TAP_ACTION_WIDGET_TYPES.has(widget.type)) {
         const tapAction = ["detail", "navigate"].includes(widget.tap_action)
           ? widget.tap_action
@@ -2158,7 +2168,16 @@ function normalizeLayoutWidgets(layout) {
         delete widget.tap_target_page;
       }
 
-      const visibilityMode = ["equals", "not_equals"].includes(widget.visibility_mode)
+      if (el.statusBannerOptions) {
+    el.statusBannerOptions.classList.toggle("hidden", widget.type !== "status_banner");
+  }
+  if (el.fStatusSeverity) {
+    el.fStatusSeverity.value = ["info", "success", "warning", "critical"].includes(widget.status_severity)
+      ? widget.status_severity
+      : "info";
+  }
+
+  const visibilityMode = ["equals", "not_equals"].includes(widget.visibility_mode)
         ? widget.visibility_mode
         : "always";
       if (visibilityMode === "always") {
@@ -6174,6 +6193,8 @@ function renderInspector() {
     el.fType.value = "sensor";
     el.fEntity.value = "";
     el.fSecondaryEntity.value = "";
+    if (el.statusBannerOptions) el.statusBannerOptions.classList.add("hidden");
+    if (el.fStatusSeverity) el.fStatusSeverity.value = "info";
     if (el.fVisibilityMode) el.fVisibilityMode.value = "always";
     if (el.fVisibilityEntity) el.fVisibilityEntity.value = "";
     if (el.fVisibilityState) el.fVisibilityState.value = "";
@@ -6822,6 +6843,9 @@ function addWidget(type, options = {}) {
     secondary_entity_id: secondaryEntityId,
     rect,
   };
+  if (type === "status_banner") {
+    widget.status_severity = "info";
+  }
   if (COMMON_DISPLAY_WIDGET_TYPES.has(type)) {
     widget.icon = "";
     widget.show_title = true;
@@ -7095,6 +7119,14 @@ function applyInspector(options = {}) {
   }
 
   widget.title = el.fTitle.value.trim();
+
+  if (widgetType === "status_banner") {
+    widget.status_severity = ["info", "success", "warning", "critical"].includes(el.fStatusSeverity?.value)
+      ? el.fStatusSeverity.value
+      : "info";
+  } else {
+    delete widget.status_severity;
+  }
 
   const visibilityMode = ["equals", "not_equals"].includes(el.fVisibilityMode?.value)
     ? el.fVisibilityMode.value
@@ -7606,6 +7638,7 @@ function bindUi() {
   }
   bindInspectorAutoApply(el.fVisibilityEntity, ["change", "blur"], { softEntityValidation: true });
   bindInspectorAutoApply(el.fVisibilityState, ["change", "blur"], { softEntityValidation: true });
+  bindInspectorAutoApply(el.fStatusSeverity, ["change"], { refreshInspector: true });
   if (el.fTapAction) {
     el.fTapAction.addEventListener("change", () => {
       if (el.tapTargetPageWrap) {

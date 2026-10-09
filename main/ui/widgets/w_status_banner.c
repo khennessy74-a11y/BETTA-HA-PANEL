@@ -28,21 +28,44 @@ static bool status_banner_is_inactive(const char *state)
            strcmp(state, "home") == 0;
 }
 
-static void status_banner_apply_visual(w_status_banner_ctx_t *ctx, bool active)
+static uint32_t status_banner_severity_color(const char *severity)
 {
-    if (ctx == NULL || ctx->card == NULL) return;
+    if (severity != NULL && strcmp(severity, "critical") == 0) {
+        return APP_UI_COLOR_ERROR;
+    }
+    if (severity != NULL && strcmp(severity, "warning") == 0) {
+        return APP_UI_COLOR_HEAT_ICON_ON;
+    }
+    if (severity != NULL && strcmp(severity, "success") == 0) {
+        return APP_UI_COLOR_OK;
+    }
+    return APP_UI_COLOR_STATE_ON;
+}
+
+static void status_banner_apply_visual(
+    w_status_banner_ctx_t *ctx,
+    bool active,
+    const char *severity)
+{
+    if (ctx == NULL || ctx->card == NULL) {
+        return;
+    }
+
+    uint32_t accent = status_banner_severity_color(severity);
+
     lv_obj_set_style_bg_color(
         ctx->card,
         lv_color_hex(active ? APP_UI_COLOR_CARD_BG_ON : APP_UI_COLOR_CARD_BG_OFF),
         LV_PART_MAIN);
     lv_obj_set_style_border_color(
         ctx->card,
-        lv_color_hex(active ? APP_UI_COLOR_STATE_ON : APP_UI_COLOR_CARD_BORDER),
+        lv_color_hex(active ? accent : APP_UI_COLOR_CARD_BORDER),
         LV_PART_MAIN);
+
     if (ctx->state != NULL) {
         lv_obj_set_style_text_color(
             ctx->state,
-            lv_color_hex(active ? APP_UI_COLOR_STATE_ON : APP_UI_COLOR_TEXT_PRIMARY),
+            lv_color_hex(active ? accent : APP_UI_COLOR_TEXT_PRIMARY),
             LV_PART_MAIN);
     }
 }
@@ -88,7 +111,7 @@ esp_err_t w_status_banner_create(
     ctx->card = card;
     ctx->title = title;
     ctx->state = state;
-    status_banner_apply_visual(ctx, false);
+    status_banner_apply_visual(ctx, false, def->status_severity);
 
     out_instance->obj = card;
     out_instance->ctx = ctx;
@@ -111,7 +134,7 @@ void w_status_banner_apply_state(ui_widget_instance_t *instance, const ha_state_
     }
     snprintf(text, sizeof(text), "%s%s%s", state->state, unit[0] ? " " : "", unit);
     lv_label_set_text(ctx->state, text);
-    status_banner_apply_visual(ctx, !status_banner_is_inactive(state->state));
+    status_banner_apply_visual(ctx, !status_banner_is_inactive(state->state), instance->status_severity);
     if (attrs != NULL) cJSON_Delete(attrs);
 }
 
@@ -120,5 +143,5 @@ void w_status_banner_mark_unavailable(ui_widget_instance_t *instance)
     if (instance == NULL || instance->ctx == NULL) return;
     w_status_banner_ctx_t *ctx = (w_status_banner_ctx_t *)instance->ctx;
     lv_label_set_text(ctx->state, "unavailable");
-    status_banner_apply_visual(ctx, false);
+    status_banner_apply_visual(ctx, false, instance->status_severity);
 }

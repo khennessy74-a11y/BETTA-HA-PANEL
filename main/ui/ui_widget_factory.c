@@ -212,6 +212,7 @@ out_instance->timer_show_finish = def->timer_show_finish;
     snprintf(out_instance->visibility_state, sizeof(out_instance->visibility_state), "%s", def->visibility_state);
     snprintf(out_instance->tap_action, sizeof(out_instance->tap_action), "%s", def->tap_action);
     snprintf(out_instance->tap_target_page, sizeof(out_instance->tap_target_page), "%s", def->tap_target_page);
+    snprintf(out_instance->status_severity, sizeof(out_instance->status_severity), "%s", def->status_severity);
     snprintf(out_instance->slider_direction, sizeof(out_instance->slider_direction), "%s", def->slider_direction);
     snprintf(out_instance->slider_accent_color, sizeof(out_instance->slider_accent_color), "%s", def->slider_accent_color);
     snprintf(out_instance->button_accent_color, sizeof(out_instance->button_accent_color), "%s", def->button_accent_color);

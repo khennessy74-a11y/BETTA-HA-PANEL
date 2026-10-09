@@ -832,6 +832,8 @@ static bool validate_widget(
         cJSON_GetObjectItemCaseSensitive(widget, "tap_action");
     cJSON *tap_target_page =
         cJSON_GetObjectItemCaseSensitive(widget, "tap_target_page");
+    cJSON *status_severity =
+        cJSON_GetObjectItemCaseSensitive(widget, "status_severity");
 
     cJSON *slider_direction =
         cJSON_GetObjectItemCaseSensitive(
@@ -887,6 +889,21 @@ static bool validate_widget(
         cJSON_GetObjectItemCaseSensitive(
             widget,
             "rect");
+
+    if (status_severity != NULL) {
+        bool severity_ok =
+            cJSON_IsString(status_severity) &&
+            status_severity->valuestring != NULL &&
+            (strcmp(status_severity->valuestring, "info") == 0 ||
+             strcmp(status_severity->valuestring, "success") == 0 ||
+             strcmp(status_severity->valuestring, "warning") == 0 ||
+             strcmp(status_severity->valuestring, "critical") == 0);
+        if (!severity_ok) {
+            snprintf(msg, sizeof(msg), "widget %s: invalid status severity",
+                cJSON_IsString(id) ? id->valuestring : "?");
+            layout_validation_add(result, msg);
+        }
+    }
 
     if (tap_action != NULL) {
         bool action_ok =

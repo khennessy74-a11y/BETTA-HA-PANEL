@@ -725,6 +725,8 @@ static bool ui_runtime_widget_from_json(
         cJSON_GetObjectItemCaseSensitive(widget_json, "tap_action");
     cJSON *tap_target_page =
         cJSON_GetObjectItemCaseSensitive(widget_json, "tap_target_page");
+    cJSON *status_severity =
+        cJSON_GetObjectItemCaseSensitive(widget_json, "status_severity");
 
     cJSON *slider_direction =
         cJSON_GetObjectItemCaseSensitive(
@@ -944,6 +946,12 @@ static bool ui_runtime_widget_from_json(
     }
     if (cJSON_IsString(tap_target_page) && tap_target_page->valuestring != NULL) {
         snprintf(out->tap_target_page, sizeof(out->tap_target_page), "%s", tap_target_page->valuestring);
+    }
+
+    if (cJSON_IsString(status_severity) && status_severity->valuestring != NULL) {
+        snprintf(out->status_severity, sizeof(out->status_severity), "%s", status_severity->valuestring);
+    } else if (strcmp(out->type, "status_banner") == 0) {
+        snprintf(out->status_severity, sizeof(out->status_severity), "%s", "info");
     }
 
     if (cJSON_IsString(slider_direction) &&
