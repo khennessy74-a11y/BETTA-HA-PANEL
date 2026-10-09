@@ -65,7 +65,7 @@ const SYNC_BUNDLE_SCHEMA = "betta-panel-sync";
 const SYNC_BUNDLE_VERSION = 1;
 const TAP_ACTION_WIDGET_TYPES = new Set([
   "sensor", "binary_sensor", "person", "device_tracker",
-  "graph", "empty_tile", "weather_tile", "weather_3day",
+  "graph", "status_banner", "empty_tile", "weather_tile", "weather_3day",
 ]);
 
 const ENTITY_PICKER_CONFIGS = {
@@ -1780,6 +1780,7 @@ const el = {
   addPersonBtn: document.getElementById("addPersonBtn"),
   addDeviceTrackerBtn: document.getElementById("addDeviceTrackerBtn"),
   addGraphBtn: document.getElementById("addGraphBtn"),
+  addStatusBannerBtn: document.getElementById("addStatusBannerBtn"),
   addEmptyTileBtn: document.getElementById("addEmptyTileBtn"),
   addLightTileBtn: document.getElementById("addLightTileBtn"),
   openSetupWizardBtn: document.getElementById("openSetupWizardBtn"),
@@ -5593,6 +5594,7 @@ function renderWidgets() {
     el.addSceneBtn,
     el.addSliderBtn,
     el.addGraphBtn,
+    el.addStatusBannerBtn,
     el.addEmptyTileBtn,
     el.addLightTileBtn,
     el.addHeatingTileBtn,
@@ -6778,6 +6780,7 @@ function addWidget(type, options = {}) {
       : type === "media_player" ? 300
       : type === "roborock_tile" ? 460
       : type === "weather_tile" ? 220
+      : type === "status_banner" ? 440
       : (type === "light_tile" || type === "fan_tile" || type === "empty_tile") ? 140
       : type === "heating_tile" ? 150
       : 180
@@ -6785,6 +6788,7 @@ function addWidget(type, options = {}) {
       : type === "todo_list" ? 360
       : type === "media_player" ? 360
       : type === "roborock_tile" ? 360
+      : type === "status_banner" ? 520
       : (type === "light_tile" || type === "fan_tile" || type === "heating_tile" || type === "weather_tile" || type === "empty_tile") ? 300
       : 220;
   const defaultH = compact
@@ -6793,6 +6797,7 @@ function addWidget(type, options = {}) {
       : type === "media_player" ? 220
       : type === "roborock_tile" ? 300
       : type === "weather_tile" ? 180
+      : type === "status_banner" ? 90
       : (type === "light_tile" || type === "fan_tile" || type === "empty_tile") ? 140
       : type === "heating_tile" ? 150
       : 110
@@ -6800,6 +6805,7 @@ function addWidget(type, options = {}) {
       : type === "todo_list" ? 360
       : type === "media_player" ? 280
       : type === "roborock_tile" ? 300
+      : type === "status_banner" ? 100
       : (type === "light_tile" || type === "fan_tile" || type === "heating_tile" || type === "weather_tile" || type === "empty_tile") ? 260
       : 120;
   const rect = clampRectToCanvas({ x: 20, y: 20, w: defaultW, h: defaultH }, type);
@@ -7653,6 +7659,7 @@ if (el.addAutomationBtn) {
     el.addDeviceTrackerBtn.onclick = () => openLightEntityPicker("device_tracker");
   }
   el.addGraphBtn.onclick = () => openLightEntityPicker("graph");
+  if (el.addStatusBannerBtn) el.addStatusBannerBtn.onclick = () => addWidget("status_banner", { entityId: "" });
   el.addEmptyTileBtn.onclick = () => addWidget("empty_tile");
   el.addLightTileBtn.onclick = () => openLightEntityPicker("light_tile");
   if (el.openSetupWizardBtn) {

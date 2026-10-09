@@ -78,6 +78,7 @@ idf_component_register(
         "ui/widgets/w_image.c"
         "ui/widgets/w_graph.c"
         "ui/widgets/w_empty_tile.c"
+        "ui/widgets/w_status_banner.c"
         "ui/widgets/w_light_tile.c"
         "ui/widgets/w_fan_tile.c"
         "ui/widgets/w_heating_tile.c"

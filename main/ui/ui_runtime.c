@@ -177,6 +177,16 @@ static ui_widget_size_limits_t ui_runtime_widget_size_limits(const char *type)
         limits.min_h = 140;
 #endif
 
+    } else if (strcmp(type, "status_banner") == 0) {
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+        limits.min_w = 260;
+        limits.min_h = 70;
+#else
+        limits.min_w = 320;
+        limits.min_h = 80;
+#endif
+        limits.max_h = 140;
+
     } else if (strcmp(type, "empty_tile") == 0) {
 #if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
         limits.min_w = 100;

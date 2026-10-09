@@ -126,7 +126,7 @@ static const widget_domain_rule_t WIDGET_DOMAIN_RULES[] = {
     {"button", NULL}, {"slider", NULL}, {"input_number", NULL},
     {"select", NULL}, {"input_text", "input_text"}, {"input_datetime", "input_datetime"},
     {"alarm_control_panel", "alarm_control_panel"}, {"update", "update"}, {"calendar", "calendar"}, {"image", NULL},
-    {"graph", "sensor"}, {"empty_tile", NULL}, {"light_tile", "light"},
+    {"graph", "sensor"}, {"status_banner", NULL}, {"empty_tile", NULL}, {"light_tile", "light"},
     {"fan_tile", "fan"}, {"heating_tile", "climate"}, {"weather_tile", "weather"},
     {"weather_3day", "weather"}, {"todo_list", "todo"}, {"media_player", "media_player"},
     {"roborock_tile", "vacuum"}, {"timer", "timer"},
@@ -237,6 +237,17 @@ static widget_size_limits_t widget_size_limits_for_type(
         limits.min_h = 140;
 
 #endif
+
+    } else if (strcmp(type, "status_banner") == 0) {
+
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+        limits.min_w = 260;
+        limits.min_h = 70;
+#else
+        limits.min_w = 320;
+        limits.min_h = 80;
+#endif
+        limits.max_h = 140;
 
     } else if (strcmp(type, "empty_tile") == 0) {
 
