@@ -27,6 +27,7 @@ typedef struct {
     char status_message[APP_MAX_NAME_LEN];
     bool status_append_state;
     int status_timeout_sec;
+    char status_presentation[16];
 
     char icon[APP_MAX_ICON_LEN];
     bool show_icon;
@@ -79,6 +80,7 @@ typedef struct {
     bool status_append_state;
     int status_timeout_sec;
     bool status_dismissed;
+    char status_presentation[16];
 
     char icon[APP_MAX_ICON_LEN];
     bool show_icon;
@@ -117,3 +119,4 @@ esp_err_t ui_widget_factory_create(const ui_widget_def_t *def, lv_obj_t *parent,
 void ui_widget_factory_apply_state(ui_widget_instance_t *instance, const ha_state_t *state);
 void ui_widget_factory_mark_unavailable(ui_widget_instance_t *instance);
 void ui_widget_factory_set_visible(ui_widget_instance_t *instance, bool visible);
+void w_status_banner_destroy(ui_widget_instance_t *instance);

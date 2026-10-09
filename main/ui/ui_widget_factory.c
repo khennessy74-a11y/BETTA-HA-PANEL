@@ -60,6 +60,7 @@ void w_empty_tile_mark_unavailable(ui_widget_instance_t *instance);
 esp_err_t w_status_banner_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widget_instance_t *out_instance);
 void w_status_banner_apply_state(ui_widget_instance_t *instance, const ha_state_t *state);
 void w_status_banner_mark_unavailable(ui_widget_instance_t *instance);
+void w_status_banner_destroy(ui_widget_instance_t *instance);
 
 esp_err_t w_light_tile_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widget_instance_t *out_instance);
 void w_light_tile_apply_state(ui_widget_instance_t *instance, const ha_state_t *state);
@@ -217,6 +218,7 @@ out_instance->timer_show_finish = def->timer_show_finish;
     out_instance->status_append_state = def->status_append_state;
     out_instance->status_timeout_sec = def->status_timeout_sec;
     out_instance->status_dismissed = false;
+    snprintf(out_instance->status_presentation, sizeof(out_instance->status_presentation), "%s", def->status_presentation);
     snprintf(out_instance->slider_direction, sizeof(out_instance->slider_direction), "%s", def->slider_direction);
     snprintf(out_instance->slider_accent_color, sizeof(out_instance->slider_accent_color), "%s", def->slider_accent_color);
     snprintf(out_instance->button_accent_color, sizeof(out_instance->button_accent_color), "%s", def->button_accent_color);

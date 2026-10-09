@@ -854,6 +854,8 @@ static bool validate_widget(
         cJSON_GetObjectItemCaseSensitive(widget, "status_append_state");
     cJSON *status_timeout_sec =
         cJSON_GetObjectItemCaseSensitive(widget, "status_timeout_sec");
+    cJSON *status_presentation =
+        cJSON_GetObjectItemCaseSensitive(widget, "status_presentation");
 
     cJSON *slider_direction =
         cJSON_GetObjectItemCaseSensitive(
@@ -951,6 +953,19 @@ static bool validate_widget(
              status_timeout_sec->valueint == 60);
         if (!timeout_ok) {
             snprintf(msg, sizeof(msg), "widget %s: invalid status timeout",
+                cJSON_IsString(id) ? id->valuestring : "?");
+            layout_validation_add(result, msg);
+        }
+    }
+
+    if (status_presentation != NULL) {
+        bool presentation_ok =
+            cJSON_IsString(status_presentation) &&
+            status_presentation->valuestring != NULL &&
+            (strcmp(status_presentation->valuestring, "inline") == 0 ||
+             strcmp(status_presentation->valuestring, "overlay") == 0);
+        if (!presentation_ok) {
+            snprintf(msg, sizeof(msg), "widget %s: invalid status presentation",
                 cJSON_IsString(id) ? id->valuestring : "?");
             layout_validation_add(result, msg);
         }

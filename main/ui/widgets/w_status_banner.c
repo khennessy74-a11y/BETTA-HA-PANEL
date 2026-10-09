@@ -9,6 +9,7 @@
 
 #include "cJSON.h"
 #include "ui/fonts/app_text_fonts.h"
+#include "ui/ui_pages.h"
 #include "ui/theme/theme_default.h"
 
 typedef struct {
@@ -124,9 +125,33 @@ esp_err_t w_status_banner_create(
     w_status_banner_ctx_t *ctx = calloc(1, sizeof(*ctx));
     if (ctx == NULL) return ESP_ERR_NO_MEM;
 
-    lv_obj_t *card = lv_obj_create(parent);
-    lv_obj_set_pos(card, def->x, def->y);
-    lv_obj_set_size(card, def->w, def->h);
+    const bool overlay =
+        strcmp(def->status_presentation, "overlay") == 0;
+
+    lv_obj_t *card =
+        lv_obj_create(overlay ? lv_layer_top() : parent);
+
+    if (overlay) {
+        const ui_pages_geometry_t *geometry = ui_pages_geometry();
+        lv_coord_t overlay_width =
+            geometry != NULL && geometry->screen_w > 32
+                ? geometry->screen_w - 24
+                : def->w;
+        if (overlay_width > 620) {
+            overlay_width = 620;
+        }
+
+        lv_obj_set_size(card, overlay_width, 86);
+        lv_obj_align(
+            card,
+            LV_ALIGN_TOP_MID,
+            0,
+            geometry != NULL ? geometry->content_y + 8 : 56);
+        lv_obj_move_foreground(card);
+    } else {
+        lv_obj_set_pos(card, def->x, def->y);
+        lv_obj_set_size(card, def->w, def->h);
+    }
     lv_obj_clear_flag(card, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_style_radius(card, 16, LV_PART_MAIN);
     lv_obj_set_style_border_width(card, 2, LV_PART_MAIN);
@@ -157,6 +182,11 @@ esp_err_t w_status_banner_create(
     ctx->append_state = def->status_append_state;
     ctx->timeout_sec = def->status_timeout_sec;
     ctx->instance = out_instance;
+    snprintf(
+        out_instance->status_presentation,
+        sizeof(out_instance->status_presentation),
+        "%s",
+        overlay ? "overlay" : "inline");
     status_banner_apply_visual(ctx, false, def->status_severity);
 
     out_instance->obj = card;
@@ -241,6 +271,35 @@ void w_status_banner_apply_state(ui_widget_instance_t *instance, const ha_state_
     lv_label_set_text(ctx->state, text);
     status_banner_apply_visual(ctx, !status_banner_is_inactive(state->state), instance->status_severity);
     if (attrs != NULL) cJSON_Delete(attrs);
+}
+
+void w_status_banner_destroy(ui_widget_instance_t *instance)
+{
+    if (instance == NULL) {
+        return;
+    }
+
+    w_status_banner_ctx_t *ctx =
+        (w_status_banner_ctx_t *)instance->ctx;
+
+    if (ctx != NULL) {
+        if (ctx->dismiss_timer != NULL) {
+            lv_timer_del(ctx->dismiss_timer);
+            ctx->dismiss_timer = NULL;
+        }
+
+        if (ctx->card != NULL) {
+            lv_obj_del(ctx->card);
+            ctx->card = NULL;
+        }
+
+        free(ctx);
+    } else if (instance->obj != NULL) {
+        lv_obj_del(instance->obj);
+    }
+
+    instance->ctx = NULL;
+    instance->obj = NULL;
 }
 
 void w_status_banner_mark_unavailable(ui_widget_instance_t *instance)

@@ -1845,6 +1845,7 @@ const el = {
   fStatusMessage: document.getElementById("fStatusMessage"),
   fStatusAppendState: document.getElementById("fStatusAppendState"),
   fStatusTimeout: document.getElementById("fStatusTimeout"),
+  fStatusPresentation: document.getElementById("fStatusPresentation"),
   interactionOptionsGroup: document.getElementById("interactionOptionsGroup"),
   fTapAction: document.getElementById("fTapAction"),
   tapTargetPageWrap: document.getElementById("tapTargetPageWrap"),
@@ -2182,12 +2183,16 @@ function normalizeLayoutWidgets(layout) {
         widget.status_timeout_sec = [0, 5, 10, 30, 60].includes(Number(widget.status_timeout_sec))
           ? Number(widget.status_timeout_sec)
           : 0;
+        widget.status_presentation = ["inline", "overlay"].includes(widget.status_presentation)
+          ? widget.status_presentation
+          : "inline";
       } else {
         delete widget.status_severity;
         delete widget.status_message;
         delete widget.status_append_state;
     delete widget.status_timeout_sec;
         delete widget.status_timeout_sec;
+        delete widget.status_presentation;
       }
 
       if (TAP_ACTION_WIDGET_TYPES.has(widget.type)) {
@@ -2239,6 +2244,11 @@ function normalizeLayoutWidgets(layout) {
       : 0;
     el.fStatusTimeout.value = String(timeout);
   }
+  if (el.fStatusPresentation) {
+    el.fStatusPresentation.value = ["inline", "overlay"].includes(widget.status_presentation)
+      ? widget.status_presentation
+      : "inline";
+  }
 
   const visibilityMode = ["equals", "not_equals"].includes(widget.visibility_mode)
         ? widget.visibility_mode
@@ -2265,7 +2275,10 @@ function normalizeLayoutWidgets(layout) {
         }
       }
 
-      if (widget.type === "button") {
+      if (widget.type === "status_banner" && widget.status_presentation === "overlay") {
+      extraHint = '<div class="w-hint">Overlay notification</div>';
+    }
+    if (widget.type === "button") {
         widget.button_appearance = normalizeButtonAppearance(widget.button_appearance);
         if (!widget.state_icon_off_color && !widget.state_icon_on_color && widget.button_accent_color) {
           const legacyAccent = normalizeHexColor(widget.button_accent_color, DEFAULT_BUTTON_ACCENT_COLOR);
@@ -6297,6 +6310,7 @@ function renderInspector() {
     if (el.fStatusMessage) el.fStatusMessage.value = "";
     if (el.fStatusAppendState) el.fStatusAppendState.value = "true";
     if (el.fStatusTimeout) el.fStatusTimeout.value = "0";
+    if (el.fStatusPresentation) el.fStatusPresentation.value = "inline";
     if (el.fVisibilityMode) el.fVisibilityMode.value = "always";
     if (el.fVisibilityEntity) el.fVisibilityEntity.value = "";
     if (el.fVisibilityState) el.fVisibilityState.value = "";
@@ -6957,6 +6971,7 @@ function addWidget(type, options = {}) {
     widget.status_message = "";
     widget.status_append_state = true;
     widget.status_timeout_sec = 0;
+    widget.status_presentation = "inline";
   }
   if (COMMON_DISPLAY_WIDGET_TYPES.has(type)) {
     widget.icon = "";
@@ -7243,6 +7258,9 @@ function applyInspector(options = {}) {
     widget.status_timeout_sec = [0, 5, 10, 30, 60].includes(Number(el.fStatusTimeout?.value))
       ? Number(el.fStatusTimeout.value)
       : 0;
+    widget.status_presentation = ["inline", "overlay"].includes(el.fStatusPresentation?.value)
+      ? el.fStatusPresentation.value
+      : "inline";
   } else {
     delete widget.status_severity;
     delete widget.status_message;
@@ -7766,6 +7784,7 @@ function bindUi() {
   bindInspectorAutoApply(el.fStatusMessage, ["input", "change"], { softEntityValidation: true });
   bindInspectorAutoApply(el.fStatusAppendState, ["change"], { refreshInspector: true, softEntityValidation: true });
   bindInspectorAutoApply(el.fStatusTimeout, ["change"], { refreshInspector: true, softEntityValidation: true });
+  bindInspectorAutoApply(el.fStatusPresentation, ["change"], { refreshInspector: true, softEntityValidation: true });
   if (el.fTapAction) {
     el.fTapAction.addEventListener("change", () => {
       if (el.tapTargetPageWrap) {

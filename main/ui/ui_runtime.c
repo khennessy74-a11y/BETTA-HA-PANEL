@@ -742,6 +742,8 @@ static bool ui_runtime_widget_from_json(
         cJSON_GetObjectItemCaseSensitive(widget_json, "status_append_state");
     cJSON *status_timeout_sec =
         cJSON_GetObjectItemCaseSensitive(widget_json, "status_timeout_sec");
+    cJSON *status_presentation =
+        cJSON_GetObjectItemCaseSensitive(widget_json, "status_presentation");
 
     cJSON *slider_direction =
         cJSON_GetObjectItemCaseSensitive(
@@ -992,6 +994,15 @@ static bool ui_runtime_widget_from_json(
             cJSON_IsNumber(status_timeout_sec)
                 ? status_timeout_sec->valueint
                 : 0;
+
+        snprintf(
+            out->status_presentation,
+            sizeof(out->status_presentation),
+            "%s",
+            (cJSON_IsString(status_presentation) &&
+             status_presentation->valuestring != NULL)
+                ? status_presentation->valuestring
+                : "inline");
     }
 
     if (cJSON_IsString(slider_direction) &&
@@ -1439,6 +1450,15 @@ esp_err_t ui_runtime_load_layout(const char *layout_json)
     }
 
     s_topbar_cache.valid = false;
+
+    /* Status banners can own timers and overlay objects on lv_layer_top().
+     * Tear them down explicitly before page reset/memset so no timer can
+     * fire against stale widget instances and no overlay survives reload. */
+    for (size_t i = 0; i < s_widget_count; i++) {
+        if (strcmp(s_widgets[i].type, "status_banner") == 0) {
+            w_status_banner_destroy(&s_widgets[i]);
+        }
+    }
 
     ui_pages_reset();
 
