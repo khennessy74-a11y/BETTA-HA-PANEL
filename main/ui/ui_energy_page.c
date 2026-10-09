@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: LicenseRef-FNCL-1.1
  * Copyright (c) 2026 Cpt_Kirk
+ * Copyright (c) 2026 khennessy74-a11y
  */
 #include "ui/ui_energy_page.h"
 
@@ -1043,8 +1044,14 @@ static void energy_set_flow_active(energy_flow_t *flow, bool line_visible, float
     }
 }
 
-static void energy_update_flow_visuals(energy_page_ctx_t *ctx, const energy_flow_values_t *flows,
-    bool has_grid, bool has_solar, bool has_battery, bool has_gas, bool has_water)
+static void energy_update_flow_visuals(
+    energy_page_ctx_t *ctx,
+    const energy_flow_values_t *flows,
+    bool has_grid,
+    bool has_solar,
+    bool has_battery,
+    float gas_visual_value,
+    float water_visual_value)
 {
     if (ctx == NULL || flows == NULL) {
         return;
@@ -1076,9 +1083,17 @@ static void energy_update_flow_visuals(energy_page_ctx_t *ctx, const energy_flow
     lv_color_t gas_color = lv_color_hex(ENERGY_COLOR_GAS);
     lv_color_t water_color = lv_color_hex(ENERGY_COLOR_WATER);
     energy_set_flow_active(
-        &ctx->flows[ENERGY_FLOW_GAS_HOME], has_gas, has_gas ? 500.0f : 0.0f, false, gas_color);
+        &ctx->flows[ENERGY_FLOW_GAS_HOME],
+        gas_visual_value > ENERGY_FLOW_MIN_VISIBLE_W,
+        gas_visual_value,
+        false,
+        gas_color);
     energy_set_flow_active(
-        &ctx->flows[ENERGY_FLOW_WATER_HOME], has_water, has_water ? 500.0f : 0.0f, false, water_color);
+        &ctx->flows[ENERGY_FLOW_WATER_HOME],
+        water_visual_value > ENERGY_FLOW_MIN_VISIBLE_W,
+        water_visual_value,
+        false,
+        water_color);
 }
 
 /* Update Grid/Battery node: builds the two-line value text with per-line
@@ -1191,9 +1206,26 @@ static void energy_recompute_ha_energy_placeholder(energy_page_ctx_t *ctx)
     energy_set_home_idle_ring(ctx, true);
 
     energy_flow_values_t flows = {0};
-    energy_update_flow_visuals(ctx, &flows, true, true, true, false, false);
+    energy_update_flow_visuals(ctx, &flows, true, true, true, 0.0f, 0.0f);
     lv_label_set_text(ctx->stat_today_label, ui_i18n_get("energy.ha_waiting", "HA Energy data"));
     lv_label_set_text(ctx->stat_autarky_label, "");
+}
+
+static float energy_utility_visual_value(float value)
+{
+    const float positive = fmaxf(value, 0.0f);
+    if (positive <= 0.0001f) {
+        return 0.0f;
+    }
+
+    /* Gas/water snapshot values are daily totals rather than instantaneous
+     * power. Map their real magnitude into the existing animation scale
+     * without allowing a large utility total to dominate electricity flows. */
+    float visual = 60.0f + (sqrtf(positive) * 120.0f);
+    if (visual > 900.0f) {
+        visual = 900.0f;
+    }
+    return visual;
 }
 
 static energy_flow_values_t energy_scale_flow_values(const energy_flow_values_t *flows, float scale)
@@ -1294,7 +1326,19 @@ static void energy_recompute_ha_energy(energy_page_ctx_t *ctx)
 
     energy_flow_values_t visual_flows = energy_scale_flow_values(&flows, ENERGY_KWH_VISUAL_SCALE);
     energy_update_home_arcs(ctx, &visual_flows, visual_flows.used_total);
-    energy_update_flow_visuals(ctx, &visual_flows, has_grid, has_solar, has_battery, snapshot.has_gas, snapshot.has_water);
+        const float gas_visual_value =
+        snapshot.has_gas ? energy_utility_visual_value(snapshot.gas_value) : 0.0f;
+    const float water_visual_value =
+        snapshot.has_water ? energy_utility_visual_value(snapshot.water_value) : 0.0f;
+
+    energy_update_flow_visuals(
+        ctx,
+        &visual_flows,
+        has_grid,
+        has_solar,
+        has_battery,
+        gas_visual_value,
+        water_visual_value);
 
     char home_text[32] = {0};
     energy_format_kwh(home_text, sizeof(home_text), fmaxf(flows.used_total, 0.0f));
@@ -1369,7 +1413,7 @@ static void energy_recompute(energy_page_ctx_t *ctx)
 
     energy_update_node_values(ctx, solar_w, grid_import_w, grid_export_w, battery_charge_w, battery_discharge_w, display_home_w);
     energy_update_home_arcs(ctx, &flows, display_home_w);
-    energy_update_flow_visuals(ctx, &flows, has_grid, has_solar, has_battery, false, false);
+    energy_update_flow_visuals(ctx, &flows, has_grid, has_solar, has_battery, 0.0f, 0.0f);
 
     char subtitle[96] = {0};
     char home_text[32] = {0};
