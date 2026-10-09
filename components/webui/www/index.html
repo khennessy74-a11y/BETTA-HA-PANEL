@@ -95,6 +95,20 @@
               <button id="applyPageBtn" type="button">Apply page title</button>
             </div>
             <div class="form" style="margin-top: 8px;">
+              <div id="pageAppearanceOptions">
+                <h2>Page Appearance</h2>
+                <label><span>Background</span>
+                  <select id="pageBackgroundMode">
+                    <option value="theme">Theme default</option>
+                    <option value="solid">Solid colour</option>
+                    <option value="gradient">Gradient</option>
+                  </select>
+                </label>
+                <div id="pageBackgroundColorOptions" class="hidden">
+                  <label><span>Primary colour</span><input id="pageBackgroundColor" type="color" value="#101820" /></label>
+                  <label id="pageBackgroundColor2Wrap" class="hidden"><span>Gradient colour</span><input id="pageBackgroundColor2" type="color" value="#182a38" /></label>
+                </div>
+              </div>
               <div id="energyPageOptions" class="energy-page-options hidden">
                 <h2 id="energyPageHeading">Energy Page</h2>
                 <div class="meta" id="energyPageHint">Choose the data source for the dedicated energy dashboard page.</div>

@@ -1858,7 +1858,21 @@ bool layout_validate_json(
                 page,
                 "widgets");
 
+        cJSON *background_mode = cJSON_GetObjectItemCaseSensitive(page, "background_mode");
+        cJSON *background_color = cJSON_GetObjectItemCaseSensitive(page, "background_color");
+        cJSON *background_color2 = cJSON_GetObjectItemCaseSensitive(page, "background_color2");
+
         char msg[96];
+        if (background_mode != NULL) {
+            bool mode_ok = cJSON_IsString(background_mode) && background_mode->valuestring != NULL &&
+                (strcmp(background_mode->valuestring, "solid") == 0 || strcmp(background_mode->valuestring, "gradient") == 0);
+            bool color_ok = cJSON_IsString(background_color) && background_color->valuestring != NULL && strlen(background_color->valuestring) == 7U && background_color->valuestring[0] == '#';
+            if (!mode_ok || !color_ok) { snprintf(msg, sizeof(msg), "page[%u]: invalid background", (unsigned)i); layout_validation_add(result, msg); }
+            else if (strcmp(background_mode->valuestring, "gradient") == 0) {
+                bool color2_ok = cJSON_IsString(background_color2) && background_color2->valuestring != NULL && strlen(background_color2->valuestring) == 7U && background_color2->valuestring[0] == '#';
+                if (!color2_ok) { snprintf(msg, sizeof(msg), "page[%u]: invalid gradient colour", (unsigned)i); layout_validation_add(result, msg); }
+            }
+        }
 
         bool is_energy_dashboard_page = false;
 

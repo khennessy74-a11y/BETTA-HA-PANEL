@@ -1736,6 +1736,12 @@ const el = {
   deletePageBtn: document.getElementById("deletePageBtn"),
   pageTitleInput: document.getElementById("pageTitleInput"),
   applyPageBtn: document.getElementById("applyPageBtn"),
+  pageAppearanceOptions: document.getElementById("pageAppearanceOptions"),
+  pageBackgroundMode: document.getElementById("pageBackgroundMode"),
+  pageBackgroundColorOptions: document.getElementById("pageBackgroundColorOptions"),
+  pageBackgroundColor: document.getElementById("pageBackgroundColor"),
+  pageBackgroundColor2Wrap: document.getElementById("pageBackgroundColor2Wrap"),
+  pageBackgroundColor2: document.getElementById("pageBackgroundColor2"),
   energyPageOptions: document.getElementById("energyPageOptions"),
   energySource: document.getElementById("energySource"),
   energySourceHint: document.getElementById("energySourceHint"),
@@ -2096,6 +2102,17 @@ function normalizeGraphBarBucketMin(value) {
 function normalizeLayoutWidgets(layout) {
   if (!layout || !Array.isArray(layout.pages)) return;
   for (const page of layout.pages) {
+    if (page && typeof page === "object") {
+      const mode = ["solid", "gradient"].includes(page.background_mode) ? page.background_mode : "theme";
+      if (mode === "theme") {
+        delete page.background_mode; delete page.background_color; delete page.background_color2;
+      } else {
+        page.background_mode = mode;
+        page.background_color = normalizeHexColor(page.background_color, "#101820");
+        if (mode === "gradient") page.background_color2 = normalizeHexColor(page.background_color2, "#182a38");
+        else delete page.background_color2;
+      }
+    }
     if (isEnergyPage(page)) {
       normalizeEnergyConfig(page);
       continue;
@@ -5518,14 +5535,20 @@ function renderPageEditor() {
     el.pageTitleInput.value = "";
     el.pageTitleInput.disabled = true;
     el.applyPageBtn.disabled = true;
-    if (el.energyPageOptions) {
-      el.energyPageOptions.classList.add("hidden");
-    }
+    if (el.energyPageOptions) el.energyPageOptions.classList.add("hidden");
+    if (el.pageAppearanceOptions) el.pageAppearanceOptions.classList.add("hidden");
     return;
   }
   el.pageTitleInput.disabled = false;
   el.applyPageBtn.disabled = false;
   el.pageTitleInput.value = page.title || page.id;
+  if (el.pageAppearanceOptions) el.pageAppearanceOptions.classList.remove("hidden");
+  const backgroundMode = ["solid", "gradient"].includes(page.background_mode) ? page.background_mode : "theme";
+  if (el.pageBackgroundMode) el.pageBackgroundMode.value = backgroundMode;
+  if (el.pageBackgroundColor) el.pageBackgroundColor.value = normalizeHexColor(page.background_color, "#101820");
+  if (el.pageBackgroundColor2) el.pageBackgroundColor2.value = normalizeHexColor(page.background_color2, "#182a38");
+  if (el.pageBackgroundColorOptions) el.pageBackgroundColorOptions.classList.toggle("hidden", backgroundMode === "theme");
+  if (el.pageBackgroundColor2Wrap) el.pageBackgroundColor2Wrap.classList.toggle("hidden", backgroundMode !== "gradient");
 
   const energyPage = isEnergyPage(page);
   if (el.energyPageOptions) {
@@ -6035,6 +6058,10 @@ function renderCanvas() {
   }
 
   el.canvasTitle.textContent = `${t("layout.canvas.title")}: ${page.title || page.id}`;
+  const canvasBgMode = ["solid", "gradient"].includes(page.background_mode) ? page.background_mode : "theme";
+  if (canvasBgMode === "solid") el.canvas.style.background = normalizeHexColor(page.background_color, "#101820");
+  else if (canvasBgMode === "gradient") { const bg1 = normalizeHexColor(page.background_color, "#101820"); const bg2 = normalizeHexColor(page.background_color2, "#182a38"); el.canvas.style.background = `linear-gradient(180deg, ${bg1}, ${bg2})`; }
+  else el.canvas.style.background = "";
 
   if (isEnergyPage(page)) {
     renderEnergyCanvasPreview(page);
@@ -6693,6 +6720,17 @@ function applyPageName() {
     applyEnergyPageConfig({ render: false });
   }
   renderAll();
+}
+
+function applyPageAppearance(options = {}) {
+  const page = selectedPage(); if (!page) return false;
+  const mode = ["solid", "gradient"].includes(el.pageBackgroundMode?.value) ? el.pageBackgroundMode.value : "theme";
+  if (mode === "theme") { delete page.background_mode; delete page.background_color; delete page.background_color2; }
+  else { page.background_mode = mode; page.background_color = normalizeHexColor(el.pageBackgroundColor?.value, "#101820");
+    if (mode === "gradient") page.background_color2 = normalizeHexColor(el.pageBackgroundColor2?.value, "#182a38"); else delete page.background_color2; }
+  if (el.pageBackgroundColorOptions) el.pageBackgroundColorOptions.classList.toggle("hidden", mode === "theme");
+  if (el.pageBackgroundColor2Wrap) el.pageBackgroundColor2Wrap.classList.toggle("hidden", mode !== "gradient");
+  if (options.render !== false) renderAll(); return true;
 }
 
 function applyEnergyPageConfig(options = {}) {
@@ -7535,6 +7573,9 @@ function bindUi() {
   }
   el.deletePageBtn.onclick = deletePage;
   el.applyPageBtn.onclick = applyPageName;
+  if (el.pageBackgroundMode) el.pageBackgroundMode.onchange = () => applyPageAppearance();
+  if (el.pageBackgroundColor) el.pageBackgroundColor.onchange = () => applyPageAppearance();
+  if (el.pageBackgroundColor2) el.pageBackgroundColor2.onchange = () => applyPageAppearance();
   initSimpleUiMenus();
   if (el.applyEnergyPageBtn) {
     el.applyEnergyPageBtn.onclick = () => applyEnergyPageConfig();

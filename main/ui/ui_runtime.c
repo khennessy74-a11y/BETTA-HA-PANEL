@@ -1391,6 +1391,10 @@ esp_err_t ui_runtime_load_layout(const char *layout_json)
                 page,
                 "widgets");
 
+        cJSON *background_mode = cJSON_GetObjectItemCaseSensitive(page, "background_mode");
+        cJSON *background_color = cJSON_GetObjectItemCaseSensitive(page, "background_color");
+        cJSON *background_color2 = cJSON_GetObjectItemCaseSensitive(page, "background_color2");
+
         if (!cJSON_IsString(page_id)) {
             continue;
         }
@@ -1402,8 +1406,18 @@ esp_err_t ui_runtime_load_layout(const char *layout_json)
                     ? page_title->valuestring
                     : page_id->valuestring);
 
-        if (page_container == NULL) {
-            continue;
+        if (page_container == NULL) { continue; }
+        if (cJSON_IsString(background_mode) && cJSON_IsString(background_color)) {
+            unsigned int color1 = 0U; if (sscanf(background_color->valuestring, "#%06x", &color1) == 1) {
+                lv_obj_set_style_bg_color(page_container, lv_color_hex(color1), LV_PART_MAIN);
+                lv_obj_set_style_bg_opa(page_container, LV_OPA_COVER, LV_PART_MAIN);
+                if (strcmp(background_mode->valuestring, "gradient") == 0 && cJSON_IsString(background_color2)) {
+                    unsigned int color2 = 0U; if (sscanf(background_color2->valuestring, "#%06x", &color2) == 1) {
+                        lv_obj_set_style_bg_grad_color(page_container, lv_color_hex(color2), LV_PART_MAIN);
+                        lv_obj_set_style_bg_grad_dir(page_container, LV_GRAD_DIR_VER, LV_PART_MAIN);
+                    }
+                }
+            }
         }
 
         bool is_energy_page =
