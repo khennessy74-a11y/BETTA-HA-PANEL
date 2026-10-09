@@ -71,6 +71,28 @@ const TAP_ACTION_WIDGET_TYPES = new Set([
 ]);
 
 const ENTITY_PICKER_CONFIGS = {
+  status_banner: {
+    widgetType: "status_banner",
+    domain: "binary_sensor",
+    domains: [
+      "binary_sensor",
+      "sensor",
+      "switch",
+      "input_boolean",
+      "lock",
+      "person",
+      "device_tracker",
+      "timer",
+      "automation",
+      "update",
+    ],
+    titleFallback: "Choose Status Banner Entity",
+    blankFallback: "Blank Status Banner",
+    widgetFallback: "Status Banner",
+    itemsFallback: "alert-capable entities",
+    minSearch: 2,
+    liveSearch: false,
+  },
   binary_sensor: {
     domain: "binary_sensor",
     titleKey: "entity_picker.title_binary_sensor",
@@ -2190,7 +2212,6 @@ function normalizeLayoutWidgets(layout) {
         delete widget.status_severity;
         delete widget.status_message;
         delete widget.status_append_state;
-    delete widget.status_timeout_sec;
         delete widget.status_timeout_sec;
         delete widget.status_presentation;
       }
@@ -2275,9 +2296,6 @@ function normalizeLayoutWidgets(layout) {
         }
       }
 
-      if (widget.type === "status_banner" && widget.status_presentation === "overlay") {
-      extraHint = '<div class="w-hint">Overlay notification</div>';
-    }
     if (widget.type === "button") {
         widget.button_appearance = normalizeButtonAppearance(widget.button_appearance);
         if (!widget.state_icon_off_color && !widget.state_icon_on_color && widget.button_accent_color) {
@@ -6215,6 +6233,9 @@ function renderCanvas() {
     box.style.zIndex = isEmptyTile ? "1" : "10";
     const previewState = isEmptyTile ? "design" : (editor.states.get(widget.entity_id) || "unavailable");
     let extraHint = "";
+    if (widget.type === "status_banner" && widget.status_presentation === "overlay") {
+      extraHint = '<div class="w-hint">Overlay notification</div>';
+    }
     if (widget.type === "button") {
   const appearance = normalizeButtonAppearance(
     widget.button_appearance
@@ -7265,6 +7286,8 @@ function applyInspector(options = {}) {
     delete widget.status_severity;
     delete widget.status_message;
     delete widget.status_append_state;
+    delete widget.status_timeout_sec;
+    delete widget.status_presentation;
   }
 
   const visibilityMode = ["equals", "not_equals"].includes(el.fVisibilityMode?.value)
@@ -7919,7 +7942,9 @@ if (el.addAutomationBtn) {
     el.addDeviceTrackerBtn.onclick = () => openLightEntityPicker("device_tracker");
   }
   el.addGraphBtn.onclick = () => openLightEntityPicker("graph");
-  if (el.addStatusBannerBtn) el.addStatusBannerBtn.onclick = () => addWidget("status_banner", { entityId: "" });
+  if (el.addStatusBannerBtn) {
+    el.addStatusBannerBtn.onclick = () => openLightEntityPicker("status_banner");
+  }
   el.addEmptyTileBtn.onclick = () => addWidget("empty_tile");
   el.addLightTileBtn.onclick = () => openLightEntityPicker("light_tile");
   if (el.openSetupWizardBtn) {
@@ -7995,7 +8020,11 @@ if (el.addAutomationBtn) {
   }
   if (el.lightEntityPickerBlankBtn) {
     el.lightEntityPickerBlankBtn.onclick = () => {
-      addWidget(editor.lightPicker.widgetType || "light_tile");
+      const config = entityPickerConfig();
+      addWidget(config.widgetType || editor.lightPicker.widgetType || "light_tile", {
+        buttonMode: config.buttonMode,
+        sliderDomain: config.sliderDomain,
+      });
       closeLightEntityPicker();
     };
   }
