@@ -13,6 +13,7 @@
 #include "esp_lcd_panel_io.h"
 #include "esp_lcd_touch_gt911.h"
 #include "esp_log.h"
+#include "esp_timer.h"
 #include "esp_lvgl_port.h"
 #include "lvgl.h"
 
@@ -31,7 +32,7 @@ static const int TOUCH_GT911_POST_RESET_MS = 140;
 
 static void touch_activity_event_cb(lv_event_t *event)
 {
-    s_last_touch_activity_ms = lv_tick_get();
+    s_last_touch_activity_ms = (uint32_t)(esp_timer_get_time() / 1000ULL);
     (void)event;
     display_note_activity();
 }
