@@ -9,11 +9,13 @@
 
 #include "cJSON.h"
 #include "ui/fonts/app_text_fonts.h"
+#include "ui/fonts/mdi_font_registry.h"
 #include "ui/ui_pages.h"
 #include "ui/theme/theme_default.h"
 
 typedef struct {
     lv_obj_t *card;
+    lv_obj_t *icon;
     lv_obj_t *title;
     lv_obj_t *state;
     char message[APP_MAX_NAME_LEN];
@@ -22,6 +24,43 @@ typedef struct {
     lv_timer_t *dismiss_timer;
     ui_widget_instance_t *instance;
 } w_status_banner_ctx_t;
+
+static bool status_banner_apply_icon(
+    lv_obj_t *label,
+    const char *icon_name)
+{
+    if (label == NULL) {
+        return false;
+    }
+
+    const char *name =
+        (icon_name != NULL && icon_name[0] != '\0')
+            ? icon_name
+            : "mdi:alert-circle";
+
+    uint32_t codepoint = 0U;
+    if (!mdi_icon_lookup(name, &codepoint) &&
+        !mdi_icon_lookup("mdi:alert-circle", &codepoint)) {
+        return false;
+    }
+
+    const lv_font_t *font = mdi_font_large();
+    if (font == NULL) {
+        font = mdi_font_icon_56();
+    }
+    if (font == NULL) {
+        return false;
+    }
+
+    char utf8[5] = {0};
+    if (!mdi_icon_codepoint_to_utf8(codepoint, utf8)) {
+        return false;
+    }
+
+    lv_obj_set_style_text_font(label, font, LV_PART_MAIN);
+    lv_label_set_text(label, utf8);
+    return true;
+}
 
 static void status_banner_dismiss_timer_cb(lv_timer_t *timer)
 {
@@ -111,6 +150,13 @@ static void status_banner_apply_visual(
             lv_color_hex(active ? accent : APP_UI_COLOR_TEXT_PRIMARY),
             LV_PART_MAIN);
     }
+
+    if (ctx->icon != NULL) {
+        lv_obj_set_style_text_color(
+            ctx->icon,
+            lv_color_hex(active ? accent : APP_UI_COLOR_TEXT_MUTED),
+            LV_PART_MAIN);
+    }
 }
 
 esp_err_t w_status_banner_create(
@@ -159,23 +205,42 @@ esp_err_t w_status_banner_create(
     lv_obj_set_style_pad_hor(card, 18, LV_PART_MAIN);
     lv_obj_set_style_pad_ver(card, 12, LV_PART_MAIN);
 
+    lv_obj_t *icon = lv_label_create(card);
+    lv_obj_set_width(icon, 42);
+    lv_obj_set_style_text_align(icon, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+    lv_obj_align(icon, LV_ALIGN_LEFT_MID, 0, 0);
+    if (!def->show_icon ||
+        !status_banner_apply_icon(icon, def->icon)) {
+        lv_obj_add_flag(icon, LV_OBJ_FLAG_HIDDEN);
+    }
+
+    const lv_coord_t title_x =
+        lv_obj_has_flag(icon, LV_OBJ_FLAG_HIDDEN) ? 0 : 50;
+
     lv_obj_t *title = lv_label_create(card);
     lv_label_set_text(title, def->title[0] ? def->title : def->entity_id);
-    lv_obj_set_width(title, LV_PCT(58));
+    lv_obj_set_width(title, def->show_state ? LV_PCT(50) : LV_PCT(78));
     lv_label_set_long_mode(title, LV_LABEL_LONG_DOT);
     lv_obj_set_style_text_font(title, APP_FONT_TEXT_18, LV_PART_MAIN);
     lv_obj_set_style_text_color(title, lv_color_hex(APP_UI_COLOR_TEXT_PRIMARY), LV_PART_MAIN);
-    lv_obj_align(title, LV_ALIGN_LEFT_MID, 0, 0);
+    lv_obj_align(title, LV_ALIGN_LEFT_MID, title_x, 0);
+    if (!def->show_title) {
+        lv_obj_add_flag(title, LV_OBJ_FLAG_HIDDEN);
+    }
 
     lv_obj_t *state = lv_label_create(card);
     lv_label_set_text(state, "--");
-    lv_obj_set_width(state, LV_PCT(38));
+    lv_obj_set_width(state, def->show_title ? LV_PCT(38) : LV_PCT(72));
     lv_label_set_long_mode(state, LV_LABEL_LONG_DOT);
     lv_obj_set_style_text_font(state, APP_FONT_TEXT_20, LV_PART_MAIN);
     lv_obj_set_style_text_align(state, LV_TEXT_ALIGN_RIGHT, LV_PART_MAIN);
     lv_obj_align(state, LV_ALIGN_RIGHT_MID, 0, 0);
+    if (!def->show_state) {
+        lv_obj_add_flag(state, LV_OBJ_FLAG_HIDDEN);
+    }
 
     ctx->card = card;
+    ctx->icon = icon;
     ctx->title = title;
     ctx->state = state;
     snprintf(ctx->message, sizeof(ctx->message), "%s", def->status_message);
@@ -268,7 +333,9 @@ void w_status_banner_apply_state(ui_widget_instance_t *instance, const ha_state_
             live_state);
     }
 
-    lv_label_set_text(ctx->state, text);
+    if (instance->show_state && ctx->state != NULL) {
+        lv_label_set_text(ctx->state, text);
+    }
     status_banner_apply_visual(ctx, !status_banner_is_inactive(state->state), instance->status_severity);
     if (attrs != NULL) cJSON_Delete(attrs);
 }
@@ -306,6 +373,11 @@ void w_status_banner_mark_unavailable(ui_widget_instance_t *instance)
 {
     if (instance == NULL || instance->ctx == NULL) return;
     w_status_banner_ctx_t *ctx = (w_status_banner_ctx_t *)instance->ctx;
+    if (!instance->show_state || ctx->state == NULL) {
+        status_banner_apply_visual(ctx, false, instance->status_severity);
+        return;
+    }
+
     if (ctx->message[0] != '\0' && !ctx->append_state) {
         lv_label_set_text(ctx->state, ctx->message);
     } else if (ctx->message[0] != '\0') {
