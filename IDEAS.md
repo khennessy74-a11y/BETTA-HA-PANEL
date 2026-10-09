@@ -132,6 +132,8 @@ v0.10 groundwork:
 - Source firmware and screen metadata travel with the layout.
 - Sync bundles reserve `overrides.entity_map` for per-panel entity remapping.
 - Entity remapping applies to primary, secondary, conditional-visibility, and energy dashboard entities.
+- Fleet Sync export/import can target the entire dashboard or just the current page.
+- Current-page imports merge into the existing dashboard with collision-safe page/widget IDs and retain valid self-navigation.
 - Browser-persistent widget clipboard and named presets provide reusable building blocks before central fleet management.
 
 Future direction:

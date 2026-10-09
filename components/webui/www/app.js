@@ -1844,6 +1844,7 @@ const el = {
   reloadBtn: document.getElementById("reloadBtn"),
   saveBtn: document.getElementById("saveBtn"),
   exportBtn: document.getElementById("exportBtn"),
+  syncScope: document.getElementById("syncScope"),
   importBtn: document.getElementById("importBtn"),
   importFile: document.getElementById("importFile"),
   jsonPaste: document.getElementById("jsonPaste"),
@@ -7861,12 +7862,29 @@ function saveSyncEntityMapEditor() {
   }
 }
 
-function buildSyncBundle() {
+function buildSyncBundle(scope = "layout") {
   normalizeLayoutWidgets(editor.layout);
   const entityMap = currentSyncEntityMap();
+  const checkedScope = scope === "page" ? "page" : "layout";
+
+  let exportedLayout;
+  if (checkedScope === "page") {
+    const page = selectedPage();
+    if (!page) {
+      throw new Error("Choose a page before exporting Current page");
+    }
+    exportedLayout = {
+      version: Number(editor.layout?.version || 1),
+      pages: [JSON.parse(JSON.stringify(page))],
+    };
+  } else {
+    exportedLayout = JSON.parse(JSON.stringify(editor.layout));
+  }
+
   return {
     schema: SYNC_BUNDLE_SCHEMA,
     version: SYNC_BUNDLE_VERSION,
+    scope: checkedScope,
     exported_at: new Date().toISOString(),
     source: {
       project: editor.appProject || "BETTA-HA-PANEL",
@@ -7876,7 +7894,7 @@ function buildSyncBundle() {
         height: Number(editor.appScreenH || CANVAS_HEIGHT),
       },
     },
-    layout: JSON.parse(JSON.stringify(editor.layout)),
+    layout: exportedLayout,
     overrides: {
       entity_map: entityMap,
     },
@@ -7921,7 +7939,7 @@ function exportLayout() {
 
   let bundle;
   try {
-    bundle = buildSyncBundle();
+    bundle = buildSyncBundle(el.syncScope?.value || "layout");
   } catch (err) {
     setStatus(`Fleet Sync mapping error: ${err.message}`, true);
     return;
@@ -7930,9 +7948,74 @@ function exportLayout() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = "betta-panel-sync.json";
+  a.download = bundle.scope === "page"
+    ? `betta-page-${sanitizeIdPart(selectedPage()?.id || "page")}-sync.json`
+    : "betta-panel-sync.json";
   a.click();
   URL.revokeObjectURL(url);
+}
+
+function mergeSyncPage(layout) {
+  if (!layout || !Array.isArray(layout.pages) || layout.pages.length !== 1) {
+    throw new Error("Current-page Fleet Sync bundle must contain exactly one page");
+  }
+
+  const importedPage = JSON.parse(JSON.stringify(layout.pages[0]));
+  const originalPageId = String(importedPage.id || "page");
+  const existingPageIds = new Set((editor.layout?.pages || []).map((page) => page?.id).filter(Boolean));
+
+  let pageId = originalPageId;
+  if (!pageId || existingPageIds.has(pageId)) {
+    const base = sanitizeIdPart(originalPageId || "page");
+    let suffix = 2;
+    pageId = base;
+    while (existingPageIds.has(pageId)) {
+      pageId = `${base}_${suffix++}`;
+    }
+  }
+  importedPage.id = pageId;
+
+  const usedWidgetIds = new Set(
+    (editor.layout?.pages || [])
+      .flatMap((page) => Array.isArray(page?.widgets) ? page.widgets : [])
+      .map((widget) => widget?.id)
+      .filter(Boolean)
+  );
+
+  if (Array.isArray(importedPage.widgets)) {
+    for (const widget of importedPage.widgets) {
+      if (!widget || typeof widget !== "object") continue;
+
+      const originalWidgetId = String(widget.id || `${pageId}_${widget.type || "widget"}`);
+      let widgetId = originalWidgetId;
+      if (!widgetId || usedWidgetIds.has(widgetId)) {
+        const base = sanitizeIdPart(originalWidgetId || `${pageId}_widget`);
+        let suffix = 2;
+        widgetId = base;
+        while (usedWidgetIds.has(widgetId)) {
+          widgetId = `${base}_${suffix++}`;
+        }
+      }
+      widget.id = widgetId;
+      usedWidgetIds.add(widgetId);
+
+      if (widget.tap_action === "navigate") {
+        if (widget.tap_target_page === originalPageId) {
+          widget.tap_target_page = pageId;
+        } else if (!existingPageIds.has(widget.tap_target_page)) {
+          delete widget.tap_action;
+          delete widget.tap_target_page;
+        }
+      }
+    }
+  }
+
+  editor.layout.pages.push(importedPage);
+  normalizeLayoutWidgets(editor.layout);
+  editor.selectedPageId = importedPage.id;
+  editor.selectedWidgetId = null;
+  renderAll();
+  setStatus(`Imported page "${importedPage.title || importedPage.id}"`);
 }
 
 function importLayoutFromText(text) {
@@ -7951,6 +8034,11 @@ function importLayoutFromText(text) {
       try {
         localStorage.setItem(SYNC_ENTITY_MAP_STORAGE_KEY, el.syncEntityMapText.value);
       } catch (_) {}
+    }
+
+    if (parsed.scope === "page") {
+      mergeSyncPage(layout);
+      return;
     }
   }
 
