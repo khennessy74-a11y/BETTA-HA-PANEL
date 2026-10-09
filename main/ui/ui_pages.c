@@ -12,6 +12,7 @@
 #include "app_config.h"
 #include "esp_app_desc.h"
 #include "esp_system.h"
+#include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "ha/ha_client.h"
@@ -69,6 +70,11 @@ static lv_timer_t *s_global_home_timer = NULL;
 static uint32_t s_last_ui_activity_ms = 0U;
 static lv_timer_t *s_system_timeout_timer = NULL;
 #define UI_SYSTEM_TIMEOUT_MS 60000U
+
+static uint32_t ui_pages_monotonic_ms(void)
+{
+    return (uint32_t)(esp_timer_get_time() / 1000ULL);
+}
 static bool s_status_gesture_armed = false;
 static uint32_t s_status_gesture_started_ms = 0U;
 #define UI_SYSTEM_HOLD_MS 3000U
@@ -504,7 +510,7 @@ static void ui_system_timeout_cb(lv_timer_t *timer)
 static void ui_system_activity_cb(lv_event_t *event)
 {
     LV_UNUSED(event);
-    s_last_ui_activity_ms = lv_tick_get();
+    s_last_ui_activity_ms = ui_pages_monotonic_ms();
     if (s_system_timeout_timer != NULL) {
         lv_timer_reset(s_system_timeout_timer);
     }
@@ -516,7 +522,7 @@ static void ui_global_activity_cb(lv_event_t *event)
     /* Capture any press on the active screen, including child controls.
      * Keeping our own timestamp avoids relying on LVGL's display inactivity
      * counter, which proved unreliable with this touch/input integration. */
-    s_last_ui_activity_ms = lv_tick_get();
+    s_last_ui_activity_ms = ui_pages_monotonic_ms();
     if (s_system_timeout_timer != NULL) {
         lv_timer_reset(s_system_timeout_timer);
     }
@@ -525,7 +531,7 @@ static void ui_global_activity_cb(lv_event_t *event)
 static void ui_global_home_timeout_cb(lv_timer_t *timer)
 {
     LV_UNUSED(timer);
-    uint32_t now = lv_tick_get();
+    uint32_t now = ui_pages_monotonic_ms();
     uint32_t touch_ms = touch_last_activity_ms();
     if (touch_ms != 0U && (int32_t)(touch_ms - s_last_ui_activity_ms) > 0) {
         s_last_ui_activity_ms = touch_ms;
@@ -873,11 +879,10 @@ static lv_obj_t *ui_system_create_shell(const char *title)
     lv_obj_set_style_bg_opa(content, LV_OPA_COVER, LV_PART_MAIN);
     lv_obj_clear_flag(content, LV_OBJ_FLAG_SCROLLABLE);
 
+    /* The global inactivity watchdog owns the 60-second return-home policy.
+     * Avoid a second LVGL one-shot here: on panels where the LVGL tick source
+     * runs at a different rate, a nominal 60 s LVGL timer can expire early. */
     ui_system_timeout_delete();
-    s_system_timeout_timer = lv_timer_create(ui_system_timeout_cb, UI_SYSTEM_TIMEOUT_MS, NULL);
-    if (s_system_timeout_timer != NULL) {
-        lv_timer_set_repeat_count(s_system_timeout_timer, 1);
-    }
 
     return content;
 }
@@ -1351,7 +1356,7 @@ void ui_pages_init(void)
 
     /* Track real touch activity at the screen root so touches on any nested
      * dashboard, diagnostics or settings control restart the same 60s clock. */
-    s_last_ui_activity_ms = lv_tick_get();
+    s_last_ui_activity_ms = ui_pages_monotonic_ms();
     lv_obj_add_event_cb(screen, ui_global_activity_cb, LV_EVENT_PRESSED, NULL);
     s_global_home_timer = lv_timer_create(ui_global_home_timeout_cb, 1000U, NULL);
 
@@ -1446,7 +1451,7 @@ bool ui_pages_show_index(uint16_t index)
     /* Showing a page is itself confirmed UI activity.  Reset the global
      * inactivity epoch here so the 60-second home timeout is measured from
      * the navigation that opened the page, not from boot/UI construction. */
-    s_last_ui_activity_ms = lv_tick_get();
+    s_last_ui_activity_ms = ui_pages_monotonic_ms();
 
     ui_pages_apply_tab_style(index);
     if (s_show_cb != NULL) {
