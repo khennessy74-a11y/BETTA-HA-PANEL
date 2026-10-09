@@ -146,11 +146,51 @@ void w_status_banner_apply_state(ui_widget_instance_t *instance, const ha_state_
         unit);
 
     if (ctx->message[0] != '\0' && ctx->append_state) {
-        snprintf(text, sizeof(text), "%s · %s", ctx->message, live_state);
+        size_t used = 0U;
+
+        int wrote = snprintf(
+            text,
+            sizeof(text),
+            "%.*s",
+            (int)(sizeof(text) - 1U),
+            ctx->message);
+
+        if (wrote > 0) {
+            used = (size_t)wrote;
+            if (used >= sizeof(text)) {
+                used = sizeof(text) - 1U;
+            }
+        }
+
+        if (used < sizeof(text) - 1U) {
+            static const char separator[] = " · ";
+            const size_t remaining = sizeof(text) - used - 1U;
+            strncat(text, separator, remaining);
+            used = strlen(text);
+        }
+
+        if (used < sizeof(text) - 1U) {
+            const size_t remaining = sizeof(text) - used - 1U;
+            strncat(text, live_state, remaining);
+        }
+
     } else if (ctx->message[0] != '\0') {
-        snprintf(text, sizeof(text), "%s", ctx->message);
+
+        snprintf(
+            text,
+            sizeof(text),
+            "%.*s",
+            (int)(sizeof(text) - 1U),
+            ctx->message);
+
     } else {
-        snprintf(text, sizeof(text), "%s", live_state);
+
+        snprintf(
+            text,
+            sizeof(text),
+            "%.*s",
+            (int)(sizeof(text) - 1U),
+            live_state);
     }
 
     lv_label_set_text(ctx->state, text);
@@ -166,7 +206,19 @@ void w_status_banner_mark_unavailable(ui_widget_instance_t *instance)
         lv_label_set_text(ctx->state, ctx->message);
     } else if (ctx->message[0] != '\0') {
         char text[192] = {0};
-        snprintf(text, sizeof(text), "%s · unavailable", ctx->message);
+        snprintf(
+            text,
+            sizeof(text),
+            "%.*s",
+            (int)(sizeof(text) - 1U),
+            ctx->message);
+
+        size_t used = strlen(text);
+        if (used < sizeof(text) - 1U) {
+            const size_t remaining = sizeof(text) - used - 1U;
+            strncat(text, " · unavailable", remaining);
+        }
+
         lv_label_set_text(ctx->state, text);
     } else {
         lv_label_set_text(ctx->state, "unavailable");
