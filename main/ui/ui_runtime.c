@@ -847,8 +847,18 @@ static bool ui_runtime_widget_from_json(
         return false;
     }
 
+    const bool profile_button =
+        strcmp(type->valuestring, "button") == 0 &&
+        cJSON_IsString(button_mode) &&
+        button_mode->valuestring != NULL &&
+        (strcmp(button_mode->valuestring, "profile_day") == 0 ||
+         strcmp(button_mode->valuestring, "profile_night") == 0 ||
+         strcmp(button_mode->valuestring, "profile_guest") == 0 ||
+         strcmp(button_mode->valuestring, "profile_away") == 0);
+
     const bool requires_entity =
-        (strcmp(type->valuestring, "empty_tile") != 0);
+        (strcmp(type->valuestring, "empty_tile") != 0) &&
+        !profile_button;
 
     if (requires_entity &&
         !cJSON_IsString(entity_id)) {

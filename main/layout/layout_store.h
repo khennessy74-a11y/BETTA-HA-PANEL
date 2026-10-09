@@ -8,4 +8,5 @@
 esp_err_t layout_store_init(void);
 esp_err_t layout_store_load(char **json_out);
 esp_err_t layout_store_save(const char *json);
+esp_err_t layout_store_set_active_profile(const char *profile);
 const char *layout_store_default_json(void);

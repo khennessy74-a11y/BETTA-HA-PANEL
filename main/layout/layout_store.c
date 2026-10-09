@@ -90,6 +90,51 @@ esp_err_t layout_store_load(char **json_out)
     return ESP_OK;
 }
 
+esp_err_t layout_store_set_active_profile(const char *profile)
+{
+    if (profile == NULL ||
+        (strcmp(profile, "day") != 0 &&
+         strcmp(profile, "night") != 0 &&
+         strcmp(profile, "guest") != 0 &&
+         strcmp(profile, "away") != 0 &&
+         strcmp(profile, "all") != 0)) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    char *json = NULL;
+    esp_err_t err = layout_store_load(&json);
+    if (err != ESP_OK || json == NULL) {
+        return err != ESP_OK ? err : ESP_FAIL;
+    }
+
+    cJSON *root = cJSON_Parse(json);
+    free(json);
+    if (root == NULL) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    cJSON *existing =
+        cJSON_GetObjectItemCaseSensitive(root, "active_profile");
+
+    if (cJSON_IsString(existing)) {
+        cJSON_SetValuestring(existing, profile);
+    } else {
+        cJSON_DeleteItemFromObjectCaseSensitive(root, "active_profile");
+        cJSON_AddStringToObject(root, "active_profile", profile);
+    }
+
+    char *updated = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
+
+    if (updated == NULL) {
+        return ESP_ERR_NO_MEM;
+    }
+
+    err = layout_store_save(updated);
+    cJSON_free(updated);
+    return err;
+}
+
 const char *layout_store_default_json(void)
 {
     return s_default_layout;

@@ -11,6 +11,8 @@
 
 #include "cJSON.h"
 #include "ha/ha_model.h"
+#include "app_events.h"
+#include "layout/layout_store.h"
 
 #include "ui/fonts/app_text_fonts.h"
 #include "ui/theme/theme_default.h"
@@ -28,6 +30,10 @@ typedef enum {
     W_BUTTON_MODE_STOP,
     W_BUTTON_MODE_NEXT,
     W_BUTTON_MODE_PREVIOUS,
+    W_BUTTON_MODE_PROFILE_DAY,
+    W_BUTTON_MODE_PROFILE_NIGHT,
+    W_BUTTON_MODE_PROFILE_GUEST,
+    W_BUTTON_MODE_PROFILE_AWAY,
 } w_button_mode_t;
 
 typedef struct {
@@ -211,6 +217,18 @@ static w_button_mode_t button_mode_from_text(const char *mode_text)
     if (strcmp(mode_text, "previous") == 0) {
         return W_BUTTON_MODE_PREVIOUS;
     }
+    if (strcmp(mode_text, "profile_day") == 0) {
+        return W_BUTTON_MODE_PROFILE_DAY;
+    }
+    if (strcmp(mode_text, "profile_night") == 0) {
+        return W_BUTTON_MODE_PROFILE_NIGHT;
+    }
+    if (strcmp(mode_text, "profile_guest") == 0) {
+        return W_BUTTON_MODE_PROFILE_GUEST;
+    }
+    if (strcmp(mode_text, "profile_away") == 0) {
+        return W_BUTTON_MODE_PROFILE_AWAY;
+    }
     return W_BUTTON_MODE_AUTO;
 }
 
@@ -250,6 +268,12 @@ static const char *button_icon_symbol(
 
     case W_BUTTON_MODE_PREVIOUS:
         return LV_SYMBOL_PREV;
+
+    case W_BUTTON_MODE_PROFILE_DAY:
+    case W_BUTTON_MODE_PROFILE_NIGHT:
+    case W_BUTTON_MODE_PROFILE_GUEST:
+    case W_BUTTON_MODE_PROFILE_AWAY:
+        return LV_SYMBOL_HOME;
 
     case W_BUTTON_MODE_AUTO:
         return LV_SYMBOL_POWER;
@@ -880,9 +904,34 @@ static const char *button_status_text_for_state(const w_button_ctx_t *ctx, const
     return is_on ? "playing" : "paused";
 }
 
+static const char *button_profile_for_mode(w_button_mode_t mode)
+{
+    switch (mode) {
+    case W_BUTTON_MODE_PROFILE_DAY:
+        return "day";
+    case W_BUTTON_MODE_PROFILE_NIGHT:
+        return "night";
+    case W_BUTTON_MODE_PROFILE_GUEST:
+        return "guest";
+    case W_BUTTON_MODE_PROFILE_AWAY:
+        return "away";
+    default:
+        return NULL;
+    }
+}
+
 static void button_run_primary_action(w_button_ctx_t *ctx)
 {
     if (ctx == NULL || ctx->unavailable) {
+        return;
+    }
+
+    const char *profile = button_profile_for_mode(ctx->mode);
+    if (profile != NULL) {
+        if (layout_store_set_active_profile(profile) == ESP_OK) {
+            app_event_t event = {.type = EV_LAYOUT_UPDATED};
+            (void)app_events_publish(&event, pdMS_TO_TICKS(20));
+        }
         return;
     }
 
@@ -1102,10 +1151,14 @@ ctx->card = card;
     /* Keep the saved display flag authoritative for the physical widget.
      * This source touch also forces a firmware build after generated MDI
      * assets are committed by the font workflow. */
+    const bool is_profile_button =
+        button_profile_for_mode(ctx->mode) != NULL;
+
     ctx->show_status =
     def->show_state &&
     !is_media_player &&
     !is_ha_button &&
+    !is_profile_button &&
     !(is_runnable &&
       ctx->mode == W_BUTTON_MODE_RUN);
     ctx->suppress_event = false;
@@ -1137,8 +1190,14 @@ ctx->card = card;
     lv_obj_add_event_cb(card, w_button_card_event_cb, LV_EVENT_DELETE, ctx);
     lv_obj_add_event_cb(action_switch, w_button_switch_event_cb, LV_EVENT_VALUE_CHANGED, ctx);
 
-    button_apply_visual(card, ctx, false, false,
-        (ctx->mode == W_BUTTON_MODE_AUTO || ctx->mode == W_BUTTON_MODE_RUN) ? "OFF" : "paused");
+    const char *initial_status =
+        button_profile_for_mode(ctx->mode) != NULL
+            ? ""
+            : ((ctx->mode == W_BUTTON_MODE_AUTO || ctx->mode == W_BUTTON_MODE_RUN)
+                ? "OFF"
+                : "paused");
+
+    button_apply_visual(card, ctx, false, false, initial_status);
     out_instance->obj = card;
     out_instance->ctx = ctx;
     return ESP_OK;

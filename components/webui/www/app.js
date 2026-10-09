@@ -424,6 +424,10 @@ const BUTTON_MODES = new Set([
   "stop",
   "next",
   "previous",
+  "profile_day",
+  "profile_night",
+  "profile_guest",
+  "profile_away",
 ]);
 const LANGUAGE_CODE_RE = /^[a-z0-9][a-z0-9_-]{1,14}$/;
 const DEFAULT_UI_LANGUAGE = "en";
@@ -2054,6 +2058,14 @@ function buttonModeRequiresMediaPlayer(value) {
 
 function buttonModeRequiresRunnable(value) {
   return normalizeButtonMode(value) === "run";
+}
+
+function buttonModeSwitchesProfile(value) {
+  const mode = normalizeButtonMode(value);
+  return mode === "profile_day" ||
+    mode === "profile_night" ||
+    mode === "profile_guest" ||
+    mode === "profile_away";
 }
 
 function normalizeHexColor(value, fallback = DEFAULT_SLIDER_ACCENT_COLOR) {
@@ -4419,6 +4431,7 @@ function allowedEntityDomainsForWidgetType(
   if (type === "empty_tile") return [];
   if (type === "button") {
     const normalizedMode = normalizeButtonMode(buttonMode);
+    if (buttonModeSwitchesProfile(normalizedMode)) return [];
     if (buttonModeRequiresMediaPlayer(normalizedMode)) return ["media_player"];
     if (buttonModeRequiresRunnable(normalizedMode)) return ["script", "scene", "automation"];
     return ["switch", "button", "input_boolean", "automation", "media_player"];
@@ -4484,6 +4497,7 @@ function entityMatchesWidgetType(
   buttonMode = DEFAULT_BUTTON_MODE,
 ) {
   if (type === "empty_tile") return true;
+  if (type === "button" && buttonModeSwitchesProfile(buttonMode)) return true;
 
   const id = typeof entity?.id === "string" ? entity.id : "";
   if (!id) return false;
@@ -4507,6 +4521,7 @@ function listEntitiesForWidgetType(
   buttonMode = DEFAULT_BUTTON_MODE,
 ) {
   if (type === "empty_tile") return [];
+  if (type === "button" && buttonModeSwitchesProfile(buttonMode)) return [];
   return editor.entities.filter((entity) => entityMatchesWidgetType(entity, type, sliderDomain, buttonMode));
 }
 
@@ -4516,6 +4531,7 @@ function pickDefaultEntityForWidgetType(
   buttonMode = DEFAULT_BUTTON_MODE,
 ) {
   if (type === "empty_tile") return "";
+  if (type === "button" && buttonModeSwitchesProfile(buttonMode)) return "";
   const matching = listEntitiesForWidgetType(type, sliderDomain, buttonMode);
   if (matching.length > 0) return matching[0].id;
   return "";
@@ -6403,6 +6419,9 @@ function renderInspector() {
   if (el.buttonOptions) {
     el.buttonOptions.classList.toggle("hidden", !isButton);
   }
+  if (el.fEntityWrap && isButton) {
+    el.fEntityWrap.classList.toggle("hidden", buttonModeSwitchesProfile(inspectorButtonMode()));
+  }
   if (el.sensorOptions) {
   el.sensorOptions.classList.toggle("hidden", !isSensor);
 }
@@ -7165,7 +7184,9 @@ function applyInspector(options = {}) {
   const secondaryConfig = secondaryEntityConfigForWidgetType(widgetType);
   const nextEntityId = el.fEntity.value.trim() || pickDefaultEntityForWidgetType(widgetType, sliderDomain, buttonMode);
 
-  const primaryEntityValid = entityMatchesWidgetType({ id: nextEntityId }, widgetType, sliderDomain, buttonMode);
+  const profileButton = widgetType === "button" && buttonModeSwitchesProfile(buttonMode);
+  const primaryEntityValid = profileButton ||
+    entityMatchesWidgetType({ id: nextEntityId }, widgetType, sliderDomain, buttonMode);
   if (!primaryEntityValid && !softEntityValidation) {
     const allowedDomains = allowedEntityDomainsForWidgetType(widgetType, sliderDomain, buttonMode);
     const allowedHint = allowedDomains.length ? allowedDomains.join(", ") : t("layout.status.expected_domain");
@@ -7232,7 +7253,10 @@ function applyInspector(options = {}) {
     delete widget.tap_target_page;
   }
 
-  if (primaryEntityValid) {
+  if (profileButton) {
+    delete widget.entity_id;
+    if (el.fEntity) el.fEntity.value = "";
+  } else if (primaryEntityValid) {
     widget.entity_id = nextEntityId;
   }
   if (secondaryConfig.enabled) {
@@ -8073,7 +8097,13 @@ if (el.addAutomationBtn) {
       scheduleEntityAutocomplete("primary", true);
       const currentEntity = el.fEntity.value.trim();
       const buttonMode = inspectorButtonMode();
-      if (!entityMatchesWidgetType({ id: currentEntity }, "button", DEFAULT_SLIDER_ENTITY_DOMAIN, buttonMode)) {
+      const profileMode = buttonModeSwitchesProfile(buttonMode);
+      if (el.fEntityWrap) {
+        el.fEntityWrap.classList.toggle("hidden", profileMode);
+      }
+      if (profileMode) {
+        el.fEntity.value = "";
+      } else if (!entityMatchesWidgetType({ id: currentEntity }, "button", DEFAULT_SLIDER_ENTITY_DOMAIN, buttonMode)) {
         el.fEntity.value = pickDefaultEntityForWidgetType("button", DEFAULT_SLIDER_ENTITY_DOMAIN, buttonMode);
       }
       autoApplyInspector();

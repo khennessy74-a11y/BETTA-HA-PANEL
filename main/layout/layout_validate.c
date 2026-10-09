@@ -568,7 +568,11 @@ static bool is_valid_button_mode(
         strcmp(mode, "play_pause") == 0 ||
         strcmp(mode, "stop") == 0 ||
         strcmp(mode, "next") == 0 ||
-        strcmp(mode, "previous") == 0;
+        strcmp(mode, "previous") == 0 ||
+        strcmp(mode, "profile_day") == 0 ||
+        strcmp(mode, "profile_night") == 0 ||
+        strcmp(mode, "profile_guest") == 0 ||
+        strcmp(mode, "profile_away") == 0;
 }
 
 static bool button_mode_requires_media_player(
@@ -591,6 +595,16 @@ static bool button_mode_requires_runnable(
     return
         mode != NULL &&
         strcmp(mode, "run") == 0;
+}
+
+static bool button_mode_switches_profile(const char *mode)
+{
+    return
+        mode != NULL &&
+        (strcmp(mode, "profile_day") == 0 ||
+         strcmp(mode, "profile_night") == 0 ||
+         strcmp(mode, "profile_guest") == 0 ||
+         strcmp(mode, "profile_away") == 0);
 }
 
 static bool is_valid_energy_source(
@@ -1046,6 +1060,13 @@ static bool validate_widget(
         requires_entity =
             widget_requires_primary_entity(
                 type->valuestring);
+
+        if (strcmp(type->valuestring, "button") == 0 &&
+            cJSON_IsString(button_mode) &&
+            button_mode->valuestring != NULL &&
+            button_mode_switches_profile(button_mode->valuestring)) {
+            requires_entity = false;
+        }
     }
 
     if (requires_entity) {
