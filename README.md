@@ -18,9 +18,9 @@ BETTA HA Panel ships as **three firmware variants**, one per supported device:
 
 | Variant    | Device                                                  | Resolution | Factory image                                                                     |
 |------------|---------------------------------------------------------|------------|-----------------------------------------------------------------------------------|
-| `panel4`   | Waveshare **ESP32-P4-WIFI6-Touch-LCD-4B** (4")       | 720 × 720  | [betta-ha-panel-v0.9-panel4.factory.bin](https://github.com/khennessy74-a11y/BETTA-HA-PANEL/releases/download/v0.9/betta-ha-panel-v0.9-panel4.factory.bin) |
-| `panel10`  | Waveshare **ESP32-P4 Module Nano + 10.1" DSI panel** | 1280 × 800 | [betta-ha-panel-v0.9-panel10.factory.bin](https://github.com/khennessy74-a11y/BETTA-HA-PANEL/releases/download/v0.9/betta-ha-panel-v0.9-panel10.factory.bin) |
-| `panels3`  | Guition **ESP32-S3-4848S040** (4")                   | 480 × 480  | [betta-ha-panel-v0.9-panels3.factory.bin](https://github.com/khennessy74-a11y/BETTA-HA-PANEL/releases/download/v0.9/betta-ha-panel-v0.9-panels3.factory.bin) |
+| `panel4`   | Waveshare **ESP32-P4-WIFI6-Touch-LCD-4B** (4")       | 720 × 720  | [betta-ha-panel-v0.9-panel4.factory.bin](https://github.com/khennessy74-a11y/BETTA-HA-PANEL/releases/download/V0.9/betta-ha-panel-v0.9-panel4.factory.bin) |
+| `panel10`  | Waveshare **ESP32-P4 Module Nano + 10.1" DSI panel** | 1280 × 800 | [betta-ha-panel-v0.9-panel10.factory.bin](https://github.com/khennessy74-a11y/BETTA-HA-PANEL/releases/download/V0.9/betta-ha-panel-v0.9-panel10.factory.bin) |
+| `panels3`  | Guition **ESP32-S3-4848S040** (4")                   | 480 × 480  | [betta-ha-panel-v0.9-panels3.factory.bin](https://github.com/khennessy74-a11y/BETTA-HA-PANEL/releases/download/V0.9/betta-ha-panel-v0.9-panels3.factory.bin) |
 
 All variants share the same dashboard engine, web editor, and Home Assistant integration. Pick the image that matches your board.
 
@@ -65,7 +65,7 @@ Future updates install via OTA from the editor — no cable needed.
 
 ---
 
-## What's new in v0.9 (Release Candidate)
+## What's new in v0.9
 
 - **Home Assistant actions** — dashboard buttons can run scripts directly, with expanded action/button modes.
 - **Night Mode + idle dimming** — configurable day/night brightness, automatic schedules, wake-time refresh, and coordinated idle dimming.
@@ -74,7 +74,7 @@ Future updates install via OTA from the editor — no cable needed.
 - **Reliability and diagnostics** — stronger WebSocket recovery, HA connection diagnostics, weather correctness fixes, and improved Save & Reboot handling.
 - **Three-variant release CI** — `panel4`, `panel10`, and `panels3` now build and package versioned factory + OTA images in the same validation workflow.
 
-The download table now targets this fork's v0.9 release assets. Release-candidate hardware validation has completed for the current development checkpoint; the final release build remains the last validation stage.
+The download table targets this fork's published v0.9 release assets. Hardware validation and the final release build have completed.
 
 Full history: [release-notes.md](release-notes.md).
 
