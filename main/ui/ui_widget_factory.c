@@ -212,15 +212,21 @@ void ui_widget_factory_set_visible(ui_widget_instance_t *instance, bool visible)
     if (instance == NULL || instance->obj == NULL) {
         return;
     }
-    if (instance->visible == visible) {
-        return;
-    }
+    const bool changed = (instance->visible != visible);
     instance->visible = visible;
 
+    /* Always enforce the LVGL hidden flag, even when the logical value did
+     * not change. Newly-created instances are zero-initialised (visible=false),
+     * so a conditional rule that starts hidden must still hide the object on
+     * its very first visibility pass. */
     if (visible) {
         lv_obj_clear_flag(instance->obj, LV_OBJ_FLAG_HIDDEN);
     } else {
         lv_obj_add_flag(instance->obj, LV_OBJ_FLAG_HIDDEN);
+    }
+
+    if (!changed) {
+        return;
     }
 
     if (strcmp(instance->type, "media_player") == 0) {
