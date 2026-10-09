@@ -122,3 +122,22 @@ LVGL layout sketch for 720x600 content area:
 
 Reference style:
 - Home Assistant energy distribution card with animated flow dots.
+
+
+## Panel-to-panel sync
+
+v0.10 groundwork:
+
+- Versioned `betta-panel-sync.json` export/import format.
+- Source firmware and screen metadata travel with the layout.
+- Sync bundles reserve `overrides.entity_map` for per-panel entity remapping.
+- Entity remapping applies to primary, secondary, conditional-visibility, and energy dashboard entities.
+- Browser-persistent widget clipboard and named presets provide reusable building blocks before central fleet management.
+
+Future direction:
+
+- Discover or register multiple BETTA panels.
+- Push layout, theme, or selected pages to one or many targets.
+- Preserve local Wi-Fi/Home Assistant credentials.
+- Maintain per-panel entity mappings and local display overrides.
+- Show firmware/sync status and allow central backup/restore.

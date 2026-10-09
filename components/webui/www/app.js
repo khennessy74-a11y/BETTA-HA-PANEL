@@ -7400,8 +7400,39 @@ function buildSyncBundle() {
       },
     },
     layout: JSON.parse(JSON.stringify(editor.layout)),
-    overrides: {},
+    overrides: {
+      entity_map: {},
+    },
   };
+}
+
+function applySyncEntityMap(layout, entityMap) {
+  if (!layout || !Array.isArray(layout.pages) || !entityMap || typeof entityMap !== "object") {
+    return;
+  }
+
+  const remap = (value) => {
+    if (typeof value !== "string" || !value) return value;
+    const mapped = entityMap[value];
+    return typeof mapped === "string" && mapped.trim() ? mapped.trim() : value;
+  };
+
+  for (const page of layout.pages) {
+    if (Array.isArray(page?.widgets)) {
+      for (const widget of page.widgets) {
+        if (!widget || typeof widget !== "object") continue;
+        if ("entity_id" in widget) widget.entity_id = remap(widget.entity_id);
+        if ("secondary_entity_id" in widget) widget.secondary_entity_id = remap(widget.secondary_entity_id);
+        if ("visibility_entity_id" in widget) widget.visibility_entity_id = remap(widget.visibility_entity_id);
+      }
+    }
+
+    if (page?.energy && typeof page.energy === "object") {
+      for (const key of ENERGY_ENTITY_KEYS) {
+        if (key in page.energy) page.energy[key] = remap(page.energy[key]);
+      }
+    }
+  }
 }
 
 function exportLayout() {
@@ -7420,10 +7451,16 @@ function exportLayout() {
 
 function importLayoutFromText(text) {
   const parsed = JSON.parse(text);
-  const layout = parsed?.schema === SYNC_BUNDLE_SCHEMA ? parsed.layout : parsed;
+  const isSyncBundle = parsed?.schema === SYNC_BUNDLE_SCHEMA;
+  const layout = isSyncBundle ? parsed.layout : parsed;
   if (!layout || !Array.isArray(layout.pages)) {
     throw new Error(t("layout.status.invalid_json"));
   }
+
+  if (isSyncBundle) {
+    applySyncEntityMap(layout, parsed?.overrides?.entity_map);
+  }
+
   normalizeLayoutWidgets(layout);
   editor.layout = layout;
   editor.selectedPageId = layout.pages[0]?.id || null;
