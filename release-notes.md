@@ -54,11 +54,16 @@ BETTA HA Panel v0.9 is the largest development update since v0.8.2, expanding da
 
 ### Release Candidate Validation
 
-Before publishing v0.9 as the stable release:
+ESP32-S3 `panels3` hardware validation completed on the v0.9 development line:
 
-- Flash the v0.9 release-candidate image on the available target hardware.
-- Confirm normal boot, Home Assistant connection, editor access, dashboard rendering, touch input, Night Mode/idle dimming, Save & Reboot, and OTA update.
-- Keep the existing v0.8.2 public download links until the v0.9 binaries have completed final validation and are published.
+- Normal boot, dashboard rendering, editor access, and touch input confirmed on hardware.
+- Home Assistant reconnect after booting while HA was unavailable confirmed without falling back to provisioning.
+- Runtime settings and weather Today min/max cache confirmed to survive normal reboot.
+- Settings-preserving USB flash packaging confirmed functional without erasing NVS.
+- Night Mode / Auto Dim behaviour, Save & Reboot, diagnostics, and OTA update paths have been exercised on hardware.
+- The 60-second return-to-Home path is now independent of the configurable Auto Dim timeout, preventing a 30-second dim setting from forcing early navigation.
+
+Before publishing v0.9 as the stable release, run one final consolidated release build and publish the resulting versioned artifacts.
 
 ### Known Investigation
 
