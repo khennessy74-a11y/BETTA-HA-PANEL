@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: LicenseRef-FNCL-1.1
  * Copyright (c) 2026 Cpt_Kirk
+ * Copyright (c) 2026 khennessy74-a11y
  */
 #include "api/http_server.h"
 #include "api/http_guard.h"
@@ -17,6 +18,8 @@
 extern const uint8_t _binary_index_html_start[] asm("_binary_index_html_start");
 extern const uint8_t _binary_index_html_end[] asm("_binary_index_html_end");
 extern const uint8_t _binary_app_js_start[] asm("_binary_app_js_start");
+extern const uint8_t _binary_timer_stage1_js_start[] asm("_binary_timer_stage1_js_start");
+extern const uint8_t _binary_timer_stage1_js_end[] asm("_binary_timer_stage1_js_end");
 extern const uint8_t _binary_app_js_end[] asm("_binary_app_js_end");
 extern const uint8_t _binary_styles_css_start[] asm("_binary_styles_css_start");
 extern const uint8_t _binary_styles_css_end[] asm("_binary_styles_css_end");
@@ -60,6 +63,21 @@ static esp_err_t app_js_get_handler_impl(httpd_req_t *req)
     httpd_resp_set_type(req, "application/javascript");
     return httpd_resp_sendstr(req, s_fallback_app_js);
 }
+static esp_err_t timer_stage1_js_get_handler_impl(httpd_req_t *req)
+{
+    if (&_binary_timer_stage1_js_end[0] > &_binary_timer_stage1_js_start[0]) {
+        return send_embedded(
+            req,
+            _binary_timer_stage1_js_start,
+            _binary_timer_stage1_js_end,
+            "application/javascript",
+            false
+        );
+    }
+
+    httpd_resp_set_type(req, "application/javascript");
+    return httpd_resp_sendstr(req, "");
+}
 
 static esp_err_t styles_css_get_handler_impl(httpd_req_t *req)
 {
@@ -87,6 +105,10 @@ static esp_err_t guarded_index_get_handler(httpd_req_t *req)
 static esp_err_t guarded_app_js_get_handler(httpd_req_t *req)
 {
     return http_guard_handle(req, app_js_get_handler_impl);
+}
+static esp_err_t guarded_timer_stage1_js_get_handler(httpd_req_t *req)
+{
+    return http_guard_handle(req, timer_stage1_js_get_handler_impl);
 }
 
 static esp_err_t guarded_styles_css_get_handler(httpd_req_t *req)
@@ -117,7 +139,10 @@ esp_err_t http_server_start(void)
         http_task_prio = 1;
     }
     cfg.task_priority = http_task_prio;
-    cfg.max_uri_handlers = 32;
+    /* Route count has grown beyond ESP-IDF's conservative default.  Keep
+     * headroom for editor/API additions so handler registration cannot fail
+     * part-way through boot with ESP_ERR_HTTPD_HANDLERS_FULL. */
+    cfg.max_uri_handlers = 64;
 #if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
     cfg.max_open_sockets = 4;
 #else
@@ -153,6 +178,12 @@ esp_err_t http_server_start(void)
         .handler = guarded_app_js_get_handler,
         .user_ctx = NULL,
     };
+    httpd_uri_t timer_stage1_js_uri = {
+    .uri = "/timer_stage1.js",
+    .method = HTTP_GET,
+    .handler = guarded_timer_stage1_js_get_handler,
+    .user_ctx = NULL,
+};
     httpd_uri_t styles_css_uri = {
         .uri = "/styles.css",
         .method = HTTP_GET,
@@ -168,6 +199,7 @@ esp_err_t http_server_start(void)
 
     ESP_RETURN_ON_ERROR(httpd_register_uri_handler(s_server, &index_uri), TAG_HTTP, "register /");
     ESP_RETURN_ON_ERROR(httpd_register_uri_handler(s_server, &app_js_uri), TAG_HTTP, "register /app.js");
+    ESP_RETURN_ON_ERROR(httpd_register_uri_handler(s_server, &timer_stage1_js_uri),TAG_HTTP, "register /timer_stage1.js");
     ESP_RETURN_ON_ERROR(httpd_register_uri_handler(s_server, &styles_css_uri), TAG_HTTP, "register /styles.css");
     ESP_RETURN_ON_ERROR(httpd_register_uri_handler(s_server, &favicon_uri), TAG_HTTP, "register /favicon.ico");
     ESP_RETURN_ON_ERROR(api_routes_register(s_server), TAG_HTTP, "register api routes");

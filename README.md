@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: LicenseRef-FNCL-1.1 | Copyright (c) 2026 Cpt_Kirk -->
+<!-- SPDX-License-Identifier: LicenseRef-FNCL-1.1 | Copyright (c) 2026 Cpt_Kirk | Copyright (c) 2026 khennessy74-a11y -->
 <img src="images/BETTAOS.jpg" alt="BETTA OS Logo" width="10%" />
 
 # BETTA HA Panel
@@ -18,9 +18,9 @@ BETTA HA Panel ships as **three firmware variants**, one per supported device:
 
 | Variant    | Device                                                  | Resolution | Factory image                                                                     |
 |------------|---------------------------------------------------------|------------|-----------------------------------------------------------------------------------|
-| `panel4`   | Waveshare **ESP32-P4-WIFI6-Touch-LCD-4B** (4")          | 720 × 720  | [betta86-ha-panel-v0.8.2-panel4.factory.bin](release/betta86-ha-panel-v0.8.2-panel4.factory.bin)   |
-| `panel10`  | Waveshare **ESP32-P4 Module Nano + 10.1" DSI panel**    | 1280 × 800 | [betta86-ha-panel-v0.8.2-panel10.factory.bin](release/betta86-ha-panel-v0.8.2-panel10.factory.bin) |
-| `panels3`  | Guition **ESP32-S3-4848S040** (4")                      | 480 × 480  | [betta86-ha-panel-v0.8.2-panels3.factory.bin](release/betta86-ha-panel-v0.8.2-panels3.factory.bin) |
+| `panel4`   | Waveshare **ESP32-P4-WIFI6-Touch-LCD-4B** (4")       | 720 × 720  | [betta-ha-panel-v0.9-panel4.factory.bin](https://github.com/khennessy74-a11y/BETTA-HA-PANEL/releases/latest/download/betta-ha-panel-v0.9-panel4.factory.bin) |
+| `panel10`  | Waveshare **ESP32-P4 Module Nano + 10.1" DSI panel** | 1280 × 800 | [betta-ha-panel-v0.9-panel10.factory.bin](https://github.com/khennessy74-a11y/BETTA-HA-PANEL/releases/latest/download/betta-ha-panel-v0.9-panel10.factory.bin) |
+| `panels3`  | Guition **ESP32-S3-4848S040** (4")                   | 480 × 480  | [betta-ha-panel-v0.9-panels3.factory.bin](https://github.com/khennessy74-a11y/BETTA-HA-PANEL/releases/latest/download/betta-ha-panel-v0.9-panels3.factory.bin) |
 
 All variants share the same dashboard engine, web editor, and Home Assistant integration. Pick the image that matches your board.
 
@@ -37,7 +37,10 @@ All variants share the same dashboard engine, web editor, and Home Assistant int
 - **First-run provisioning** — `BETTA-Setup` Wi-Fi AP, guided Wi-Fi + Home Assistant setup, Quick Setup flow for a starter dashboard.
 - **OTA updates** — upload an `.ota.bin` or point to an OTA URL from the web editor; no reflash required after v0.7.1.
 - **Multilingual** — built-in English, German, Spanish, French; custom translation JSON upload/download.
-- **Touch-friendly UX** — auto-dimming backlight after idle, pointer-capture drag/resize, stable GT911 touch startup.
+- **Touch-friendly UX** — auto-dimming backlight after idle, scheduled Night Mode, pointer-capture drag/resize, stable GT911 touch startup.
+- **On-panel System & Diagnostics** — open diagnostics from the status area to inspect firmware, Wi-Fi and Home Assistant connection state/logs, restart safely, and adjust display settings without a browser.
+- **On-panel display controls** — brightness, Night Mode schedules and Auto Dim settings with explicit Save behaviour and automatic return to Home after inactivity.
+- **Resilient configured boot** — saved Wi-Fi/Home Assistant configuration is retained when the network or Home Assistant is unavailable during startup; the panel continues to the dashboard and retries recovery instead of dropping into provisioning.
 
 ---
 
@@ -62,14 +65,63 @@ Future updates install via OTA from the editor — no cable needed.
 
 ---
 
-## What's new in v0.8.2
+## What's new in v0.9 (Release Candidate)
 
-- **ESP32-S3 support** — new `panels3` variant for the Guition ESP32-S3-4848S040 (4.8" 480×480 RGB panel, 16 MB flash, 8 MB PSRAM).
-- **Three-variant release** — factory and OTA images now ship for `panel4`, `panel10`, and `panels3`.
-- **MDI weather icons on S3** — clean Material Design Icon weather display on the S3 panel.
-- **Release tooling** — `make_factory_bin.ps1` extended; `-Variant both` now packages all three variants in one run.
+- **Home Assistant actions** — dashboard buttons can run scripts directly, with expanded action/button modes.
+- **Night Mode + idle dimming** — configurable day/night brightness, automatic schedules, wake-time refresh, and coordinated idle dimming.
+- **Richer widget controls** — custom MDI icons, ON/OFF icon colours, sensor precision, cover controls, graph options, heating styles, and responsive compact controls.
+- **Editor improvements** — dynamic page sizing, broader domain-aware entity discovery/search, and better inspector/runtime parity.
+- **Reliability and diagnostics** — stronger WebSocket recovery, HA connection diagnostics, weather correctness fixes, and improved Save & Reboot handling.
+- **Three-variant release CI** — `panel4`, `panel10`, and `panels3` now build and package versioned factory + OTA images in the same validation workflow.
+
+The download table now targets this fork's v0.9 release assets. Release-candidate hardware validation has completed for the current development checkpoint; the final release build remains the last validation stage.
 
 Full history: [release-notes.md](release-notes.md).
+
+---
+
+## New features & fixes in this fork
+
+The v0.9 development line extends the v0.8.2 baseline with Home Assistant, editor, layout, display, weather, and reliability improvements.
+
+### New features
+
+- **Home Assistant script execution** — dashboard buttons can run Home Assistant scripts directly from the panel.
+- **Expanded button modes** — button widgets can be configured for the appropriate Home Assistant action/entity behaviour.
+- **Dynamic page sizing** — dashboard pages adapt more naturally to their content and available panel space.
+- **Improved entity picker** — domain-aware discovery and search for lights, sensors, switches, weather, climate, todo, media players, vacuums, images, and other supported entities.
+- **Enhanced widget configuration** — additional slider, graph, heating, button, and accent/style options in the web editor.
+- **Graph improvements** — configurable line colour, time window, display mode, bar buckets, and point counts.
+- **Heating tile variants** — additional heating display styles including semi/open arc layouts.
+- **Weather improvements** — current conditions plus multi-day forecasts using Home Assistant's weather data, with provider-neutral handling of available high/low temperatures.
+- **HA connection diagnostics** — the Settings page now exposes a rolling firmware-side Home Assistant connection history to make startup and reconnect problems easier to diagnose.
+- **Improved save/reboot handling** — network and runtime state are cleaned up more carefully before rebooting after settings changes.
+
+### Recent development progress
+
+- **Custom MDI icon parity** — custom icons now work across the supported entity-backed tiles, including lights, fans, updates, calendars, selects, input helpers, alarms, graphs, todo lists, media players, Roborock, sensors, timers, sliders, heating, and runnable script/scene/automation buttons. Weather keeps its dedicated condition-driven icon system.
+- **Configurable state icon colours** — supported tiles can use separate ON and OFF icon colours while preserving theme defaults and Home Assistant light RGB behaviour where appropriate.
+- **Sensor precision control** — sensor tiles can configure the number of decimal places shown on the panel.
+- **Cover controls** — cover sliders support position and tilt where Home Assistant exposes those capabilities, with open/stop/close actions and movement-aware control states.
+- **Responsive compact tiles** — button geometry and controls for Select, Input Number, Fan, Update, Input Text, Input Date/Time, and Heating tiles have been tightened so smaller dashboard cards remain usable without changing normal-size layouts.
+- **Night Mode and idle dimming** — configurable day/night brightness, automatic scheduled transitions, wake-time schedule refresh, and inactivity dimming now work together without allowing idle mode to brighten an already-dimmer night display.
+- **Editor parity cleanup** — widget options now better match runtime capabilities; unsupported generic custom-icon controls are hidden for Weather while its dynamic weather icons remain intact.
+- **Hardware validation** — the current development line has been repeatedly built, flashed, and exercised on-panel, including physical-touch inactivity return, protected Admin entry, themed restart confirmation, repeated software reboots, and display/connection recovery testing.
+
+### Reliability fixes
+
+- **WebSocket connection-state recovery** — BETTA now uses the ESP WebSocket client's native connection state as the source of truth, preventing a stale local state from trapping the panel in repeated failed authentication attempts.
+- **Dead authentication-session recovery** — a failed native WebSocket is no longer protected as though an authentication handshake were still active; BETTA can tear it down and reconnect automatically.
+- **Authentication TX diagnostics** — connection logs can report raw WebSocket send results, native connection state, free heap, and largest free memory block when diagnosing transport failures.
+- **Safer boot settings loading** — runtime settings are no longer destructively reinitialised during normal startup retries.
+- **Weather data correctness** — missing forecast highs/lows are no longer fabricated from the current temperature, and current-temperature handling has been hardened.
+- **HTTP route and handler hardening** — improved robustness around web/API handlers used by the editor and diagnostics.
+
+### Final RC validation
+
+- **Cold-start recovery test** — the configured-panel boot path has been changed so a temporary Wi-Fi/Home Assistant outage cannot force an already-configured panel back into provisioning. Final RC validation includes powering up with the network unavailable, restoring it, and confirming automatic recovery with settings intact.
+- **Global inactivity return** — secondary dashboard/System/Display screens return Home after 60 seconds of inactivity, with the timer reset from actual touch events across nested controls.
+- **Restart confirmation UX** — the on-panel restart action uses a themed, centred modal with vertically stacked actions, touch-through protection, and a dimmed background.
 
 ---
 
@@ -105,6 +157,13 @@ Build artifacts land in `release/` and `release/ota/`. Previous versions are mov
 </p>
 
 ---
+
+## Support development of this fork
+
+If the additions and ongoing development in this fork are useful to you, you can support Kieran's work:
+
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-Support%20this%20fork-FFDD00?logo=buy-me-a-coffee&logoColor=000000)](https://buymeacoffee.com/khennessy74)
+
 
 ## License
 

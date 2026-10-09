@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: LicenseRef-FNCL-1.1
  * Copyright (c) 2026 Cpt_Kirk
+ * Copyright (c) 2026 khennessy74-a11y
  */
 #include "ha/ha_client.h"
 
@@ -8,6 +9,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
+#include <stdarg.h>
 
 #include "cJSON.h"
 #include "esp_crt_bundle.h"
@@ -29,6 +31,7 @@
 #include "ha/ha_energy_model.h"
 #include "ha/ha_light_capabilities.h"
 #include "ha/ha_model.h"
+#include "ha/ha_weather_model.h"
 #include "ha/ha_ws.h"
 #include "layout/layout_store.h"
 #include "net/wifi_mgr.h"
@@ -234,6 +237,7 @@ typedef struct {
     int64_t ping_sent_unix_ms;
     int64_t last_rx_unix_ms;
     int64_t ws_last_connected_unix_ms;
+    int64_t auth_handshake_started_unix_ms;
     int64_t next_auth_retry_unix_ms;
     int64_t next_initial_layout_sync_unix_ms;
     int64_t next_periodic_layout_sync_unix_ms;
@@ -260,6 +264,10 @@ typedef struct {
     bool weather_ws_req_inflight;
     uint32_t weather_ws_req_id;
     char weather_ws_req_entity_id[APP_MAX_ENTITY_ID_LEN];
+    bool weather_hourly_pending;
+    bool weather_hourly_req_inflight;
+    uint32_t weather_hourly_ws_req_id;
+    char weather_hourly_ws_req_entity_id[APP_MAX_ENTITY_ID_LEN];
     bool layout_needs_ha_energy;
     bool pending_energy_prefs;
     bool pending_energy_stats;
@@ -321,15 +329,62 @@ typedef struct {
     QueueHandle_t ws_rx_queue;
     TaskHandle_t task_handle;
     SemaphoreHandle_t mutex;
+    ha_connection_log_entry_t connection_log[HA_DIAGNOSTICS_CONNECTION_LOG_CAP];
+    uint16_t connection_log_head;
+    uint16_t connection_log_count;
 } ha_client_state_t;
 
 static ha_client_state_t s_client = {0};
+
+/* Boot-relative HA connection trace.  These messages use TAG_HA_CLIENT so
+ * they appear in the existing HA log UI.  Never include URLs, tokens or
+ * other credentials in this trace. */
+static int64_t s_ha_trace_start_ms = 0;
+static uint32_t s_ha_ws_attempt_no = 0;
+
+/* Used by the early connection-trace helpers below; the main declaration
+ * block appears later with the rest of the client-private prototypes. */
+static void safe_copy_cstr(char *dst, size_t dst_size, const char *src);
+
+static int64_t ha_client_trace_elapsed_ms(void)
+{
+    int64_t now_ms = esp_timer_get_time() / 1000;
+    return (s_ha_trace_start_ms > 0 && now_ms >= s_ha_trace_start_ms)
+        ? (now_ms - s_ha_trace_start_ms)
+        : 0;
+}
+
+static void ha_client_trace_record(const char *message)
+{
+    if (message == NULL || s_client.mutex == NULL) return;
+    xSemaphoreTake(s_client.mutex, portMAX_DELAY);
+    uint16_t idx = s_client.connection_log_head;
+    s_client.connection_log[idx].elapsed_ms = ha_client_trace_elapsed_ms();
+    safe_copy_cstr(s_client.connection_log[idx].message,
+        sizeof(s_client.connection_log[idx].message), message);
+    s_client.connection_log_head = (uint16_t)((idx + 1U) % HA_DIAGNOSTICS_CONNECTION_LOG_CAP);
+    if (s_client.connection_log_count < HA_DIAGNOSTICS_CONNECTION_LOG_CAP) {
+        s_client.connection_log_count++;
+    }
+    xSemaphoreGive(s_client.mutex);
+}
+
+static void ha_client_trace_recordf(const char *fmt, ...)
+{
+    char buf[HA_DIAGNOSTICS_CONNECTION_LOG_MSG_LEN];
+    va_list ap;
+    va_start(ap, fmt);
+    vsnprintf(buf, sizeof(buf), fmt, ap);
+    va_end(ap);
+    ha_client_trace_record(buf);
+}
 
 /* ---- Central WS/TLS send gate helpers (caller must hold s_client.mutex) --- */
 
 static inline bool ha_client_heavy_in_flight_locked(void)
 {
     return s_client.weather_ws_req_inflight ||
+           s_client.weather_hourly_req_inflight ||
            s_client.energy_prefs_req_inflight ||
            s_client.energy_stats_req_inflight ||
            s_client.light_discovery_inflight ||
@@ -366,10 +421,13 @@ static const int HA_WEATHER_COMPACT_FORECAST_MAX_ITEMS = 6;
 #else
 static const int HA_WEATHER_COMPACT_FORECAST_MAX_ITEMS = 6;
 #endif
-static const int64_t HA_WS_RESTART_INTERVAL_MS = 12000;
-static const int64_t HA_WS_RESTART_INTERVAL_MAX_MS = 30000;
-static const int64_t HA_WS_RESTART_JITTER_MS = 1000;
-static const int64_t HA_WS_CONNECT_GRACE_MS = 15000;
+/* Reconnect quickly after a dropped HA socket.  A wall panel should recover
+ * locally before asking the user for a power cycle.  Keep a modest capped
+ * backoff so genuine HA downtime still does not create a reconnect storm. */
+static const int64_t HA_WS_RESTART_INTERVAL_MS = 3000;
+static const int64_t HA_WS_RESTART_INTERVAL_MAX_MS = 15000;
+static const int64_t HA_WS_RESTART_JITTER_MS = 500;
+static const int64_t HA_WS_CONNECT_GRACE_MS = 8000;
 static const int64_t HA_WS_SHORT_SESSION_MS = 180000;
 static const uint8_t HA_WS_SHORT_SESSION_STRIKES_TO_WIFI_RECOVER = 4;
 static const uint8_t HA_WS_SHORT_SESSION_STRIKES_TO_TRANSPORT_RECOVER = 6;
@@ -422,7 +480,15 @@ static const int64_t HA_WS_GET_STATES_POST_SUBSCRIBE_DELAY_MS = 1200;
 static const int64_t HA_WS_GET_STATES_BAD_INPUT_COOLDOWN_MS = 60000;
 /* If true, repeated WS failures while Wi-Fi is up can escalate to Wi-Fi/C6 recover.
    Keep disabled so intentional HA downtime does not trigger transport recovery loops. */
+/* The S3/C6 transport can occasionally remain wedged while Wi-Fi still
+ * reports connected.  Repeated short WS sessions/connect failures are
+ * therefore allowed to escalate through the existing guarded recovery path.
+ * TLS BAD_INPUT_DATA remains explicitly excluded below. */
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
 static const bool HA_WS_ESCALATE_RECOVER_WHEN_WIFI_UP = false;
+#else
+static const bool HA_WS_ESCALATE_RECOVER_WHEN_WIFI_UP = false;
+#endif
 /* Per-entity subscribe step cadence.  Subscribes are LIGHT sends (tiny
  * request + tiny ack), so this is only about not flooding the WS send
  * queue, not about TLS heap pressure.  150 ms paces ~6 subscribes/s which
@@ -536,6 +602,12 @@ static void ha_client_priority_sync_queue_push_locked(const char *entity_id);
 static size_t ha_client_collect_layout_entity_ids(char *entity_ids, size_t max_count, bool *out_need_weather_forecast);
 static bool ha_client_layout_needs_ha_energy(void);
 static bool ha_client_entity_is_weather(const char *entity_id);
+static int ha_client_local_date_key(void);
+static int ha_client_weather_date_key(const char *datetime);
+static void ha_client_weather_model_update_current(const char *entity_id, const char *condition, cJSON *attributes);
+static void ha_client_weather_model_update_daily(const char *entity_id, cJSON *forecast);
+static void ha_client_weather_model_update_hourly(const char *entity_id, cJSON *forecast);
+static void ha_client_weather_model_log_snapshot(const char *reason, const char *entity_id);
 static bool ha_client_entity_id_in_list(const char *entity_ids, size_t entity_count, const char *entity_id);
 static void ha_client_queue_weather_priority_sync_from_layout(int64_t now_ms);
 static ha_bg_budget_level_t ha_client_eval_bg_budget_level(
@@ -552,7 +624,8 @@ static bool ha_client_capture_layout_snapshot(
     uint32_t *out_signature, uint16_t *out_count, bool *out_need_weather_forecast);
 static bool ha_client_rest_enabled(void);
 static esp_err_t ha_client_send_subscribe_single_entity(const char *entity_id, uint32_t *out_req_id);
-static esp_err_t ha_client_send_weather_daily_forecast_ws(const char *entity_id, uint32_t *out_req_id);
+static esp_err_t ha_client_send_weather_forecast_ws(
+    const char *entity_id, const char *forecast_type, uint32_t *out_req_id);
 static esp_err_t ha_client_send_energy_prefs_ws(uint32_t *out_req_id);
 static esp_err_t ha_client_send_energy_stats_ws(uint32_t *out_req_id);
 static esp_err_t ha_client_send_light_discovery_request(ha_light_discovery_phase_t phase);
@@ -1366,6 +1439,203 @@ static bool ha_client_entity_is_weather(const char *entity_id)
     return strncmp(entity_id, "weather.", 8) == 0;
 }
 
+
+static int ha_client_local_date_key(void)
+{
+    time_t now = time(NULL);
+    struct tm local_now = {0};
+    localtime_r(&now, &local_now);
+    int year = local_now.tm_year + 1900;
+    int month = local_now.tm_mon + 1;
+    int day = local_now.tm_mday;
+    if (year < 2020 || month < 1 || month > 12 || day < 1 || day > 31) {
+        return 0;
+    }
+    return year * 10000 + month * 100 + day;
+}
+
+static int ha_client_weather_date_key(const char *datetime)
+{
+    if (datetime == NULL || strlen(datetime) < 10) return 0;
+    if (datetime[4] != '-' || datetime[7] != '-') return 0;
+    int year = (datetime[0]-'0')*1000 + (datetime[1]-'0')*100 +
+               (datetime[2]-'0')*10 + (datetime[3]-'0');
+    int month = (datetime[5]-'0')*10 + (datetime[6]-'0');
+    int day = (datetime[8]-'0')*10 + (datetime[9]-'0');
+    if (year < 2020 || month < 1 || month > 12 || day < 1 || day > 31) return 0;
+    return year * 10000 + month * 100 + day;
+}
+
+static bool ha_client_weather_number(cJSON *obj, const char *primary, const char *fallback, float *out)
+{
+    if (!cJSON_IsObject(obj) || out == NULL) return false;
+    cJSON *item = cJSON_GetObjectItemCaseSensitive(obj, primary);
+    if (!cJSON_IsNumber(item) && fallback != NULL) {
+        item = cJSON_GetObjectItemCaseSensitive(obj, fallback);
+    }
+    if (!cJSON_IsNumber(item)) return false;
+    *out = (float)item->valuedouble;
+    return true;
+}
+
+static void ha_client_weather_model_update_current(
+    const char *entity_id, const char *condition, cJSON *attributes)
+{
+    if (entity_id == NULL || !cJSON_IsObject(attributes)) return;
+
+    float temp = 0.0f;
+    bool has_temp =
+        ha_client_weather_number(attributes, "temperature", "current_temperature", &temp);
+    if (!has_temp) {
+        has_temp = ha_client_weather_number(attributes, "native_temperature", NULL, &temp);
+    }
+
+    int humidity = -1;
+    cJSON *humidity_item = cJSON_GetObjectItemCaseSensitive(attributes, "humidity");
+    if (cJSON_IsNumber(humidity_item)) humidity = humidity_item->valueint;
+
+    const char *unit = "C";
+    cJSON *unit_item = cJSON_GetObjectItemCaseSensitive(attributes, "temperature_unit");
+    if (!cJSON_IsString(unit_item) || unit_item->valuestring == NULL) {
+        unit_item = cJSON_GetObjectItemCaseSensitive(attributes, "native_temperature_unit");
+    }
+    if (cJSON_IsString(unit_item) && unit_item->valuestring != NULL) {
+        unit = unit_item->valuestring;
+    }
+
+    (void)ha_weather_model_set_current(
+        entity_id, ha_client_local_date_key(), has_temp, temp, humidity, unit, condition);
+    ha_client_weather_model_log_snapshot("current", entity_id);
+}
+
+static void ha_client_weather_model_update_daily(const char *entity_id, cJSON *forecast)
+{
+    if (entity_id == NULL || !cJSON_IsArray(forecast)) return;
+
+    ha_weather_day_t days[HA_WEATHER_MODEL_MAX_DAYS] = {0};
+    size_t out_count = 0;
+    int count = cJSON_GetArraySize(forecast);
+
+    for (int i = 0; i < count && out_count < HA_WEATHER_MODEL_MAX_DAYS; i++) {
+        cJSON *item = cJSON_GetArrayItem(forecast, i);
+        if (!cJSON_IsObject(item)) continue;
+
+        cJSON *dt = cJSON_GetObjectItemCaseSensitive(item, "datetime");
+        if (!cJSON_IsString(dt) || dt->valuestring == NULL) {
+            dt = cJSON_GetObjectItemCaseSensitive(item, "date");
+        }
+        int date_key = cJSON_IsString(dt) && dt->valuestring != NULL
+            ? ha_client_weather_date_key(dt->valuestring) : 0;
+        if (date_key == 0) continue;
+
+        ha_weather_day_t *day = &days[out_count];
+        day->valid = true;
+        day->date_key = date_key;
+        day->has_high = ha_client_weather_number(item, "temperature", "native_temperature", &day->high_temp);
+        day->has_low = ha_client_weather_number(item, "templow", "native_templow", &day->low_temp);
+
+        cJSON *condition_item = cJSON_GetObjectItemCaseSensitive(item, "condition");
+        if (cJSON_IsString(condition_item) && condition_item->valuestring != NULL) {
+            safe_copy_cstr(day->condition, sizeof(day->condition), condition_item->valuestring);
+        }
+        out_count++;
+    }
+
+    (void)ha_weather_model_replace_daily(entity_id, days, out_count);
+    ha_client_weather_model_log_snapshot("daily", entity_id);
+}
+
+static void ha_client_weather_model_update_hourly(const char *entity_id, cJSON *forecast)
+{
+    if (entity_id == NULL || !cJSON_IsArray(forecast)) return;
+
+    int today_key = ha_client_local_date_key();
+    if (today_key == 0) return;
+
+    bool have = false;
+    float low = 0.0f;
+    float high = 0.0f;
+    char condition[32] = {0};
+    int count = cJSON_GetArraySize(forecast);
+
+    for (int i = 0; i < count; i++) {
+        cJSON *item = cJSON_GetArrayItem(forecast, i);
+        if (!cJSON_IsObject(item)) continue;
+
+        cJSON *dt = cJSON_GetObjectItemCaseSensitive(item, "datetime");
+        if (!cJSON_IsString(dt) || dt->valuestring == NULL) {
+            dt = cJSON_GetObjectItemCaseSensitive(item, "date");
+        }
+        int item_key = cJSON_IsString(dt) && dt->valuestring != NULL
+            ? ha_client_weather_date_key(dt->valuestring) : 0;
+        if (item_key != today_key) continue;
+
+        float temp = 0.0f;
+        if (!ha_client_weather_number(item, "temperature", "native_temperature", &temp)) continue;
+        if (!have || temp < low) low = temp;
+        if (!have || temp > high) high = temp;
+        have = true;
+
+        if (condition[0] == '\0') {
+            cJSON *condition_item = cJSON_GetObjectItemCaseSensitive(item, "condition");
+            if (cJSON_IsString(condition_item) && condition_item->valuestring != NULL) {
+                safe_copy_cstr(condition, sizeof(condition), condition_item->valuestring);
+            }
+        }
+    }
+
+    if (have) {
+        (void)ha_weather_model_set_today_hourly_range(
+            entity_id, today_key, true, low, true, high, condition);
+        ha_client_weather_model_log_snapshot("hourly", entity_id);
+    }
+}
+
+static void ha_client_weather_model_log_snapshot(const char *reason, const char *entity_id)
+{
+    if (entity_id == NULL || entity_id[0] == '\0') return;
+
+    ha_weather_snapshot_t snapshot = {0};
+    if (!ha_weather_model_get_snapshot(entity_id, &snapshot)) {
+        char trace[160] = {0};
+        snprintf(trace, sizeof(trace), "weather %s %s snapshot=missing",
+            reason != NULL ? reason : "update", entity_id);
+        ha_client_trace_record(trace);
+        return;
+    }
+
+    char trace[224] = {0};
+    snprintf(trace, sizeof(trace),
+        "weather %s rev=%" PRIu32 " cur=%s%.1f hum=%d days=%u obs=%d low=%s%.1f high=%s%.1f",
+        reason != NULL ? reason : "update",
+        snapshot.revision,
+        snapshot.has_current_temp ? "" : "na/",
+        snapshot.current_temp,
+        snapshot.humidity,
+        (unsigned)snapshot.day_count,
+        snapshot.observed_date_key,
+        snapshot.has_observed_low ? "" : "na/",
+        snapshot.observed_low,
+        snapshot.has_observed_high ? "" : "na/",
+        snapshot.observed_high);
+    ha_client_trace_record(trace);
+
+    for (size_t i = 0; i < snapshot.day_count && i < 4U; i++) {
+        const ha_weather_day_t *day = &snapshot.days[i];
+        snprintf(trace, sizeof(trace),
+            "weather day[%u] date=%d valid=%d low=%s%.1f high=%s%.1f cond=%s",
+            (unsigned)i,
+            day->date_key,
+            day->valid ? 1 : 0,
+            day->has_low ? "" : "na/",
+            day->low_temp,
+            day->has_high ? "" : "na/",
+            day->high_temp,
+            day->condition[0] != '\0' ? day->condition : "-");
+        ha_client_trace_record(trace);
+    }
+}
+
 static bool ha_client_entity_is_light(const char *entity_id)
 {
     if (entity_id == NULL) {
@@ -1387,7 +1657,29 @@ static bool ha_client_discovery_domain_supported(const char *domain)
            strcmp(domain, "todo") == 0 ||
            strcmp(domain, "media_player") == 0 ||
            strcmp(domain, "vacuum") == 0 ||
-           strcmp(domain, "image") == 0;
+           strcmp(domain, "image") == 0 ||
+           strcmp(domain, "camera") == 0 ||
+           strcmp(domain, "script") == 0 ||
+           strcmp(domain, "scene") == 0 ||
+           strcmp(domain, "automation") == 0 ||
+           strcmp(domain, "timer") == 0 ||
+           strcmp(domain, "person") == 0 ||
+           strcmp(domain, "device_tracker") == 0 ||
+           strcmp(domain, "button") == 0 ||
+           strcmp(domain, "lock") == 0 ||
+           strcmp(domain, "input_boolean") == 0 ||
+           strcmp(domain, "input_number") == 0 ||
+           strcmp(domain, "number") == 0 ||
+           strcmp(domain, "fan") == 0 ||
+           strcmp(domain, "cover") == 0 ||
+           strcmp(domain, "update") == 0 ||
+           strcmp(domain, "calendar") == 0 ||
+           strcmp(domain, "alarm_control_panel") == 0 ||
+           strcmp(domain, "binary_sensor") == 0 ||
+           strcmp(domain, "select") == 0 ||
+           strcmp(domain, "input_select") == 0 ||
+           strcmp(domain, "input_text") == 0 ||
+           strcmp(domain, "input_datetime") == 0;
 }
 
 static const char *ha_client_discovery_domain_or_default(const char *domain)
@@ -2240,10 +2532,12 @@ static cJSON *ha_client_find_compact_weather_forecast(cJSON *node, const char *e
     return ha_client_find_compact_forecast_recursive(node, 0);
 }
 
-static esp_err_t ha_client_fetch_weather_daily_forecast_http(
-    const char *base_url, const char *host_header, const char *entity_id, cJSON **out_forecast)
+static esp_err_t ha_client_fetch_weather_forecast_http(
+    const char *base_url, const char *host_header, const char *entity_id,
+    const char *forecast_type, cJSON **out_forecast)
 {
-    if (base_url == NULL || entity_id == NULL || out_forecast == NULL || entity_id[0] == '\0' || s_client.http_client == NULL) {
+    if (base_url == NULL || entity_id == NULL || forecast_type == NULL || out_forecast == NULL ||
+        entity_id[0] == '\0' || forecast_type[0] == '\0' || s_client.http_client == NULL) {
         return ESP_ERR_INVALID_ARG;
     }
     *out_forecast = NULL;
@@ -2255,7 +2549,8 @@ static esp_err_t ha_client_fetch_weather_daily_forecast_http(
     }
 
     char body[256] = {0};
-    int body_len = snprintf(body, sizeof(body), "{\"type\":\"daily\",\"entity_id\":\"%s\"}", entity_id);
+    int body_len = snprintf(body, sizeof(body), "{\"type\":\"%s\",\"entity_id\":\"%s\"}",
+        forecast_type, entity_id);
     if (body_len <= 0 || (size_t)body_len >= sizeof(body)) {
         return ESP_ERR_INVALID_SIZE;
     }
@@ -2335,6 +2630,20 @@ static esp_err_t ha_client_fetch_weather_daily_forecast_http(
 
     *out_forecast = compact_forecast;
     return ESP_OK;
+}
+
+static esp_err_t ha_client_fetch_weather_daily_forecast_http(
+    const char *base_url, const char *host_header, const char *entity_id, cJSON **out_forecast)
+{
+    return ha_client_fetch_weather_forecast_http(
+        base_url, host_header, entity_id, "daily", out_forecast);
+}
+
+static esp_err_t ha_client_fetch_weather_hourly_forecast_http(
+    const char *base_url, const char *host_header, const char *entity_id, cJSON **out_forecast)
+{
+    return ha_client_fetch_weather_forecast_http(
+        base_url, host_header, entity_id, "hourly", out_forecast);
 }
 
 static bool ha_client_serialize_weather_attrs_compact(cJSON *src_attrs, char *out_json, size_t out_json_size)
@@ -2782,6 +3091,75 @@ static bool ha_client_append_compact_forecast_to_attrs_json(char *attrs_json, si
         memcpy(attrs_json, merged_json, len + 1U);
     }
     cJSON_free(merged_json);
+    return fits;
+}
+
+static cJSON *ha_client_reduce_hourly_forecast_to_extrema(cJSON *hourly)
+{
+    if (!cJSON_IsArray(hourly) || cJSON_GetArraySize(hourly) == 0) return NULL;
+
+    char day_key[11] = {0};
+    bool have = false;
+    float min_temp = 0.0f, max_temp = 0.0f;
+    int count = cJSON_GetArraySize(hourly);
+    for (int i = 0; i < count; i++) {
+        cJSON *item = cJSON_GetArrayItem(hourly, i);
+        if (!cJSON_IsObject(item)) continue;
+        cJSON *dt = cJSON_GetObjectItemCaseSensitive(item, "datetime");
+        if (!cJSON_IsString(dt) || dt->valuestring == NULL || strlen(dt->valuestring) < 10) continue;
+        if (day_key[0] == '\0') {
+            memcpy(day_key, dt->valuestring, 10);
+            day_key[10] = '\0';
+        } else if (strncmp(day_key, dt->valuestring, 10) != 0) {
+            break;
+        }
+        cJSON *temp_item = cJSON_GetObjectItemCaseSensitive(item, "temperature");
+        if (!cJSON_IsNumber(temp_item)) continue;
+        float temp = (float)temp_item->valuedouble;
+        if (!have || temp < min_temp) min_temp = temp;
+        if (!have || temp > max_temp) max_temp = temp;
+        have = true;
+    }
+    if (!have) return NULL;
+
+    cJSON *summary = cJSON_CreateArray();
+    cJSON *lo = cJSON_CreateObject();
+    cJSON *hi = cJSON_CreateObject();
+    if (summary == NULL || lo == NULL || hi == NULL) {
+        cJSON_Delete(summary); cJSON_Delete(lo); cJSON_Delete(hi);
+        return NULL;
+    }
+    cJSON_AddStringToObject(lo, "datetime", day_key);
+    cJSON_AddNumberToObject(lo, "temperature", min_temp);
+    cJSON_AddStringToObject(hi, "datetime", day_key);
+    cJSON_AddNumberToObject(hi, "temperature", max_temp);
+    cJSON_AddItemToArray(summary, lo);
+    cJSON_AddItemToArray(summary, hi);
+    return summary;
+}
+
+static bool ha_client_append_named_forecast_to_attrs_json(
+    char *attrs_json, size_t attrs_json_size, const char *name, cJSON *forecast)
+{
+    if (attrs_json == NULL || attrs_json_size == 0 || name == NULL || !cJSON_IsArray(forecast)) {
+        cJSON_Delete(forecast);
+        return false;
+    }
+    cJSON *attrs = cJSON_Parse(attrs_json);
+    if (!cJSON_IsObject(attrs)) {
+        cJSON_Delete(attrs);
+        cJSON_Delete(forecast);
+        return false;
+    }
+    cJSON_DeleteItemFromObjectCaseSensitive(attrs, name);
+    cJSON_AddItemToObject(attrs, name, forecast);
+    char *merged = cJSON_PrintUnformatted(attrs);
+    cJSON_Delete(attrs);
+    if (merged == NULL) return false;
+    size_t len = strlen(merged);
+    bool fits = len < attrs_json_size;
+    if (fits) memcpy(attrs_json, merged, len + 1U);
+    cJSON_free(merged);
     return fits;
 }
 
@@ -4057,14 +4435,64 @@ static esp_err_t ha_client_fetch_state_http(
         if (cJSON_IsObject(attrs)) {
             cJSON *forecast = cJSON_GetObjectItemCaseSensitive(attrs, "forecast");
             cJSON *forecast_daily = cJSON_GetObjectItemCaseSensitive(attrs, "forecast_daily");
-            if (!cJSON_IsArray(forecast) && !cJSON_IsArray(forecast_daily)) {
+
+            if (cJSON_IsArray(forecast)) {
+                ha_client_trace_recordf("weather REST forecast present entity=%s source=forecast", entity_id);
+                ha_client_weather_model_update_daily(entity_id, forecast);
+            } else if (cJSON_IsArray(forecast_daily)) {
+                ha_client_trace_recordf("weather REST forecast present entity=%s source=forecast_daily", entity_id);
+                ha_client_weather_model_update_daily(entity_id, forecast_daily);
+            } else {
                 cJSON *service_forecast = NULL;
                 esp_err_t forecast_err =
                     ha_client_fetch_weather_daily_forecast_http(base_url, host_header, entity_id, &service_forecast);
                 if (forecast_err == ESP_OK && cJSON_IsArray(service_forecast)) {
-                    cJSON_AddItemToObject(attrs, "forecast", service_forecast);
-                } else if (service_forecast != NULL) {
+                    ha_client_trace_recordf("weather REST forecast fetched entity=%s count=%d",
+                        entity_id, cJSON_GetArraySize(service_forecast));
+                    ha_client_weather_model_update_daily(entity_id, service_forecast);
                     cJSON_Delete(service_forecast);
+                } else {
+                    ha_client_trace_recordf("weather REST forecast fetch failed entity=%s err=%s",
+                        entity_id, esp_err_to_name(forecast_err));
+                    if (service_forecast != NULL) {
+                        cJSON_Delete(service_forecast);
+                    }
+                }
+            }
+
+            /* Daily providers may roll Today out of their forecast shortly after
+             * midnight. Fetch hourly data as the authoritative fallback for
+             * Today's remaining temperature range; the normalized model merges
+             * it into a Today row without replacing future daily rows. */
+            int today_key = ha_client_local_date_key();
+            bool model_has_today = false;
+            ha_weather_snapshot_t weather_snapshot = {0};
+            if (today_key != 0 && ha_weather_model_get_snapshot(entity_id, &weather_snapshot)) {
+                for (size_t i = 0; i < weather_snapshot.day_count; i++) {
+                    if (weather_snapshot.days[i].valid &&
+                        weather_snapshot.days[i].date_key == today_key) {
+                        model_has_today = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!model_has_today) {
+                cJSON *hourly_forecast = NULL;
+                esp_err_t hourly_err =
+                    ha_client_fetch_weather_hourly_forecast_http(
+                        base_url, host_header, entity_id, &hourly_forecast);
+                if (hourly_err == ESP_OK && cJSON_IsArray(hourly_forecast)) {
+                    ha_client_trace_recordf("weather REST hourly fetched entity=%s count=%d",
+                        entity_id, cJSON_GetArraySize(hourly_forecast));
+                    ha_client_weather_model_update_hourly(entity_id, hourly_forecast);
+                    cJSON_Delete(hourly_forecast);
+                } else {
+                    ha_client_trace_recordf("weather REST hourly fetch failed entity=%s err=%s",
+                        entity_id, esp_err_to_name(hourly_err));
+                    if (hourly_forecast != NULL) {
+                        cJSON_Delete(hourly_forecast);
+                    }
                 }
             }
         }
@@ -4326,7 +4754,15 @@ static esp_err_t ha_client_send_auth(void)
     }
     cJSON_AddStringToObject(root, "type", "auth");
     cJSON_AddStringToObject(root, "access_token", s_client.access_token);
-    esp_err_t err = ha_client_send_json(root);
+    char *payload = cJSON_PrintUnformatted(root);
+    esp_err_t err = ESP_ERR_NO_MEM;
+    if (payload != NULL) {
+        /* Authentication is the first application TX and can contend with the
+         * websocket client's startup/RX lock.  Give this handshake write a
+         * longer lock/write window than normal runtime messages. */
+        err = ha_ws_send_text_wait(payload, 2000);
+        cJSON_free(payload);
+    }
     if (err != ESP_OK && err != ESP_ERR_INVALID_STATE) {
         ESP_LOGW(TAG_HA_CLIENT, "Failed to send auth");
     }
@@ -4766,9 +5202,10 @@ static esp_err_t ha_client_send_light_discovery_request(ha_light_discovery_phase
     return err;
 }
 
-static esp_err_t ha_client_send_weather_daily_forecast_ws(const char *entity_id, uint32_t *out_req_id)
+static esp_err_t ha_client_send_weather_forecast_ws(
+    const char *entity_id, const char *forecast_type, uint32_t *out_req_id)
 {
-    if (entity_id == NULL || entity_id[0] == '\0') {
+    if (entity_id == NULL || entity_id[0] == '\0' || forecast_type == NULL || forecast_type[0] == '\0') {
         return ESP_ERR_INVALID_ARG;
     }
 
@@ -4777,33 +5214,31 @@ static esp_err_t ha_client_send_weather_daily_forecast_ws(const char *entity_id,
         return ESP_ERR_NO_MEM;
     }
 
-    cJSON *service_data = cJSON_CreateObject();
-    cJSON *target = cJSON_CreateObject();
-    if (service_data == NULL || target == NULL) {
-        cJSON_Delete(service_data);
-        cJSON_Delete(target);
-        cJSON_Delete(root);
-        return ESP_ERR_NO_MEM;
-    }
-
     uint32_t req_id = ha_client_next_message_id();
     cJSON_AddNumberToObject(root, "id", (double)req_id);
-    cJSON_AddStringToObject(root, "type", "call_service");
-    cJSON_AddStringToObject(root, "domain", "weather");
-    cJSON_AddStringToObject(root, "service", "get_forecasts");
-    cJSON_AddBoolToObject(root, "return_response", true);
-    cJSON_AddStringToObject(service_data, "type", "daily");
-    cJSON_AddStringToObject(target, "entity_id", entity_id);
-    cJSON_AddItemToObject(root, "service_data", service_data);
-    cJSON_AddItemToObject(root, "target", target);
+    /* Use HA's native forecast subscription request, matching modern
+     * Lovelace weather cards.  Besides avoiding a heavyweight call_service
+     * roundtrip, this returns the provider's forecast array directly and
+     * preserves today's entry when HA exposes it. */
+    cJSON_AddStringToObject(root, "type", "weather/subscribe_forecast");
+    cJSON_AddStringToObject(root, "forecast_type", forecast_type);
+    cJSON_AddStringToObject(root, "entity_id", entity_id);
 
-    ESP_LOGI(TAG_HA_CLIENT, "Requesting WS weather forecast for %s", entity_id);
+    ESP_LOGI(TAG_HA_CLIENT, "Subscribing to WS %s weather forecast for %s", forecast_type, entity_id);
+    ha_client_trace_recordf("weather subscribe send type=%s entity=%s id=%" PRIu32,
+        forecast_type, entity_id, req_id);
     esp_err_t err = ha_client_send_json(root);
     if (err != ESP_OK) {
         ESP_LOGW(TAG_HA_CLIENT, "Failed to request weather forecast via WS for '%s': %s",
             entity_id, esp_err_to_name(err));
-    } else if (out_req_id != NULL) {
-        *out_req_id = req_id;
+        ha_client_trace_recordf("weather subscribe send failed type=%s entity=%s err=%s",
+            forecast_type, entity_id, esp_err_to_name(err));
+    } else {
+        ha_client_trace_recordf("weather subscribe sent type=%s entity=%s id=%" PRIu32,
+            forecast_type, entity_id, req_id);
+        if (out_req_id != NULL) {
+            *out_req_id = req_id;
+        }
     }
     cJSON_Delete(root);
     return err;
@@ -5044,6 +5479,7 @@ static bool ha_client_import_state_object(cJSON *state_obj)
     if (cJSON_IsObject(attributes)) {
         bool serialized = false;
         if (ha_client_entity_is_weather(model_state.entity_id)) {
+            ha_client_weather_model_update_current(model_state.entity_id, model_state.state, attributes);
             serialized = ha_client_serialize_weather_attrs_compact(
                 attributes, model_state.attributes_json, sizeof(model_state.attributes_json));
             bool weather_has_forecast = serialized && ha_client_weather_attrs_has_forecast_json(model_state.attributes_json);
@@ -5544,14 +5980,33 @@ static void ha_client_handle_result_message(cJSON *root)
     xSemaphoreTake(s_client.mutex, portMAX_DELAY);
     is_get_states = (msg_id == s_client.get_states_req_id);
     is_entities_sub = s_client.sub_state_via_entities && ha_client_entities_sub_req_known_locked(msg_id);
+    if (s_client.weather_hourly_req_inflight && msg_id == s_client.weather_hourly_ws_req_id) {
+        ha_client_ws_send_gate_mark_heavy_done_locked(ha_client_now_ms());
+        s_client.weather_hourly_req_inflight = false;
+        ESP_LOGI(TAG_HA_CLIENT, "WS hourly weather subscribe ACK id=%" PRIu32 " success=%d",
+            msg_id, cJSON_IsTrue(success_item) ? 1 : 0);
+        ha_client_trace_recordf("weather hourly ACK id=%" PRIu32 " success=%d",
+            msg_id, cJSON_IsTrue(success_item) ? 1 : 0);
+        if (cJSON_IsBool(success_item) && !cJSON_IsTrue(success_item)) {
+            s_client.weather_hourly_ws_req_id = 0;
+            s_client.weather_hourly_ws_req_entity_id[0] = '\0';
+        }
+    }
     if (s_client.weather_ws_req_inflight && msg_id == s_client.weather_ws_req_id) {
         is_weather_ws_req = true;
         safe_copy_cstr(weather_entity_id, sizeof(weather_entity_id), s_client.weather_ws_req_entity_id);
-        /* Heavy response fully received: arm cooldown before clearing flag. */
+        ha_client_trace_recordf("weather daily ACK id=%" PRIu32 " success=%d entity=%s",
+            msg_id, cJSON_IsTrue(success_item) ? 1 : 0, weather_entity_id);
+        /* weather/subscribe_forecast returns a small result ACK first, then
+         * delivers forecast data as event messages using this same id.
+         * Release the HEAVY send gate on the ACK, but retain the subscription
+         * identity so the later forecast event can be imported. */
         ha_client_ws_send_gate_mark_heavy_done_locked(ha_client_now_ms());
         s_client.weather_ws_req_inflight = false;
-        s_client.weather_ws_req_id = 0;
-        s_client.weather_ws_req_entity_id[0] = '\0';
+        if (cJSON_IsBool(success_item) && !cJSON_IsTrue(success_item)) {
+            s_client.weather_ws_req_id = 0;
+            s_client.weather_ws_req_entity_id[0] = '\0';
+        }
     }
     if (s_client.energy_prefs_req_inflight && msg_id == s_client.energy_prefs_req_id) {
         is_energy_prefs_req = true;
@@ -5625,29 +6080,15 @@ static void ha_client_handle_result_message(cJSON *root)
             cJSON *compact_forecast = ha_client_find_compact_weather_forecast(result_obj, weather_entity_id);
             if (compact_forecast != NULL) {
                 forecast_found = true;
-                ha_state_t state = {0};
-                if (ha_model_get_state(weather_entity_id, &state)) {
-                    if (state.attributes_json[0] == '\0') {
-                        snprintf(state.attributes_json, sizeof(state.attributes_json), "{}");
-                    }
-                    if (ha_client_append_compact_forecast_to_attrs_json(
-                            state.attributes_json, sizeof(state.attributes_json), compact_forecast)) {
-                        state.last_changed_unix_ms = esp_timer_get_time() / 1000;
-                        ha_model_upsert_state(&state);
-                        ha_client_publish_event(EV_HA_STATE_CHANGED, weather_entity_id);
-                        updated = true;
-                    } else {
-                        merge_failed = true;
-                    }
-                } else {
-                    state_missing = true;
-                    cJSON_Delete(compact_forecast);
-                }
+                ha_client_weather_model_update_daily(weather_entity_id, compact_forecast);
+                cJSON_Delete(compact_forecast);
+                updated = true;
             }
         }
 
         if (updated) {
             ESP_LOGI(TAG_HA_CLIENT, "WS weather forecast updated for %s", weather_entity_id);
+            ha_client_trace_recordf("weather daily result parsed entity=%s", weather_entity_id);
         } else if (cJSON_IsBool(success_item) && !cJSON_IsTrue(success_item)) {
             ESP_LOGW(TAG_HA_CLIENT, "WS weather forecast request failed for %s", weather_entity_id);
         } else if (merge_failed) {
@@ -5655,6 +6096,7 @@ static void ha_client_handle_result_message(cJSON *root)
                 weather_entity_id);
         } else if (!forecast_found) {
             ESP_LOGW(TAG_HA_CLIENT, "WS weather forecast response had no usable forecast for %s", weather_entity_id);
+            ha_client_trace_recordf("weather daily ACK/result has no forecast entity=%s", weather_entity_id);
         } else if (state_missing) {
             ESP_LOGD(TAG_HA_CLIENT, "WS weather forecast arrived before state model existed for %s", weather_entity_id);
         } else {
@@ -5820,6 +6262,71 @@ static void ha_client_handle_event_message(cJSON *root)
         return;
     }
 
+    /* Hourly is a separate persistent subscription, started only after the
+     * first daily event has been safely imported. */
+    bool is_weather_hourly_event = false;
+    char weather_hourly_entity_id[APP_MAX_ENTITY_ID_LEN] = {0};
+    xSemaphoreTake(s_client.mutex, portMAX_DELAY);
+    if (msg_id != 0 && msg_id == s_client.weather_hourly_ws_req_id &&
+        s_client.weather_hourly_ws_req_entity_id[0] != '\0') {
+        is_weather_hourly_event = true;
+        safe_copy_cstr(weather_hourly_entity_id, sizeof(weather_hourly_entity_id),
+            s_client.weather_hourly_ws_req_entity_id);
+    }
+    xSemaphoreGive(s_client.mutex);
+    if (is_weather_hourly_event) {
+        ha_client_trace_recordf("weather hourly event entity=%s id=%" PRIu32,
+            weather_hourly_entity_id, msg_id);
+        cJSON *hourly = ha_client_find_compact_weather_forecast(event, weather_hourly_entity_id);
+        if (hourly != NULL) {
+            ha_client_trace_recordf("weather hourly event parsed entity=%s", weather_hourly_entity_id);
+            ha_client_weather_model_update_hourly(weather_hourly_entity_id, hourly);
+            cJSON *hourly_extrema = ha_client_reduce_hourly_forecast_to_extrema(hourly);
+            cJSON_Delete(hourly);
+            hourly = hourly_extrema;
+        }
+        if (hourly != NULL) {
+            cJSON_Delete(hourly);
+        }
+        return;
+    }
+
+    /* Native weather/subscribe_forecast is persistent: forecast data is
+     * delivered as an event using the subscription request id. */
+    bool is_weather_forecast_event = false;
+    char weather_event_entity_id[APP_MAX_ENTITY_ID_LEN] = {0};
+    xSemaphoreTake(s_client.mutex, portMAX_DELAY);
+    if (msg_id != 0 && msg_id == s_client.weather_ws_req_id &&
+        s_client.weather_ws_req_entity_id[0] != '\0') {
+        is_weather_forecast_event = true;
+        safe_copy_cstr(weather_event_entity_id, sizeof(weather_event_entity_id),
+            s_client.weather_ws_req_entity_id);
+    }
+    xSemaphoreGive(s_client.mutex);
+
+    if (is_weather_forecast_event) {
+        ha_client_trace_recordf("weather daily event entity=%s id=%" PRIu32,
+            weather_event_entity_id, msg_id);
+        cJSON *compact_forecast =
+            ha_client_find_compact_weather_forecast(event, weather_event_entity_id);
+        if (compact_forecast != NULL) {
+            ha_client_trace_recordf("weather daily event parsed entity=%s", weather_event_entity_id);
+            ha_client_weather_model_update_daily(weather_event_entity_id, compact_forecast);
+            cJSON_Delete(compact_forecast);
+            xSemaphoreTake(s_client.mutex, portMAX_DELAY);
+            if (s_client.weather_hourly_ws_req_id == 0 &&
+                !s_client.weather_hourly_req_inflight) {
+                s_client.weather_hourly_pending = true;
+            }
+            xSemaphoreGive(s_client.mutex);
+        } else {
+            ESP_LOGW(TAG_HA_CLIENT, "WS weather forecast event had no usable forecast for %s",
+                weather_event_entity_id);
+            ha_client_trace_recordf("weather daily event no forecast entity=%s", weather_event_entity_id);
+        }
+        return;
+    }
+
     if (is_entities_event) {
         cJSON *added_map = cJSON_GetObjectItemCaseSensitive(event, "a");
         cJSON *changed_map = cJSON_GetObjectItemCaseSensitive(event, "c");
@@ -5844,9 +6351,7 @@ static void ha_client_handle_event_message(cJSON *root)
             s_client.get_states_req_id = 0;
             s_client.initial_layout_sync_done = true;
             s_client.initial_layout_sync_imported = seen_count;
-            if (!s_client.rest_enabled && s_client.layout_needs_weather_forecast) {
-                queue_weather_bootstrap = true;
-            }
+            queue_weather_bootstrap = true;
             /* Clean sync completion -> no missing entities to report. */
             s_client.missing_entities_total = 0;
             s_client.missing_entities_count = 0;
@@ -5856,6 +6361,7 @@ static void ha_client_handle_event_message(cJSON *root)
         xSemaphoreGive(s_client.mutex);
 
         if (queue_weather_bootstrap) {
+            ha_client_trace_record("weather bootstrap scan after WS entities sync");
             ha_client_queue_weather_priority_sync_from_layout(now_ms);
         }
         if (mark_initial_done) {
@@ -5927,11 +6433,13 @@ static void ha_client_handle_text_message(const char *data, int len)
 
     cJSON *root = cJSON_ParseWithLength(data, (size_t)len);
     if (root == NULL) {
+        ha_client_trace_recordf("rx_parse_failed len=%d", len);
         return;
     }
 
     cJSON *type = cJSON_GetObjectItemCaseSensitive(root, "type");
     if (!cJSON_IsString(type) || type->valuestring == NULL) {
+        ha_client_trace_recordf("rx_missing_type len=%d", len);
         cJSON_Delete(root);
         return;
     }
@@ -5944,9 +6452,12 @@ static void ha_client_handle_text_message(const char *data, int len)
     ESP_LOGD(TAG_HA_CLIENT, "HA message type=%s", type->valuestring);
 
     if (strcmp(type->valuestring, "auth_required") == 0) {
+        ha_client_trace_recordf("auth_required rx len=%d ws_connected=%d ws_running=%d",
+            len, ha_ws_is_connected() ? 1 : 0, ha_ws_is_running() ? 1 : 0);
         ESP_LOGI(TAG_HA_CLIENT, "HA auth requested, sending token");
         xSemaphoreTake(s_client.mutex, portMAX_DELAY);
         s_client.pending_send_auth = true;
+        s_client.auth_handshake_started_unix_ms = now_ms;
         s_client.next_auth_retry_unix_ms = now_ms;
         xSemaphoreGive(s_client.mutex);
     } else if (strcmp(type->valuestring, "ping") == 0) {
@@ -5987,6 +6498,7 @@ static void ha_client_handle_text_message(const char *data, int len)
         layout_needs_weather_forecast = s_client.layout_needs_weather_forecast;
         s_client.pending_get_states = false;
         s_client.pending_send_auth = false;
+        s_client.auth_handshake_started_unix_ms = 0;
         s_client.next_auth_retry_unix_ms = 0;
         s_client.ping_inflight = false;
         s_client.ping_inflight_id = 0;
@@ -5998,6 +6510,10 @@ static void ha_client_handle_text_message(const char *data, int len)
         s_client.weather_ws_req_inflight = false;
         s_client.weather_ws_req_id = 0;
         s_client.weather_ws_req_entity_id[0] = '\0';
+        s_client.weather_hourly_pending = false;
+        s_client.weather_hourly_req_inflight = false;
+        s_client.weather_hourly_ws_req_id = 0;
+        s_client.weather_hourly_ws_req_entity_id[0] = '\0';
         s_client.layout_needs_ha_energy = layout_needs_ha_energy_now;
         s_client.pending_energy_prefs = layout_needs_ha_energy_now;
         s_client.pending_energy_stats = false;
@@ -6122,6 +6638,10 @@ static void ha_client_handle_text_message(const char *data, int len)
         if (queue_weather_bootstrap) {
             ha_client_queue_weather_priority_sync_from_layout(now_ms);
         }
+        ESP_LOGI(TAG_HA_CLIENT,
+            "HA-CONNECT stage=auth_ok attempt=%" PRIu32 " elapsed=%" PRId64 "ms",
+            s_ha_ws_attempt_no, ha_client_trace_elapsed_ms());
+        ha_client_trace_recordf("auth_ok attempt=%" PRIu32, s_ha_ws_attempt_no);
         ha_client_log_mem_snapshot("auth_ok", false);
         if (!APP_HA_SUBSCRIBE_STATE_CHANGED) {
             ESP_LOGW(TAG_HA_CLIENT, "Skipping state_changed subscription (APP_HA_SUBSCRIBE_STATE_CHANGED=0)");
@@ -6182,7 +6702,11 @@ static void ha_client_ws_event_cb(const ha_ws_event_t *event, void *user_ctx)
     switch (event->type) {
     case HA_WS_EVENT_CONNECTED:
         UBaseType_t ws_hwm_connected = uxTaskGetStackHighWaterMark(NULL);
-        ESP_LOGI(TAG_HA_CLIENT, "WebSocket connected (ws_task_hwm=%u words)", (unsigned)ws_hwm_connected);
+        ESP_LOGI(TAG_HA_CLIENT,
+            "HA-CONNECT stage=ws_connected attempt=%" PRIu32 " elapsed=%" PRId64 "ms ws_task_hwm=%u",
+            s_ha_ws_attempt_no, ha_client_trace_elapsed_ms(), (unsigned)ws_hwm_connected);
+        ha_client_trace_recordf("ws_connected attempt=%" PRIu32 " hwm=%u",
+            s_ha_ws_attempt_no, (unsigned)ws_hwm_connected);
         ha_client_log_mem_snapshot("ws_connected", false);
         ha_client_reset_ws_rx_assembly();
         ha_client_flush_ws_rx_queue();
@@ -6210,6 +6734,10 @@ static void ha_client_ws_event_cb(const ha_ws_event_t *event, void *user_ctx)
         s_client.weather_ws_req_inflight = false;
         s_client.weather_ws_req_id = 0;
         s_client.weather_ws_req_entity_id[0] = '\0';
+        s_client.weather_hourly_pending = false;
+        s_client.weather_hourly_req_inflight = false;
+        s_client.weather_hourly_ws_req_id = 0;
+        s_client.weather_hourly_ws_req_entity_id[0] = '\0';
         s_client.energy_prefs_req_inflight = false;
         s_client.energy_stats_req_inflight = false;
         s_client.energy_prefs_req_id = 0;
@@ -6225,7 +6753,11 @@ static void ha_client_ws_event_cb(const ha_ws_event_t *event, void *user_ctx)
         break;
     case HA_WS_EVENT_DISCONNECTED:
         UBaseType_t ws_hwm_disconnected = uxTaskGetStackHighWaterMark(NULL);
-        ESP_LOGW(TAG_HA_CLIENT, "WebSocket disconnected (ws_task_hwm=%u words)", (unsigned)ws_hwm_disconnected);
+        ESP_LOGW(TAG_HA_CLIENT,
+            "HA-CONNECT stage=ws_disconnected attempt=%" PRIu32 " elapsed=%" PRId64 "ms ws_task_hwm=%u",
+            s_ha_ws_attempt_no, ha_client_trace_elapsed_ms(), (unsigned)ws_hwm_disconnected);
+        ha_client_trace_recordf("ws_disconnected attempt=%" PRIu32 " hwm=%u",
+            s_ha_ws_attempt_no, (unsigned)ws_hwm_disconnected);
         ha_client_log_mem_snapshot("ws_disconnected", false);
         ha_client_reset_ws_rx_assembly();
         ha_client_flush_ws_rx_queue();
@@ -6269,6 +6801,10 @@ static void ha_client_ws_event_cb(const ha_ws_event_t *event, void *user_ctx)
         s_client.weather_ws_req_inflight = false;
         s_client.weather_ws_req_id = 0;
         s_client.weather_ws_req_entity_id[0] = '\0';
+        s_client.weather_hourly_pending = false;
+        s_client.weather_hourly_req_inflight = false;
+        s_client.weather_hourly_ws_req_id = 0;
+        s_client.weather_hourly_ws_req_entity_id[0] = '\0';
         s_client.energy_prefs_req_inflight = false;
         s_client.energy_stats_req_inflight = false;
         s_client.energy_prefs_req_id = 0;
@@ -6310,11 +6846,18 @@ static void ha_client_ws_event_cb(const ha_ws_event_t *event, void *user_ctx)
     case HA_WS_EVENT_ERROR:
         UBaseType_t ws_hwm_error = uxTaskGetStackHighWaterMark(NULL);
         ESP_LOGE(TAG_HA_CLIENT,
-            "WebSocket error event (tls_esp=%s tls_stack=%d sock_errno=%d ws_task_hwm=%u words)",
+            "HA-CONNECT stage=ws_error attempt=%" PRIu32 " elapsed=%" PRId64
+            "ms type=%d handshake=%d tls_esp=%s tls_stack=%d sock_errno=%d ws_task_hwm=%u",
+            s_ha_ws_attempt_no, ha_client_trace_elapsed_ms(),
+            event->error_type,
+            event->ws_handshake_status_code,
             esp_err_to_name(event->tls_esp_err),
             event->tls_stack_err,
             event->sock_errno,
             (unsigned)ws_hwm_error);
+        ha_client_trace_recordf("ws_error attempt=%" PRIu32 " type=%d hs=%d tls=%s stack=%d sock=%d",
+            s_ha_ws_attempt_no, event->error_type, event->ws_handshake_status_code,
+            esp_err_to_name(event->tls_esp_err), event->tls_stack_err, event->sock_errno);
         int64_t ws_error_now_ms = ha_client_now_ms();
         bool tls_bad_input = ha_client_is_tls_bad_input_data(event->tls_stack_err);
         xSemaphoreTake(s_client.mutex, portMAX_DELAY);
@@ -6355,6 +6898,8 @@ static void ha_client_task(void *arg)
     int64_t wifi_down_since_ms = 0;
     int64_t last_wifi_force_recover_ms = 0;
     bool wifi_seen_connected_once = false;
+    bool last_native_ws_connected = false;
+    bool native_ws_state_initialized = false;
     while (true) {
         if (s_client.ws_rx_queue != NULL) {
             ha_ws_rx_msg_t msg = {0};
@@ -6372,6 +6917,13 @@ static void ha_client_task(void *arg)
         }
 
         bool connected = ha_ws_is_connected();
+        if (!native_ws_state_initialized || connected != last_native_ws_connected) {
+            ha_client_trace_recordf("ws_native_state %d>%d running=%d",
+                native_ws_state_initialized && last_native_ws_connected ? 1 : 0,
+                connected ? 1 : 0, ha_ws_is_running() ? 1 : 0);
+            last_native_ws_connected = connected;
+            native_ws_state_initialized = true;
+        }
         bool authenticated = false;
         bool published_disconnect = false;
         bool pending_send_auth = false;
@@ -6396,6 +6948,7 @@ static void ha_client_task(void *arg)
         int64_t ping_sent_unix_ms = 0;
         int64_t last_rx_unix_ms = 0;
         int64_t ws_last_connected_unix_ms = 0;
+        int64_t auth_handshake_started_unix_ms = 0;
         int64_t next_auth_retry_unix_ms = 0;
         int64_t next_initial_layout_sync_unix_ms = 0;
         int64_t next_periodic_layout_sync_unix_ms = 0;
@@ -6467,6 +7020,7 @@ static void ha_client_task(void *arg)
         ping_sent_unix_ms = s_client.ping_sent_unix_ms;
         last_rx_unix_ms = s_client.last_rx_unix_ms;
         ws_last_connected_unix_ms = s_client.ws_last_connected_unix_ms;
+        auth_handshake_started_unix_ms = s_client.auth_handshake_started_unix_ms;
         next_auth_retry_unix_ms = s_client.next_auth_retry_unix_ms;
         next_initial_layout_sync_unix_ms = s_client.next_initial_layout_sync_unix_ms;
         next_periodic_layout_sync_unix_ms = s_client.next_periodic_layout_sync_unix_ms;
@@ -6512,6 +7066,36 @@ static void ha_client_task(void *arg)
             }
         }
         xSemaphoreGive(s_client.mutex);
+
+        bool send_weather_hourly = false;
+        char weather_hourly_entity_id[APP_MAX_ENTITY_ID_LEN] = {0};
+        xSemaphoreTake(s_client.mutex, portMAX_DELAY);
+        if (connected && authenticated && wifi_up && s_client.weather_hourly_pending &&
+            !s_client.weather_hourly_req_inflight && s_client.weather_hourly_ws_req_id == 0 &&
+            ha_client_ws_send_gate_ok_locked(HA_WS_SEND_HEAVY, now_ms)) {
+            s_client.weather_hourly_pending = false;
+            safe_copy_cstr(weather_hourly_entity_id, sizeof(weather_hourly_entity_id),
+                s_client.weather_ws_req_entity_id);
+            send_weather_hourly = weather_hourly_entity_id[0] != '\0';
+        }
+        xSemaphoreGive(s_client.mutex);
+        if (send_weather_hourly) {
+            uint32_t hourly_req_id = 0;
+            esp_err_t hourly_err =
+                ha_client_send_weather_forecast_ws(weather_hourly_entity_id, "hourly", &hourly_req_id);
+            xSemaphoreTake(s_client.mutex, portMAX_DELAY);
+            if (hourly_err == ESP_OK) {
+                s_client.weather_hourly_req_inflight = true;
+                ESP_LOGI(TAG_HA_CLIENT, "WS hourly weather subscribe sent id=%" PRIu32 " entity=%s",
+                    hourly_req_id, weather_hourly_entity_id);
+                s_client.weather_hourly_ws_req_id = hourly_req_id;
+                safe_copy_cstr(s_client.weather_hourly_ws_req_entity_id,
+                    sizeof(s_client.weather_hourly_ws_req_entity_id), weather_hourly_entity_id);
+            } else {
+                s_client.weather_hourly_pending = true;
+            }
+            xSemaphoreGive(s_client.mutex);
+        }
 
         ws_priority_boost_active = (ws_priority_boost_until_unix_ms > now_ms);
 
@@ -6743,16 +7327,38 @@ static void ha_client_task(void *arg)
         ws_restart_wait_ms += (int64_t)(esp_random() % (uint32_t)(HA_WS_RESTART_JITTER_MS + 1));
 
         if (!connected && wifi_up && (now_ms - last_ws_restart_ms) >= ws_restart_wait_ms) {
+            /* Protect an authentication exchange that has actually started.  HA can
+             * deliver auth_required right on the generic restart boundary; recycling
+             * the transport at that instant makes the auth send fail. */
+            bool auth_handshake_active =
+                connected &&
+                auth_handshake_started_unix_ms > 0 &&
+                (now_ms - auth_handshake_started_unix_ms) < 15000;
+            if (auth_handshake_active) {
+                vTaskDelay(HA_CLIENT_TASK_DELAY_TICKS);
+                continue;
+            }
             if (ws_running && (now_ms - last_ws_restart_ms) < HA_WS_CONNECT_GRACE_MS) {
                 vTaskDelay(HA_CLIENT_TASK_DELAY_TICKS);
                 continue;
             }
+            ha_client_trace_recordf(
+                "ws_restart decision connected=%d running=%d age=%" PRId64 "ms auth_active=%d",
+                connected ? 1 : 0, ws_running ? 1 : 0,
+                now_ms - last_ws_restart_ms, auth_handshake_active ? 1 : 0);
             ha_ws_stop();
             ha_ws_config_t ws_cfg = {
                 .uri = s_client.ws_url,
                 .event_cb = ha_client_ws_event_cb,
                 .user_ctx = NULL,
             };
+            s_ha_ws_attempt_no++;
+            ESP_LOGI(TAG_HA_CLIENT,
+                "HA-CONNECT stage=ws_start attempt=%" PRIu32 " elapsed=%" PRId64
+                "ms error_streak=%" PRIu32 " backoff=%" PRId64 "ms",
+                s_ha_ws_attempt_no, ha_client_trace_elapsed_ms(), ws_error_streak, ws_restart_wait_ms);
+            ha_client_trace_recordf("ws_start attempt=%" PRIu32 " streak=%" PRIu32 " backoff=%" PRId64 "ms",
+                s_ha_ws_attempt_no, ws_error_streak, ws_restart_wait_ms);
             ha_client_log_mem_snapshot("ws_restart_attempt", false);
             esp_err_t ws_err = ha_ws_start(&ws_cfg);
             if (ws_err != ESP_OK) {
@@ -6778,15 +7384,28 @@ static void ha_client_task(void *arg)
                 xSemaphoreTake(s_client.mutex, portMAX_DELAY);
                 s_client.next_auth_retry_unix_ms = now_ms + HA_AUTH_RETRY_INTERVAL_MS;
                 xSemaphoreGive(s_client.mutex);
-            } else if (ha_client_send_auth() == ESP_OK) {
-                xSemaphoreTake(s_client.mutex, portMAX_DELAY);
-                s_client.pending_send_auth = false;
-                s_client.next_auth_retry_unix_ms = 0;
-                xSemaphoreGive(s_client.mutex);
             } else {
-                xSemaphoreTake(s_client.mutex, portMAX_DELAY);
-                s_client.next_auth_retry_unix_ms = now_ms + HA_AUTH_RETRY_INTERVAL_MS;
-                xSemaphoreGive(s_client.mutex);
+                ha_client_trace_recordf("auth_send begin ws_connected=%d ws_running=%d age=%" PRId64 "ms",
+                    ha_ws_is_connected() ? 1 : 0, ha_ws_is_running() ? 1 : 0,
+                    ws_last_connected_unix_ms > 0 ? (now_ms - ws_last_connected_unix_ms) : -1);
+                esp_err_t auth_err = ha_client_send_auth();
+                ha_ws_send_diag_t tx_diag = {0};
+                (void)ha_ws_get_last_send_diag(&tx_diag);
+                ha_client_trace_recordf("auth_send result=%s raw=%d native=%d>%d heap=%" PRIu32 " largest=%" PRIu32,
+                    esp_err_to_name(auth_err), tx_diag.written,
+                    tx_diag.client_connected_before ? 1 : 0,
+                    tx_diag.client_connected_after ? 1 : 0,
+                    tx_diag.free_heap, tx_diag.largest_free_block);
+                if (auth_err == ESP_OK) {
+                    xSemaphoreTake(s_client.mutex, portMAX_DELAY);
+                    s_client.pending_send_auth = false;
+                    s_client.next_auth_retry_unix_ms = 0;
+                    xSemaphoreGive(s_client.mutex);
+                } else {
+                    xSemaphoreTake(s_client.mutex, portMAX_DELAY);
+                    s_client.next_auth_retry_unix_ms = now_ms + HA_AUTH_RETRY_INTERVAL_MS;
+                    xSemaphoreGive(s_client.mutex);
+                }
             }
         }
         if (connected && pending_send_pong) {
@@ -7218,7 +7837,7 @@ static void ha_client_task(void *arg)
                     if (has_work) {
                         esp_err_t sync_err =
                             ha_client_fetch_state_http(entity_id, layout_needs_weather_forecast, false);
-                        if (sync_err == ESP_OK) {
+                        if (sync_err == ESP_OK && !ha_client_entity_is_weather(entity_id)) {
                             ha_client_publish_event(EV_HA_STATE_CHANGED, entity_id);
                         }
 
@@ -7287,7 +7906,7 @@ static void ha_client_task(void *arg)
                             xSemaphoreGive(s_client.mutex);
                         } else {
                             uint32_t ws_req_id = 0;
-                            esp_err_t ws_req_err = ha_client_send_weather_daily_forecast_ws(entity_id, &ws_req_id);
+                            esp_err_t ws_req_err = ha_client_send_weather_forecast_ws(entity_id, "daily", &ws_req_id);
                             xSemaphoreTake(s_client.mutex, portMAX_DELAY);
                             if (ws_req_err == ESP_OK) {
                                 s_client.weather_ws_req_inflight = true;
@@ -7349,12 +7968,20 @@ static void ha_client_task(void *arg)
                 xSemaphoreGive(s_client.mutex);
 
                 if (done) {
-                    ESP_LOGI(TAG_HA_CLIENT, "Initial layout state sync: imported %u/%u entities", (unsigned)imported,
-                        (unsigned)entity_count);
+                    ESP_LOGI(TAG_HA_CLIENT,
+                        "HA-CONNECT stage=initial_sync_done attempt=%" PRIu32 " elapsed=%" PRId64
+                        "ms imported=%u/%u",
+                        s_ha_ws_attempt_no, ha_client_trace_elapsed_ms(),
+                        (unsigned)imported, (unsigned)entity_count);
+                    ha_client_trace_recordf("initial_sync_done imported=%u/%u",
+                        (unsigned)imported, (unsigned)entity_count);
                     ha_client_publish_event(EV_HA_CONNECTED, NULL);
-                    if (!rest_enabled && layout_needs_weather_forecast) {
-                        ha_client_queue_weather_priority_sync_from_layout(now_ms);
-                    }
+                    /* Weather work is transport-agnostic here: always derive it
+                     * from the live layout after sync. The priority-sync path
+                     * decides whether to use REST or WS. */
+                    ha_client_trace_recordf("weather bootstrap scan after initial sync rest=%d",
+                        rest_enabled ? 1 : 0);
+                    ha_client_queue_weather_priority_sync_from_layout(now_ms);
                 }
             }
         }
@@ -7419,6 +8046,11 @@ esp_err_t ha_client_start(const ha_client_config_t *cfg)
     }
     if (s_client.started) {
         return ESP_OK;
+    }
+
+    esp_err_t weather_model_err = ha_weather_model_init();
+    if (weather_model_err != ESP_OK) {
+        return weather_model_err;
     }
 
     /* Route all cJSON allocations to PSRAM to keep internal RAM free for TLS. */
@@ -7598,6 +8230,12 @@ esp_err_t ha_client_start(const ha_client_config_t *cfg)
         .event_cb = ha_client_ws_event_cb,
         .user_ctx = NULL,
     };
+    s_ha_trace_start_ms = ha_client_now_ms();
+    s_ha_ws_attempt_no = 1;
+    ESP_LOGI(TAG_HA_CLIENT, "HA-CONNECT stage=client_start elapsed=0ms");
+    ha_client_trace_record("client_start");
+    ESP_LOGI(TAG_HA_CLIENT, "HA-CONNECT stage=ws_start attempt=1 elapsed=0ms error_streak=0 backoff=0ms");
+    ha_client_trace_record("ws_start attempt=1 streak=0 backoff=0ms");
     ha_client_log_mem_snapshot("ws_start_initial", false);
     esp_err_t err = ha_ws_start(&ws_cfg);
     if (err != ESP_OK) {
@@ -7977,6 +8615,15 @@ void ha_client_get_diagnostics(ha_client_diagnostics_t *out)
     out->listed = listed;
     for (uint16_t i = 0; i < listed; i++) {
         safe_copy_cstr(out->names[i], APP_MAX_ENTITY_ID_LEN, s_client.missing_entities[i]);
+    }
+    out->connection_log_count = s_client.connection_log_count;
+    uint16_t start = (uint16_t)((s_client.connection_log_head + HA_DIAGNOSTICS_CONNECTION_LOG_CAP -
+        s_client.connection_log_count) % HA_DIAGNOSTICS_CONNECTION_LOG_CAP);
+    for (uint16_t i = 0; i < s_client.connection_log_count; i++) {
+        uint16_t src = (uint16_t)((start + i) % HA_DIAGNOSTICS_CONNECTION_LOG_CAP);
+        out->connection_log[i].elapsed_ms = s_client.connection_log[src].elapsed_ms;
+        safe_copy_cstr(out->connection_log[i].message,
+            sizeof(out->connection_log[i].message), s_client.connection_log[src].message);
     }
     xSemaphoreGive(s_client.mutex);
 }

@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: LicenseRef-FNCL-1.1
  * Copyright (c) 2026 Cpt_Kirk
+ * Copyright (c) 2026 khennessy74-a11y
  */
 #pragma once
 
@@ -17,17 +18,35 @@ typedef struct {
     char title[APP_MAX_NAME_LEN];
     char entity_id[APP_MAX_ENTITY_ID_LEN];
     char secondary_entity_id[APP_MAX_ENTITY_ID_LEN];
+
+    char icon[APP_MAX_ICON_LEN];
+    bool show_icon;
+    bool show_state;
+    bool show_title;
+    int sensor_decimal_places;
+
     char slider_direction[APP_MAX_UI_OPTION_LEN];
     char slider_accent_color[APP_MAX_COLOR_STR_LEN];
     char button_accent_color[APP_MAX_COLOR_STR_LEN];
+    char state_icon_off_color[APP_MAX_COLOR_STR_LEN];
+    char state_icon_on_color[APP_MAX_COLOR_STR_LEN];
     char button_mode[APP_MAX_UI_OPTION_LEN];
+    char button_appearance[APP_MAX_UI_OPTION_LEN];
+
     char graph_line_color[APP_MAX_COLOR_STR_LEN];
     int graph_point_count;
     int graph_time_window_min;
     char graph_display_mode[APP_MAX_UI_OPTION_LEN];
     int graph_bar_bucket_min;
+
     char style_variant[APP_MAX_UI_OPTION_LEN];
     char arc_opening[APP_MAX_UI_OPTION_LEN];
+
+    bool timer_show_start;
+    bool timer_show_pause;
+    bool timer_show_cancel;
+    bool timer_show_finish;
+
     int x;
     int y;
     int w;
@@ -41,17 +60,35 @@ typedef struct {
     char title[APP_MAX_NAME_LEN];
     char entity_id[APP_MAX_ENTITY_ID_LEN];
     char secondary_entity_id[APP_MAX_ENTITY_ID_LEN];
+
+    char icon[APP_MAX_ICON_LEN];
+    bool show_icon;
+    bool show_state;
+    bool show_title;
+    int sensor_decimal_places;
+
     char slider_direction[APP_MAX_UI_OPTION_LEN];
     char slider_accent_color[APP_MAX_COLOR_STR_LEN];
     char button_accent_color[APP_MAX_COLOR_STR_LEN];
+    char state_icon_off_color[APP_MAX_COLOR_STR_LEN];
+    char state_icon_on_color[APP_MAX_COLOR_STR_LEN];
     char button_mode[APP_MAX_UI_OPTION_LEN];
+    char button_appearance[APP_MAX_UI_OPTION_LEN];
+
     char graph_line_color[APP_MAX_COLOR_STR_LEN];
     int graph_point_count;
     int graph_time_window_min;
     char graph_display_mode[APP_MAX_UI_OPTION_LEN];
     int graph_bar_bucket_min;
+
     char style_variant[APP_MAX_UI_OPTION_LEN];
     char arc_opening[APP_MAX_UI_OPTION_LEN];
+
+    bool timer_show_start;
+    bool timer_show_pause;
+    bool timer_show_cancel;
+    bool timer_show_finish;
+
     bool visible;
     void *ctx;
     lv_obj_t *obj;

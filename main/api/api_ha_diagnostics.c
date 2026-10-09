@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: LicenseRef-FNCL-1.1
  * Copyright (c) 2026 Cpt_Kirk
+ * Copyright (c) 2026 khennessy74-a11y
  */
 #include "api/api_routes.h"
 
@@ -35,6 +36,20 @@ esp_err_t api_ha_diagnostics_get_handler(httpd_req_t *req)
         cJSON_AddItemToArray(missing, cJSON_CreateString(diag.names[i]));
     }
     cJSON_AddItemToObject(root, "missing_entities", missing);
+
+    cJSON *connection_log = cJSON_CreateArray();
+    if (connection_log == NULL) {
+        cJSON_Delete(root);
+        return httpd_resp_send_500(req);
+    }
+    for (uint16_t i = 0; i < diag.connection_log_count; i++) {
+        cJSON *entry = cJSON_CreateObject();
+        if (entry == NULL) continue;
+        cJSON_AddNumberToObject(entry, "elapsed_ms", (double)diag.connection_log[i].elapsed_ms);
+        cJSON_AddStringToObject(entry, "message", diag.connection_log[i].message);
+        cJSON_AddItemToArray(connection_log, entry);
+    }
+    cJSON_AddItemToObject(root, "connection_log", connection_log);
 
     char *payload = cJSON_PrintUnformatted(root);
     cJSON_Delete(root);

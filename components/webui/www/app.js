@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: LicenseRef-FNCL-1.1
  * Copyright (c) 2026 Cpt_Kirk
+ * Copyright (c) 2026 khennessy74-a11y
  */
 const GRID = 10;
 // Canvas pixel dimensions default to the 4" panel (720x600 content area).
@@ -11,6 +12,8 @@ let CANVAS_HEIGHT = 600;
 const MIN_WIDGET_SIZE = 60;
 const DEFAULT_SLIDER_DIRECTION = "auto";
 const DEFAULT_BUTTON_MODE = "auto";
+const DEFAULT_BUTTON_APPEARANCE = "switch";
+const BUTTON_APPEARANCES = new Set(["switch", "icon"]);
 const DEFAULT_BUTTON_ACCENT_COLOR = "#6fe8ff";
 const DEFAULT_SLIDER_ACCENT_COLOR = "#6fe8ff";
 const DEFAULT_GRAPH_LINE_COLOR = "#6fe8ff";
@@ -56,8 +59,21 @@ const LIGHT_ENTITY_PICKER_MAX_POLLS = 90;
 const ENTITY_PICKER_SEARCH_DEBOUNCE_MS = 350;
 const SETUP_WIZARD_PENDING_STORAGE_KEY = "betta.setupWizard.pending";
 const SETUP_WIZARD_DISMISSED_STORAGE_KEY = "betta.setupWizard.dismissed";
-const OTA_RELEASE_REPO = "cptkirki/BETTA-HA-PANEL";
+
 const ENTITY_PICKER_CONFIGS = {
+  binary_sensor: {
+    domain: "binary_sensor",
+    titleKey: "entity_picker.title_binary_sensor",
+    blankKey: "entity_picker.blank_binary_sensor",
+    widgetKey: "entity_picker.widget_binary_sensor",
+    itemsKey: "entity_picker.items_binary_sensor",
+    titleFallback: "Choose Binary Sensor",
+    blankFallback: "Blank Binary Sensor Tile",
+    widgetFallback: "Binary Sensor tile",
+    itemsFallback: "binary sensors",
+    minSearch: 2,
+    liveSearch: false,
+  },
   sensor: {
     domain: "sensor",
     titleKey: "entity_picker.title_sensor",
@@ -70,6 +86,130 @@ const ENTITY_PICKER_CONFIGS = {
     itemsFallback: "sensors",
     minSearch: 2,
     liveSearch: false,
+  },
+  lock: {
+    widgetType: "button",
+    domain: "lock",
+    titleFallback: "Choose Lock",
+    blankFallback: "Blank Lock Control",
+    widgetFallback: "Lock control",
+    itemsFallback: "locks",
+  },
+  ha_button: {
+    widgetType: "button",
+    domain: "button",
+    titleFallback: "Choose Home Assistant Button",
+    blankFallback: "Blank Home Assistant Button",
+    widgetFallback: "Home Assistant button",
+    itemsFallback: "buttons",
+  },
+  automation_trigger: {
+    widgetType: "button",
+    buttonMode: "run",
+    domain: "automation",
+    titleFallback: "Choose Automation to Trigger",
+    blankFallback: "Blank Automation Trigger",
+    widgetFallback: "Automation trigger",
+    itemsFallback: "automations",
+  },
+  automation: {
+    widgetType: "button",
+    domain: "automation",
+    titleKey: "entity_picker.title_automation",
+    blankKey: "entity_picker.blank_automation",
+    widgetKey: "entity_picker.widget_automation",
+    itemsKey: "entity_picker.items_automation",
+    titleFallback: "Choose Automation",
+    blankFallback: "Blank Automation Control",
+    widgetFallback: "Automation control",
+    itemsFallback: "automations",
+  },
+  input_boolean: {
+    widgetType: "button",
+    domain: "input_boolean",
+    titleKey: "entity_picker.title_input_boolean",
+    blankKey: "entity_picker.blank_input_boolean",
+    widgetKey: "entity_picker.widget_input_boolean",
+    itemsKey: "entity_picker.items_input_boolean",
+    titleFallback: "Choose Input Boolean",
+    blankFallback: "Blank Input Boolean",
+    widgetFallback: "Input Boolean control",
+    itemsFallback: "input booleans",
+  },
+  alarm_control_panel: {
+    widgetType: "alarm_control_panel",
+    domain: "alarm_control_panel",
+    titleFallback: "Choose Alarm Control Panel",
+    blankFallback: "Blank Alarm Control Panel",
+    widgetFallback: "Alarm Control Panel",
+    itemsFallback: "alarm control panels",
+  },
+  input_number: {
+    widgetType: "input_number",
+    domain: "input_number",
+    domains: ["input_number", "number"],
+    titleFallback: "Choose Input Number",
+    blankFallback: "Blank Input Number",
+    widgetFallback: "Input Number control",
+    itemsFallback: "input numbers",
+  },
+  select: {
+    widgetType: "select",
+    domain: "select",
+    domains: ["select", "input_select"],
+    titleFallback: "Choose Select",
+    blankFallback: "Blank Select",
+    widgetFallback: "Select control",
+    itemsFallback: "select entities",
+  },
+  input_text: {
+    widgetType: "input_text",
+    domain: "input_text",
+    titleFallback: "Choose Input Text",
+    blankFallback: "Blank Input Text",
+    widgetFallback: "Input Text control",
+    itemsFallback: "input text entities",
+  },
+  input_datetime: {
+    widgetType: "input_datetime",
+    domain: "input_datetime",
+    titleFallback: "Choose Input Datetime",
+    blankFallback: "Blank Input Datetime",
+    widgetFallback: "Input Datetime control",
+    itemsFallback: "input datetime entities",
+  },
+  update: {
+    widgetType: "update",
+    domain: "update",
+    titleFallback: "Choose Update",
+    blankFallback: "Blank Update Tile",
+    widgetFallback: "Update tile",
+    itemsFallback: "updates",
+  },
+  fan: {
+    widgetType: "fan_tile",
+    domain: "fan",
+    titleKey: "entity_picker.title_fan",
+    blankKey: "entity_picker.blank_fan",
+    widgetKey: "entity_picker.widget_fan",
+    itemsKey: "entity_picker.items_fan",
+    titleFallback: "Choose Fan",
+    blankFallback: "Blank Fan Control",
+    widgetFallback: "Fan control",
+    itemsFallback: "fans",
+  },
+  cover: {
+    widgetType: "slider",
+    sliderDomain: "cover",
+    domain: "cover",
+    titleKey: "entity_picker.title_cover",
+    blankKey: "entity_picker.blank_cover",
+    widgetKey: "entity_picker.widget_cover",
+    itemsKey: "entity_picker.items_cover",
+    titleFallback: "Choose Cover",
+    blankFallback: "Blank Cover Control",
+    widgetFallback: "Cover control",
+    itemsFallback: "covers",
   },
   light_tile: {
     domain: "light",
@@ -92,6 +232,32 @@ const ENTITY_PICKER_CONFIGS = {
     blankFallback: "Blank Button Tile",
     widgetFallback: "Button tile",
     itemsFallback: "switches",
+  },
+  button_script: {
+    widgetType: "button",
+    buttonMode: "run",
+    domain: "script",
+    titleKey: "entity_picker.title_script",
+    blankKey: "entity_picker.blank_script",
+    widgetKey: "entity_picker.widget_script",
+    itemsKey: "entity_picker.items_script",
+    titleFallback: "Choose Script",
+    blankFallback: "Blank Script Button",
+    widgetFallback: "Script button",
+    itemsFallback: "scripts",
+  },
+  button_scene: {
+    widgetType: "button",
+    buttonMode: "run",
+    domain: "scene",
+    titleKey: "entity_picker.title_scene",
+    blankKey: "entity_picker.blank_scene",
+    widgetKey: "entity_picker.widget_scene",
+    itemsKey: "entity_picker.items_scene",
+    titleFallback: "Choose Scene",
+    blankFallback: "Blank Scene Button",
+    widgetFallback: "Scene button",
+    itemsFallback: "scenes",
   },
   heating_tile: {
     domain: "climate",
@@ -137,6 +303,19 @@ const ENTITY_PICKER_CONFIGS = {
     widgetFallback: "Todo List tile",
     itemsFallback: "todo lists",
   },
+
+  timer: {
+  domain: "timer",
+  titleKey: "entity_picker.title_timer",
+  blankKey: "entity_picker.blank_timer",
+  widgetKey: "entity_picker.widget_timer",
+  itemsKey: "entity_picker.items_timer",
+  titleFallback: "Choose Timer",
+  blankFallback: "Blank Timer Tile",
+  widgetFallback: "Timer tile",
+  itemsFallback: "timers",
+},
+
   media_player: {
     domain: "media_player",
     titleKey: "entity_picker.title_media_player",
@@ -159,6 +338,35 @@ const ENTITY_PICKER_CONFIGS = {
     widgetFallback: "Roborock tile",
     itemsFallback: "vacuum robots",
   },
+  person: {
+    domain: "person",
+    titleFallback: "Choose Person",
+    blankFallback: "Blank Person Tile",
+    widgetFallback: "Person tile",
+    itemsFallback: "people",
+  },
+  device_tracker: {
+    domain: "device_tracker",
+    titleFallback: "Choose Device Tracker",
+    blankFallback: "Blank Device Tracker Tile",
+    widgetFallback: "Device Tracker tile",
+    itemsFallback: "device trackers",
+  },
+  image: {
+    domain: "image",
+    domains: ["image", "camera"],
+    titleFallback: "Choose Image / Camera",
+    blankFallback: "Blank Image Tile",
+    widgetFallback: "Image tile",
+    itemsFallback: "images and cameras",
+  },
+  calendar: {
+    domain: "calendar",
+    titleFallback: "Choose Calendar",
+    blankFallback: "Blank Calendar Tile",
+    widgetFallback: "Calendar tile",
+    itemsFallback: "calendars",
+  },
   graph: {
     domain: "sensor",
     titleKey: "entity_picker.title_sensor",
@@ -180,6 +388,7 @@ const SETTINGS_NAV_ITEMS = [
   { sectionId: "settingsUiSection", headingId: "settingsUiHeading", labelKey: "settings.ui.heading" },
   { sectionId: "settingsThemeSection", headingId: "settingsThemeHeading", labelKey: "settings.theme.heading" },
   { sectionId: "settingsApSection", headingId: "settingsApHeading", labelKey: "settings.ap.heading" },
+  { sectionId: "settingsLogsSection", headingId: "settingsLogsHeading", labelKey: "settings.logs.heading" },
   { sectionId: "settingsOtaSection", headingId: "settingsOtaHeading", labelKey: "settings.ota.heading" },
 ];
 const OTA_STATUS_POLL_MS = 900;
@@ -196,9 +405,11 @@ const SLIDER_ENTITY_DOMAINS = new Set([
   "light",
   "media_player",
   "cover",
+  "fan",
 ]);
 const BUTTON_MODES = new Set([
   "auto",
+  "run",
   "play_pause",
   "stop",
   "next",
@@ -211,6 +422,7 @@ const WEB_I18N_BUILTIN = {
   en: {
     "tabs.layout": "Layout",
     "tabs.settings": "Settings",
+    "settings.logs.heading": "Logs",
     "sidebar.title": "BETTA Editor",
     "sidebar.subtitle": "Layout source of truth: JSON",
     "layout.pages.heading": "Pages",
@@ -258,8 +470,12 @@ const WEB_I18N_BUILTIN = {
     "layout.status.energy_page_only": "Energy pages do not accept widgets.",
     "layout.widgets.heading": "Widgets",
     "layout.widgets.add_sensor": "+ Sensor",
+    "layout.widgets.add_binary_sensor": "+ Binary Sensor",
     "layout.widgets.add_button": "+ Button",
+    "layout.widgets.add_script": "+ Script",
+    "layout.widgets.add_scene": "+ Scene",
     "layout.widgets.add_slider": "+ Slider",
+    "layout.widgets.add_cover": "+ Cover",
     "layout.widgets.add_graph": "+ Graph",
     "layout.widgets.add_empty_tile": "+ Empty Tile",
     "layout.widgets.add_light_tile": "+ Light Tile",
@@ -274,10 +490,18 @@ const WEB_I18N_BUILTIN = {
     "layout.widgets.confirm_delete": "Delete widget \"{name}\"?",
     "entity_picker.title": "Choose Light",
     "entity_picker.title_sensor": "Choose Sensor",
+    "entity_picker.title_binary_sensor": "Choose Binary Sensor",
     "entity_picker.title_light": "Choose Light",
+    "entity_picker.title_cover": "Choose Cover",
     "entity_picker.title_switch": "Choose Switch",
+    "entity_picker.title_script": "Choose Script",
+    "entity_picker.title_scene": "Choose Scene",
     "entity_picker.title_weather": "Choose Weather",
     "entity_picker.title_climate": "Choose Heating",
+    "entity_picker.title_timer": "Choose Timer",
+    "entity_picker.blank_timer": "Blank Timer Tile",
+    "entity_picker.items_timer": "timers",
+    "entity_picker.widget_timer": "Timer tile",
     "entity_picker.title_roborock": "Choose Roborock",
     "entity_picker.refresh": "Refresh",
     "entity_picker.search": "Search",
@@ -287,8 +511,12 @@ const WEB_I18N_BUILTIN = {
     "entity_picker.search_ready": "Press Enter or Search to query {items}.",
     "entity_picker.blank": "Blank Light Tile",
     "entity_picker.blank_sensor": "Blank Sensor Tile",
+    "entity_picker.blank_binary_sensor": "Blank Binary Sensor Tile",
     "entity_picker.blank_light": "Blank Light Tile",
+    "entity_picker.blank_cover": "Blank Cover Control",
     "entity_picker.blank_button": "Blank Button Tile",
+    "entity_picker.blank_script": "Blank Script Button",
+    "entity_picker.blank_scene": "Blank Scene Button",
     "entity_picker.blank_weather": "Blank Weather Tile",
     "entity_picker.blank_weather_3day": "Blank Weather Forecast Tile",
     "entity_picker.blank_graph": "Blank Graph Tile",
@@ -311,14 +539,22 @@ const WEB_I18N_BUILTIN = {
     "entity_picker.progress": "{loaded} / {target}",
     "entity_picker.progress_total": "{loaded} / {target} of {total}",
     "entity_picker.items_light": "lights",
+    "entity_picker.items_cover": "covers",
     "entity_picker.items_sensor": "sensors",
+    "entity_picker.items_binary_sensor": "binary sensors",
     "entity_picker.items_switch": "switches",
+    "entity_picker.items_script": "scripts",
+    "entity_picker.items_scene": "scenes",
     "entity_picker.items_weather": "weather entities",
     "entity_picker.items_climate": "climate entities",
     "entity_picker.items_vacuum": "vacuum robots",
     "entity_picker.widget_light": "Light tile",
+    "entity_picker.widget_cover": "Cover control",
     "entity_picker.widget_sensor": "Sensor tile",
+    "entity_picker.widget_binary_sensor": "Binary Sensor tile",
     "entity_picker.widget_button": "Button tile",
+    "entity_picker.widget_script": "Script button",
+    "entity_picker.widget_scene": "Scene button",
     "entity_picker.widget_weather": "Weather tile",
     "entity_picker.widget_weather_3day": "Weather Forecast tile",
     "entity_picker.widget_graph": "Graph tile",
@@ -345,6 +581,7 @@ const WEB_I18N_BUILTIN = {
     "layout.option.graph_display_mode.bars": "Bars",
     "layout.inspector.apply": "Apply",
     "layout.option.button_mode.auto": "auto (default switch)",
+    "layout.option.button_mode.run": "run (script / scene)",
     "layout.option.button_mode.play_pause": "play/pause (media_player)",
     "layout.option.button_mode.stop": "stop (media_player)",
     "layout.option.button_mode.next": "next (media_player)",
@@ -430,7 +667,7 @@ const WEB_I18N_BUILTIN = {
     "settings.ha.rest_fallback": "Enable HA REST fallback (Default: Off, WS-only preferred)",
     "settings.time.heading": "Time",
     "settings.time.ntp_server": "NTP Server",
-    "settings.time.timezone": "Timezone (POSIX TZ)",
+    "settings.time.timezone": "Time Zone",
     "settings.ui.heading": "UI",
     "settings.theme.heading": "Theme",
     "settings.ui.language": "Language",
@@ -443,7 +680,7 @@ const WEB_I18N_BUILTIN = {
     "settings.ap.hint": "If setup AP is active, connect to it and open <code>http://192.168.4.1</code>.",
     "settings.ota.heading": "Firmware Update",
     "settings.ota.url": "OTA URL",
-    "settings.ota.url_placeholder": "https://github.com/cptkirki/BETTA-HA-PANEL/releases/latest/download/...",
+    "settings.ota.url_placeholder": "Paste a direct OTA .bin URL",
     "settings.ota.flash_url": "Flash URL",
     "settings.ota.refresh": "Refresh Status",
     "settings.ota.file": "OTA .bin File",
@@ -463,6 +700,7 @@ const WEB_I18N_BUILTIN = {
     "settings.ota.target_slot": "Target slot: {partition}",
     "settings.actions.heading": "Settings Actions",
     "settings.actions.reload": "Reload Settings",
+    "settings.actions.apply_display": "Apply Display",
     "settings.actions.save": "Save + Reboot",
     "settings.actions.hint": "After save, the device reboots and may switch from setup AP to your home Wi-Fi.",
     "settings.info.configured": "Configured",
@@ -488,6 +726,9 @@ const WEB_I18N_BUILTIN = {
     "ha_diagnostics.missing_title_more": "Some entities in this layout were not found in Home Assistant ({total} total, showing {listed})",
     "ha_diagnostics.missing_hint": "Open the affected widget, pick a valid entity and save the layout.",
     "ha_diagnostics.dismiss": "Dismiss",
+    "status.applying_display_settings": "Applying display settings...",
+    "status.display_settings_applied": "Display settings applied without reboot.",
+    "status.display_settings_apply_failed": "Display settings apply failed: {error}",
     "status.saving_settings": "Saving settings...",
     "status.settings_saved_reboot": "Settings saved. Device reboots in ~2s. Reconnect and reopen the panel URL.",
     "status.wifi_scan_running": "Scanning Wi-Fi...",
@@ -508,8 +749,8 @@ const WEB_I18N_BUILTIN = {
     "wifi.scan.option_select": "Select network ({count} found)",
     "settings.time.info": "Applied after reboot. Time sync starts when Wi-Fi is connected.",
     "settings.ui.info": "Preview switches immediately. Saved language applies after reboot.",
-    "settings.ap.active": "Setup AP active: {ssid}\\nOpen http://192.168.4.1 while connected to this AP.",
-    "settings.ap.inactive": "Setup AP inactive.\\nUse the panel IP in your home Wi-Fi network.",
+    "settings.ap.active": "Setup AP active: {ssid}\nOpen http://192.168.4.1 while connected to this AP.",
+    "settings.ap.inactive": "Setup AP inactive.\nUse the panel IP in your home Wi-Fi network.",
     "settings.translation.info": "Upload a JSON file to add or update a language.",
     "settings.translation.upload_ok": "Language \"{lang}\" uploaded.",
     "settings.translation.upload_fail": "Upload failed: {error}",
@@ -770,7 +1011,7 @@ const WEB_I18N_BUILTIN = {
     "settings.ap.hint": "Wenn Setup AP aktiv ist, verbinden und <code>http://192.168.4.1</code> oeffnen.",
     "settings.ota.heading": "Firmware Update",
     "settings.ota.url": "OTA URL",
-    "settings.ota.url_placeholder": "https://github.com/cptkirki/BETTA-HA-PANEL/releases/latest/download/...",
+    "settings.ota.url_placeholder": "Paste a direct OTA .bin URL",
     "settings.ota.flash_url": "URL flashen",
     "settings.ota.refresh": "Status aktualisieren",
     "settings.ota.file": "OTA .bin Datei",
@@ -992,7 +1233,7 @@ const WEB_I18N_BUILTIN = {
     "settings.ap.hint": "Si el AP de setup esta activo, conectate y abre <code>http://192.168.4.1</code>.",
     "settings.ota.heading": "Actualizacion de firmware",
     "settings.ota.url": "URL OTA",
-    "settings.ota.url_placeholder": "https://github.com/cptkirki/BETTA-HA-PANEL/releases/latest/download/...",
+    "settings.ota.url_placeholder": "Paste a direct OTA .bin URL",
     "settings.ota.flash_url": "Flashear URL",
     "settings.ota.refresh": "Actualizar estado",
     "settings.ota.file": "Archivo OTA .bin",
@@ -1210,7 +1451,7 @@ const WEB_I18N_BUILTIN = {
     "settings.ap.hint": "Si le setup AP est actif, connectez-vous et ouvrez <code>http://192.168.4.1</code>.",
     "settings.ota.heading": "Mise a jour firmware",
     "settings.ota.url": "URL OTA",
-    "settings.ota.url_placeholder": "https://github.com/cptkirki/BETTA-HA-PANEL/releases/latest/download/...",
+    "settings.ota.url_placeholder": "Paste a direct OTA .bin URL",
     "settings.ota.flash_url": "Flasher URL",
     "settings.ota.refresh": "Actualiser statut",
     "settings.ota.file": "Fichier OTA .bin",
@@ -1316,8 +1557,8 @@ function widgetSizeLimits(type) {
         : { minW: 120, minH: 80, maxW: CANVAS_WIDTH, maxH: CANVAS_HEIGHT };
     case "button":
       return compact
-        ? { minW: 82, minH: 82, maxW: 320, maxH: 260 }
-        : { minW: 100, minH: 100, maxW: 480, maxH: 320 };
+        ? { minW: 82, minH: 82, maxW: Math.min(320, CANVAS_WIDTH), maxH: Math.min(260, CANVAS_HEIGHT) }
+        : { minW: 100, minH: 100, maxW: Math.min(480, CANVAS_WIDTH), maxH: Math.min(320, CANVAS_HEIGHT) };
     case "slider":
       return compact
         ? { minW: 100, minH: 80, maxW: CANVAS_WIDTH, maxH: CANVAS_HEIGHT }
@@ -1332,24 +1573,28 @@ function widgetSizeLimits(type) {
         : { minW: 120, minH: 80, maxW: CANVAS_WIDTH, maxH: CANVAS_HEIGHT };
     case "light_tile":
       return compact
-        ? { minW: 140, minH: 140, maxW: 480, maxH: 480 }
-        : { minW: 180, minH: 180, maxW: 480, maxH: 480 };
+        ? { minW: 140, minH: 140, maxW: Math.min(480, CANVAS_WIDTH), maxH: Math.min(480, CANVAS_HEIGHT) }
+        : { minW: 180, minH: 180, maxW: Math.min(480, CANVAS_WIDTH), maxH: Math.min(480, CANVAS_HEIGHT) };
     case "heating_tile":
       return compact
-        ? { minW: 150, minH: 150, maxW: 480, maxH: 480 }
-        : { minW: 220, minH: 200, maxW: 480, maxH: 480 };
+        ? { minW: 150, minH: 150, maxW: Math.min(480, CANVAS_WIDTH), maxH: Math.min(480, CANVAS_HEIGHT) }
+        : { minW: 220, minH: 200, maxW: Math.min(480, CANVAS_WIDTH), maxH: Math.min(480, CANVAS_HEIGHT) };
+    case "timer":
+      return compact
+        ? { minW: 180, minH: 130, maxW: Math.min(360, CANVAS_WIDTH), maxH: Math.min(260, CANVAS_HEIGHT) }
+        : { minW: 220, minH: 160, maxW: CANVAS_WIDTH, maxH: CANVAS_HEIGHT };
     case "weather_tile":
       return compact
-        ? { minW: 160, minH: 150, maxW: 480, maxH: 480 }
-        : { minW: 220, minH: 200, maxW: 480, maxH: 480 };
+        ? { minW: 480, minH: 150, maxW: Math.min(480, CANVAS_WIDTH), maxH: Math.min(480, CANVAS_HEIGHT) }
+        : { minW: 480, minH: 200, maxW: Math.min(480, CANVAS_WIDTH), maxH: Math.min(480, CANVAS_HEIGHT) };
     case "weather_3day":
       return compact
-        ? { minW: 280, minH: 180, maxW: 640, maxH: 480 }
-        : { minW: 260, minH: 220, maxW: 640, maxH: 480 };
+        ? { minW: 480, minH: 180, maxW: Math.min(640, CANVAS_WIDTH), maxH: Math.min(480, CANVAS_HEIGHT) }
+        : { minW: 480, minH: 220, maxW: Math.min(640, CANVAS_WIDTH), maxH: Math.min(480, CANVAS_HEIGHT) };
     case "todo_list":
       return compact
-        ? { minW: 180, minH: 160, maxW: 640, maxH: 640 }
-        : { minW: 220, minH: 200, maxW: 640, maxH: 640 };
+        ? { minW: 180, minH: 160, maxW: Math.min(640, CANVAS_WIDTH), maxH: Math.min(640, CANVAS_HEIGHT) }
+        : { minW: 220, minH: 200, maxW: Math.min(640, CANVAS_WIDTH), maxH: Math.min(640, CANVAS_HEIGHT) };
     case "media_player":
       return compact
         ? { minW: 200, minH: 170, maxW: CANVAS_WIDTH, maxH: CANVAS_HEIGHT }
@@ -1394,7 +1639,7 @@ const editor = {
   appProject: "",
   appScreenW: 0,
   appScreenH: 0,
-  haDiagnostics: { total: 0, listed: 0, updatedUnixMs: 0, names: [], dismissedSignature: "" },
+  haDiagnostics: { total: 0, listed: 0, updatedUnixMs: 0, names: [], connectionLog: [], dismissedSignature: "" },
   wifiScanItems: [],
   wifiScanHasRun: false,
   wifiScanInProgress: false,
@@ -1491,8 +1736,28 @@ const el = {
   energyBatterySoc: document.getElementById("energyBatterySoc"),
   applyEnergyPageBtn: document.getElementById("applyEnergyPageBtn"),
   addSensorBtn: document.getElementById("addSensorBtn"),
+  addBinarySensorBtn: document.getElementById("addBinarySensorBtn"),
   addButtonBtn: document.getElementById("addButtonBtn"),
+  addHaButtonBtn: document.getElementById("addHaButtonBtn"),
+  addLockBtn: document.getElementById("addLockBtn"),
+  addInputBooleanBtn: document.getElementById("addInputBooleanBtn"),
+  addAutomationBtn: document.getElementById("addAutomationBtn"),
+  addAutomationTriggerBtn: document.getElementById("addAutomationTriggerBtn"),
+  addScriptBtn: document.getElementById("addScriptBtn"),
+  addSceneBtn: document.getElementById("addSceneBtn"),
   addSliderBtn: document.getElementById("addSliderBtn"),
+  addCoverBtn: document.getElementById("addCoverBtn"),
+  addFanBtn: document.getElementById("addFanBtn"),
+  addInputNumberBtn: document.getElementById("addInputNumberBtn"),
+  addSelectBtn: document.getElementById("addSelectBtn"),
+  addInputTextBtn: document.getElementById("addInputTextBtn"),
+  addInputDatetimeBtn: document.getElementById("addInputDatetimeBtn"),
+  addAlarmControlBtn: document.getElementById("addAlarmControlBtn"),
+  addUpdateBtn: document.getElementById("addUpdateBtn"),
+  addCalendarBtn: document.getElementById("addCalendarBtn"),
+  addImageBtn: document.getElementById("addImageBtn"),
+  addPersonBtn: document.getElementById("addPersonBtn"),
+  addDeviceTrackerBtn: document.getElementById("addDeviceTrackerBtn"),
   addGraphBtn: document.getElementById("addGraphBtn"),
   addEmptyTileBtn: document.getElementById("addEmptyTileBtn"),
   addLightTileBtn: document.getElementById("addLightTileBtn"),
@@ -1512,6 +1777,7 @@ const el = {
   addWeatherTileBtn: document.getElementById("addWeatherTileBtn"),
   addWeather3DayBtn: document.getElementById("addWeather3DayBtn"),
   addTodoListBtn: document.getElementById("addTodoListBtn"),
+  addTimerBtn: document.getElementById("addTimerBtn"),
   addMediaPlayerBtn: document.getElementById("addMediaPlayerBtn"),
   addRoborockTileBtn: document.getElementById("addRoborockTileBtn"),
   deleteWidgetBtn: document.getElementById("deleteWidgetBtn"),
@@ -1529,12 +1795,50 @@ const el = {
   fSecondaryEntityLabel: document.getElementById("fSecondaryEntityLabel"),
   fSecondaryEntity: document.getElementById("fSecondaryEntity"),
   buttonOptions: document.getElementById("buttonOptions"),
+  fButtonAppearance: document.getElementById("fButtonAppearance"),
+  fButtonIconMode: document.getElementById("fButtonIconMode"),
+  fButtonIconModeWrap: document.getElementById("fButtonIconModeWrap"),
+  fButtonCustomIcon: document.getElementById("fButtonCustomIcon"),
+  fButtonCustomIconWrap: document.getElementById("fButtonCustomIconWrap"),
+  fButtonShowTitle: document.getElementById("fButtonShowTitle"),
+   fButtonShowState: document.getElementById("fButtonShowState"),
   fButtonMode: document.getElementById("fButtonMode"),
-  fSliderEntityDomain: document.getElementById("fSliderEntityDomain"),
+    sensorOptions: document.getElementById("sensorOptions"),
+  fSensorShowTitle: document.getElementById("fSensorShowTitle"),
+  fSensorShowIcon: document.getElementById("fSensorShowIcon"),
+  fSensorIconMode: document.getElementById("fSensorIconMode"),
+  fSensorIconModeWrap: document.getElementById("fSensorIconModeWrap"),
+  fSensorCustomIcon: document.getElementById("fSensorCustomIcon"),
+  fSensorCustomIconWrap: document.getElementById("fSensorCustomIconWrap"),
+  fSensorShowState: document.getElementById("fSensorShowState"),
+  fSensorDecimalPlaces: document.getElementById("fSensorDecimalPlaces"),
   fButtonAccentColor: document.getElementById("fButtonAccentColor"),
-  sliderOptions: document.getElementById("sliderOptions"),
-  fSliderDirection: document.getElementById("fSliderDirection"),
-  fSliderAccentColor: document.getElementById("fSliderAccentColor"),
+  stateColorOptions: document.getElementById("stateColorOptions"),
+  fStateOffColorMode: document.getElementById("fStateOffColorMode"),
+  fStateOffColorWrap: document.getElementById("fStateOffColorWrap"),
+  fStateOffColor: document.getElementById("fStateOffColor"),
+  fStateOnColorMode: document.getElementById("fStateOnColorMode"),
+  fStateOnColorWrap: document.getElementById("fStateOnColorWrap"),
+  fStateOnColor: document.getElementById("fStateOnColor"),
+ sliderOptions: document.getElementById("sliderOptions"),
+fSliderEntityDomain: document.getElementById("fSliderEntityDomain"),
+fSliderShowTitle: document.getElementById("fSliderShowTitle"),
+fSliderShowIcon: document.getElementById("fSliderShowIcon"),
+fSliderIconModeWrap: document.getElementById("fSliderIconModeWrap"),
+fSliderIconMode: document.getElementById("fSliderIconMode"),
+fSliderCustomIconWrap: document.getElementById("fSliderCustomIconWrap"),
+fSliderCustomIcon: document.getElementById("fSliderCustomIcon"),
+fSliderShowState: document.getElementById("fSliderShowState"),
+fSliderDirection: document.getElementById("fSliderDirection"),
+fSliderAccentColor: document.getElementById("fSliderAccentColor"),
+  commonDisplayOptions: document.getElementById("commonDisplayOptions"),
+  fCommonShowTitle: document.getElementById("fCommonShowTitle"),
+  fCommonShowIcon: document.getElementById("fCommonShowIcon"),
+  fCommonShowState: document.getElementById("fCommonShowState"),
+  fCommonIconModeWrap: document.getElementById("fCommonIconModeWrap"),
+  fCommonIconMode: document.getElementById("fCommonIconMode"),
+  fCommonCustomIconWrap: document.getElementById("fCommonCustomIconWrap"),
+  fCommonCustomIcon: document.getElementById("fCommonCustomIcon"),
   graphOptions: document.getElementById("graphOptions"),
   fGraphLineColor: document.getElementById("fGraphLineColor"),
   fGraphTimeWindowMin: document.getElementById("fGraphTimeWindowMin"),
@@ -1570,6 +1874,17 @@ const el = {
   settingsNtpServer: document.getElementById("settingsNtpServer"),
   settingsTimezone: document.getElementById("settingsTimezone"),
   settingsLanguage: document.getElementById("settingsLanguage"),
+  settingsBrightness: document.getElementById("settingsBrightness"),
+  settingsBrightnessValue: document.getElementById("settingsBrightnessValue"),
+  settingsNightBrightness: document.getElementById("settingsNightBrightness"),
+  settingsNightBrightnessValue: document.getElementById("settingsNightBrightnessValue"),
+  settingsNightMode: document.getElementById("settingsNightMode"),
+  settingsNightSchedule: document.getElementById("settingsNightSchedule"),
+  settingsNightStartTime: document.getElementById("settingsNightStartTime"),
+  settingsDayStartTime: document.getElementById("settingsDayStartTime"),
+  settingsIdleTimeout: document.getElementById("settingsIdleTimeout"),
+  settingsIdleBrightness: document.getElementById("settingsIdleBrightness"),
+  settingsIdleBrightnessValue: document.getElementById("settingsIdleBrightnessValue"),
   reloadLanguagesBtn: document.getElementById("reloadLanguagesBtn"),
   downloadLanguageBtn: document.getElementById("downloadLanguageBtn"),
   uploadLanguageCode: document.getElementById("uploadLanguageCode"),
@@ -1578,6 +1893,7 @@ const el = {
   settingsTranslationInfo: document.getElementById("settingsTranslationInfo"),
   settingsWifiInfo: document.getElementById("settingsWifiInfo"),
   settingsHaInfo: document.getElementById("settingsHaInfo"),
+  settingsHaConnectionLog: document.getElementById("settingsHaConnectionLog"),
   settingsTimeInfo: document.getElementById("settingsTimeInfo"),
   settingsUiInfo: document.getElementById("settingsUiInfo"),
   settingsApInfo: document.getElementById("settingsApInfo"),
@@ -1589,6 +1905,7 @@ const el = {
   settingsOtaProgressBar: document.getElementById("settingsOtaProgressBar"),
   settingsOtaInfo: document.getElementById("settingsOtaInfo"),
   reloadSettingsBtn: document.getElementById("reloadSettingsBtn"),
+  applyDisplaySettingsBtn: document.getElementById("applyDisplaySettingsBtn"),
   saveSettingsBtn: document.getElementById("saveSettingsBtn"),
   provWifiSsid: document.getElementById("provWifiSsid"),
   provWifiCountryCode: document.getElementById("provWifiCountryCode"),
@@ -1624,6 +1941,31 @@ const el = {
   setupWizardDoneBtn: document.getElementById("setupWizardDoneBtn"),
 };
 
+/*
+ * Keep the Button picker as the single editor source of truth for the shared
+ * firmware MDI registry. Sensor and Slider use the same registry/font path, so
+ * clone the canonical options instead of maintaining three drifting lists.
+ */
+function syncMdiIconPickers() {
+  const source = el.fButtonCustomIcon;
+  if (!source) return;
+
+  for (const target of [el.fSensorCustomIcon, el.fSliderCustomIcon, el.fCommonCustomIcon]) {
+    if (!target) continue;
+    const previousValue = target.value;
+    target.innerHTML = source.innerHTML;
+
+    if (
+      previousValue &&
+      Array.from(target.options).some(option => option.value === previousValue)
+    ) {
+      target.value = previousValue;
+    }
+  }
+}
+
+syncMdiIconPickers();
+
 const entityAutocomplete = {
   primary: {
     timerId: null,
@@ -1643,6 +1985,16 @@ function normalizeSliderEntityDomain(value) {
   return SLIDER_ENTITY_DOMAINS.has(value) ? value : DEFAULT_SLIDER_ENTITY_DOMAIN;
 }
 
+function normalizeButtonAppearance(value) {
+  const appearance =
+    typeof value === "string"
+      ? value.trim().toLowerCase()
+      : "";
+
+  return BUTTON_APPEARANCES.has(appearance)
+    ? appearance
+    : DEFAULT_BUTTON_APPEARANCE;
+}
 function normalizeButtonMode(value) {
   return BUTTON_MODES.has(value) ? value : DEFAULT_BUTTON_MODE;
 }
@@ -1650,6 +2002,10 @@ function normalizeButtonMode(value) {
 function buttonModeRequiresMediaPlayer(value) {
   const mode = normalizeButtonMode(value);
   return mode === "play_pause" || mode === "stop" || mode === "next" || mode === "previous";
+}
+
+function buttonModeRequiresRunnable(value) {
+  return normalizeButtonMode(value) === "run";
 }
 
 function normalizeHexColor(value, fallback = DEFAULT_SLIDER_ACCENT_COLOR) {
@@ -1716,20 +2072,101 @@ function normalizeLayoutWidgets(layout) {
     if (!page || !Array.isArray(page.widgets)) continue;
     for (const widget of page.widgets) {
       if (!widget || typeof widget !== "object") continue;
+
+      /* Reconcile persisted geometry with the current widget rules.  This
+       * keeps older layouts valid when a widget gains a safer minimum size
+       * (for example the 480 px Weather readability floor). */
+      if (widget.rect && typeof widget.rect === "object") {
+        widget.rect = clampRectToCanvas(widget.rect, widget.type);
+      }
+
       if (widget.type === "button") {
-        widget.button_accent_color = normalizeHexColor(widget.button_accent_color, DEFAULT_BUTTON_ACCENT_COLOR);
-        const buttonMode = normalizeButtonMode(widget.button_mode);
-        if (buttonModeRequiresMediaPlayer(buttonMode) && !String(widget.entity_id || "").startsWith("media_player.")) {
-          widget.button_mode = DEFAULT_BUTTON_MODE;
-        } else {
-          widget.button_mode = buttonMode;
+        widget.button_appearance = normalizeButtonAppearance(widget.button_appearance);
+        if (!widget.state_icon_off_color && !widget.state_icon_on_color && widget.button_accent_color) {
+          const legacyAccent = normalizeHexColor(widget.button_accent_color, DEFAULT_BUTTON_ACCENT_COLOR);
+          widget.state_icon_off_color = legacyAccent;
+          widget.state_icon_on_color = legacyAccent;
         }
+        if (widget.button_accent_color) widget.button_accent_color = normalizeHexColor(widget.button_accent_color, DEFAULT_BUTTON_ACCENT_COLOR);
+        const entityId = String(widget.entity_id || "");
+        const isRunnableEntity = entityId.startsWith("script.") || entityId.startsWith("scene.");
+        let buttonMode = normalizeButtonMode(widget.button_mode);
+        if (buttonModeRequiresMediaPlayer(buttonMode) && !entityId.startsWith("media_player.")) {
+          buttonMode = DEFAULT_BUTTON_MODE;
+        } else if (buttonModeRequiresRunnable(buttonMode) && !isRunnableEntity) {
+          buttonMode = DEFAULT_BUTTON_MODE;
+        } else if (isRunnableEntity && !buttonModeRequiresRunnable(buttonMode)) {
+          buttonMode = "run";
+        }
+        widget.button_mode = buttonMode;
       }
       if (widget.type === "slider") {
         widget.slider_direction = normalizeSliderDirection(widget.slider_direction);
         widget.slider_accent_color = normalizeHexColor(widget.slider_accent_color, DEFAULT_SLIDER_ACCENT_COLOR);
         widget.slider_entity_domain = normalizeSliderEntityDomain(widget.slider_entity_domain);
       }
+      if (COMMON_DISPLAY_WIDGET_TYPES.has(widget.type)) {
+        widget.icon = typeof widget.icon === "string" ? widget.icon.trim() : "";
+        widget.show_title = typeof widget.show_title === "boolean" ? widget.show_title : true;
+        widget.show_icon = typeof widget.show_icon === "boolean" ? widget.show_icon : true;
+        widget.show_state = typeof widget.show_state === "boolean" ? widget.show_state : true;
+      }
+      if (widget.type === "sensor") {
+        const precision = Number(widget.sensor_decimal_places);
+        if (Number.isInteger(precision) && precision >= 0 && precision <= 6) {
+          widget.sensor_decimal_places = precision;
+        } else {
+          delete widget.sensor_decimal_places;
+        }
+      }
+      if (widget.type === "timer") {
+        /*
+         * Backwards compatibility for Timer tiles created before
+         * these display/control options existed.
+         *
+         * Only default missing/non-boolean values to true.
+         * Explicit false values must be preserved.
+         */
+        widget.icon =
+           typeof widget.icon === "string"
+           ? widget.icon.trim()
+          : "";
+
+        widget.show_title =
+          typeof widget.show_title === "boolean"
+          ? widget.show_title
+          : true;
+
+  widget.show_icon =
+    typeof widget.show_icon === "boolean"
+      ? widget.show_icon
+      : true;
+
+  widget.show_state =
+    typeof widget.show_state === "boolean"
+      ? widget.show_state
+      : true;
+
+  widget.timer_show_start =
+    typeof widget.timer_show_start === "boolean"
+      ? widget.timer_show_start
+      : true;
+
+  widget.timer_show_pause =
+    typeof widget.timer_show_pause === "boolean"
+      ? widget.timer_show_pause
+      : true;
+
+  widget.timer_show_cancel =
+    typeof widget.timer_show_cancel === "boolean"
+      ? widget.timer_show_cancel
+      : true;
+
+  widget.timer_show_finish =
+    typeof widget.timer_show_finish === "boolean"
+      ? widget.timer_show_finish
+      : true;
+}
       if (widget.type === "graph") {
         widget.graph_line_color = normalizeHexColor(widget.graph_line_color, DEFAULT_GRAPH_LINE_COLOR);
         widget.graph_time_window_min = normalizeGraphTimeWindowMin(widget.graph_time_window_min);
@@ -1892,74 +2329,10 @@ async function loadAppVersion() {
   void refreshLatestOtaUrl();
 }
 
-function otaPanelVariant() {
-  const project = (editor.appProject || "").toLowerCase();
-  if (project.includes("10.1") || project.includes("panel10") || editor.appScreenW >= 1000) {
-    return "panel10";
-  }
-  return "panel4";
-}
-
-function otaCurrentVersionTag() {
-  const version = (editor.appVersion || "").trim();
-  return /^v\d+\.\d+\.\d+/.test(version) ? version : "";
-}
-
-function otaLatestFallbackUrl() {
-  const version = otaCurrentVersionTag();
-  if (!version) return "";
-  const variant = otaPanelVariant();
-  return `https://github.com/${OTA_RELEASE_REPO}/releases/latest/download/betta86-ha-panel-${version}-${variant}.ota.bin`;
-}
-
-function applyLatestOtaUrl(url) {
-  if (!url) return;
-  const previousAuto = editor.ota.autoFilledUrl || "";
-  editor.ota.latestUrl = url;
-  if (el.settingsOtaUrl) {
-    el.settingsOtaUrl.placeholder = url;
-    const current = el.settingsOtaUrl.value.trim();
-    if (!current || current === previousAuto) {
-      el.settingsOtaUrl.value = url;
-      editor.ota.autoFilledUrl = url;
-    }
-  }
-}
-
-async function refreshLatestOtaUrl() {
-  if (editor.ota.latestUrlLoading) return;
-
-  const fallback = otaLatestFallbackUrl();
-  if (fallback) {
-    applyLatestOtaUrl(fallback);
-  }
-
-  editor.ota.latestUrlLoading = true;
-  try {
-    const response = await fetch(`https://api.github.com/repos/${OTA_RELEASE_REPO}/releases/latest`, {
-      cache: "no-store",
-      headers: { Accept: "application/vnd.github+json" },
-    });
-    if (!response.ok) return;
-    const payload = await response.json();
-    const assets = Array.isArray(payload?.assets) ? payload.assets : [];
-    const variant = otaPanelVariant();
-    const suffix = `-${variant}.ota.bin`;
-    const asset = assets.find((item) =>
-      typeof item?.name === "string" &&
-      item.name.startsWith("betta86-ha-panel-") &&
-      item.name.endsWith(suffix)
-    );
-    if (asset?.name) {
-      applyLatestOtaUrl(`https://github.com/${OTA_RELEASE_REPO}/releases/latest/download/${asset.name}`);
-    } else if (typeof asset?.browser_download_url === "string") {
-      applyLatestOtaUrl(asset.browser_download_url);
-    }
-  } catch (_) {
-    /* Keep the firmware-version fallback URL. */
-  } finally {
-    editor.ota.latestUrlLoading = false;
-  }
+function refreshLatestOtaUrl() {
+  editor.ota.latestUrl = "";
+  editor.ota.autoFilledUrl = "";
+  editor.ota.latestUrlLoading = false;
 }
 
 async function loadHaDiagnostics() {
@@ -1973,10 +2346,19 @@ async function loadHaDiagnostics() {
     editor.haDiagnostics.listed = Number(payload.missing_listed) || names.length;
     editor.haDiagnostics.updatedUnixMs = Number(payload.updated_unix_ms) || 0;
     editor.haDiagnostics.names = names;
+    editor.haDiagnostics.connectionLog = Array.isArray(payload.connection_log)
+      ? payload.connection_log
+          .filter((entry) => entry && typeof entry.message === "string")
+          .map((entry) => ({
+            elapsedMs: Number(entry.elapsed_ms) || 0,
+            message: entry.message,
+          }))
+      : [];
   } catch (_) {
     /* keep previous state */
   }
   renderHaDiagnosticsBanner();
+  if (editor.settings) recordHaConnectionStatus(editor.settings.ha || editor.settings.home_assistant || {});
 }
 
 function haDiagnosticsSignature() {
@@ -2168,6 +2550,8 @@ function applyWebTranslations() {
   setTextById("widgetsHeading", "layout.widgets.heading");
   setTextById("addSensorBtn", "layout.widgets.add_sensor");
   setTextById("addButtonBtn", "layout.widgets.add_button");
+  setTextById("addScriptBtn", "layout.widgets.add_script");
+  setTextById("addSceneBtn", "layout.widgets.add_scene");
   setTextById("addSliderBtn", "layout.widgets.add_slider");
   setTextById("addGraphBtn", "layout.widgets.add_graph");
   setTextById("addEmptyTileBtn", "layout.widgets.add_empty_tile");
@@ -2206,6 +2590,7 @@ function applyWebTranslations() {
   setSelectOptionText(el.fGraphDisplayMode, "bars", "layout.option.graph_display_mode.bars");
   setTextById("applyInspectorBtn", "layout.inspector.apply");
   setSelectOptionText(el.fButtonMode, "auto", "layout.option.button_mode.auto");
+  setSelectOptionText(el.fButtonMode, "run", "layout.option.button_mode.run");
   setSelectOptionText(el.fButtonMode, "play_pause", "layout.option.button_mode.play_pause");
   setSelectOptionText(el.fButtonMode, "stop", "layout.option.button_mode.stop");
   setSelectOptionText(el.fButtonMode, "next", "layout.option.button_mode.next");
@@ -2283,6 +2668,7 @@ function applyWebTranslations() {
 
   setTextById("settingsActionsHeading", "settings.actions.heading");
   setTextById("reloadSettingsBtn", "settings.actions.reload");
+  if (el.applyDisplaySettingsBtn) el.applyDisplaySettingsBtn.textContent = t("settings.actions.apply_display");
   setTextById("saveSettingsBtn", "settings.actions.save");
   setTextById("settingsActionsHint", "settings.actions.hint");
   setTextById("setupWizardTitle", "setup.title");
@@ -2632,9 +3018,47 @@ function renderSettings() {
     el.settingsHaRestEnabled.checked = ha.rest_enabled === true;
   }
   el.settingsNtpServer.value = time.ntp_server || "";
-  el.settingsTimezone.value = time.timezone || "";
+  if (el.settingsTimezone) {
+    const timezone = time.timezone || "";
+    const hasTimezone = Array.from(el.settingsTimezone.options).some((option) => option.value === timezone);
+    if (timezone && !hasTimezone) {
+      const customOption = document.createElement("option");
+      customOption.value = timezone;
+      customOption.textContent = `Custom / Existing (${timezone})`;
+      el.settingsTimezone.appendChild(customOption);
+    }
+    el.settingsTimezone.value = timezone || "UTC0";
+  }
   if (el.settingsLanguage) {
     el.settingsLanguage.value = normalizeUiLanguage(ui.language);
+  }
+  if (el.settingsBrightness) {
+    const brightness = clamp(Math.round(Number(ui.brightness_percent ?? 100)), 0, 100);
+    el.settingsBrightness.value = String(brightness);
+    if (el.settingsBrightnessValue) el.settingsBrightnessValue.textContent = `${brightness}%`;
+  }
+  if (el.settingsNightBrightness) {
+    const nightBrightness = clamp(Math.round(Number(ui.night_brightness_percent ?? 20)), 0, 100);
+    el.settingsNightBrightness.value = String(nightBrightness);
+    if (el.settingsNightBrightnessValue) el.settingsNightBrightnessValue.textContent = `${nightBrightness}%`;
+  }
+  if (el.settingsNightMode) el.settingsNightMode.value = String(clamp(Math.round(Number(ui.night_mode ?? (ui.night_mode_auto ? 2 : 0))), 0, 2));
+  updateNightScheduleVisibility();
+  if (el.settingsNightStartTime) {
+    const h = clamp(Math.round(Number(ui.night_start_hour ?? 22)), 0, 23);
+    const m = clamp(Math.round(Number(ui.night_start_minute ?? 0)), 0, 59);
+    el.settingsNightStartTime.value = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+  }
+  if (el.settingsDayStartTime) {
+    const h = clamp(Math.round(Number(ui.day_start_hour ?? 7)), 0, 23);
+    const m = clamp(Math.round(Number(ui.day_start_minute ?? 0)), 0, 59);
+    el.settingsDayStartTime.value = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+  }
+  if (el.settingsIdleTimeout) el.settingsIdleTimeout.value = String(clamp(Math.round(Number(ui.idle_timeout_seconds ?? 60)), 0, 86400));
+  if (el.settingsIdleBrightness) {
+    const idleBrightness = clamp(Math.round(Number(ui.idle_brightness_percent ?? 10)), 0, 100);
+    el.settingsIdleBrightness.value = String(idleBrightness);
+    if (el.settingsIdleBrightnessValue) el.settingsIdleBrightnessValue.textContent = `${idleBrightness}%`;
   }
   renderLanguageOptions();
 
@@ -2662,6 +3086,8 @@ function renderSettings() {
     `${t("settings.info.token_stored")}: ${ha.access_token_set ? t("common.yes") : t("common.no")}`,
     `${t("settings.info.rest_fallback")}: ${ha.rest_enabled ? t("common.yes") : t("common.no")}`,
   ].join(" | ");
+
+  recordHaConnectionStatus(ha);
 
   el.settingsTimeInfo.textContent = t("settings.time.info");
   if (el.settingsUiInfo) {
@@ -2693,6 +3119,35 @@ function renderSettings() {
     void refreshLatestOtaUrl();
   }
   renderWifiScanResults(editor.wifiScanItems);
+}
+
+const haConnectionHistory = [];
+let haLastConnectionSignature = "";
+function recordHaConnectionStatus(ha) {
+  if (!ha || typeof ha !== "object") return;
+  const signature = [!!ha.configured, !!ha.connected, !!ha.rest_enabled].join(":");
+  if (signature !== haLastConnectionSignature) {
+    const now = new Date().toLocaleTimeString();
+    let message = ha.connected ? "WebSocket connected" : (ha.configured ? "WebSocket disconnected / waiting to reconnect" : "Home Assistant not configured");
+    if (!ha.connected && ha.rest_enabled) message += " — REST fallback enabled";
+    haConnectionHistory.push(`[${now}] ${message}`);
+    if (haConnectionHistory.length > 20) haConnectionHistory.shift();
+    haLastConnectionSignature = signature;
+  }
+  if (el.settingsHaConnectionLog) {
+    const diagnosticHistory = Array.isArray(editor.haDiagnostics?.connectionLog)
+      ? editor.haDiagnostics.connectionLog
+      : [];
+    const lines = diagnosticHistory.length
+      ? diagnosticHistory.map((entry) => {
+          const elapsed = Math.max(0, Number(entry.elapsedMs) || 0);
+          const seconds = (elapsed / 1000).toFixed(3);
+          return `[+${seconds}s] ${entry.message}`;
+        })
+      : haConnectionHistory;
+    el.settingsHaConnectionLog.textContent = lines.length ? lines.join("\n") : "Waiting for connection status...";
+    el.settingsHaConnectionLog.scrollTop = el.settingsHaConnectionLog.scrollHeight;
+  }
 }
 
 function renderWifiScanResults(items, scope = "settings") {
@@ -3209,6 +3664,44 @@ async function saveHaProvisioning() {
   setProvisioningInfo("ha", t("provision.saved_reboot"));
 }
 
+function updateNightScheduleVisibility() {
+  if (el.settingsNightSchedule) {
+    el.settingsNightSchedule.hidden = Number(el.settingsNightMode?.value ?? 0) !== 2;
+  }
+}
+
+function updateBrightnessLabel() {
+  if (el.settingsBrightness && el.settingsBrightnessValue) {
+    el.settingsBrightnessValue.textContent = `${el.settingsBrightness.value}%`;
+  }
+}
+
+async function applyDisplaySettings() {
+  const brightnessPercent = clamp(Math.round(Number(el.settingsBrightness?.value ?? 100)), 0, 100);
+  const nightBrightnessPercent = clamp(Math.round(Number(el.settingsNightBrightness?.value ?? 20)), 0, 100);
+  const nightMode = clamp(Math.round(Number(el.settingsNightMode?.value ?? 0)), 0, 2);
+  const [nightHourRaw, nightMinuteRaw] = String(el.settingsNightStartTime?.value || "22:00").split(":");
+  const [dayHourRaw, dayMinuteRaw] = String(el.settingsDayStartTime?.value || "07:00").split(":");
+  const payload = {
+    ui: {
+      brightness_percent: brightnessPercent,
+      night_brightness_percent: nightBrightnessPercent,
+      night_mode: nightMode,
+      night_mode_auto: nightMode === 2,
+      night_start_hour: clamp(Math.round(Number(nightHourRaw)), 0, 23),
+      night_start_minute: clamp(Math.round(Number(nightMinuteRaw)), 0, 59),
+      day_start_hour: clamp(Math.round(Number(dayHourRaw)), 0, 23),
+      day_start_minute: clamp(Math.round(Number(dayMinuteRaw)), 0, 59),
+      idle_timeout_seconds: clamp(Math.round(Number(el.settingsIdleTimeout?.value ?? 60)), 0, 86400),
+      idle_brightness_percent: clamp(Math.round(Number(el.settingsIdleBrightness?.value ?? 10)), 0, 100),
+    },
+    reboot: false,
+  };
+  setStatus(t("status.applying_display_settings"));
+  await putSettings(payload);
+  setStatus(t("status.display_settings_applied"));
+}
+
 async function saveSettings() {
   const wifiSsid = el.settingsWifiSsid.value.trim();
   const wifiPassword = el.settingsWifiPassword.value;
@@ -3221,6 +3714,17 @@ async function saveSettings() {
   const ntpServer = el.settingsNtpServer.value.trim();
   const timezone = el.settingsTimezone.value.trim();
   const language = normalizeUiLanguage(el.settingsLanguage?.value);
+  const brightnessPercent = clamp(Math.round(Number(el.settingsBrightness?.value ?? 100)), 0, 100);
+  const nightBrightnessPercent = clamp(Math.round(Number(el.settingsNightBrightness?.value ?? 20)), 0, 100);
+  const nightMode = clamp(Math.round(Number(el.settingsNightMode?.value ?? 0)), 0, 2);
+  const [nightHourRaw, nightMinuteRaw] = String(el.settingsNightStartTime?.value || "22:00").split(":");
+  const [dayHourRaw, dayMinuteRaw] = String(el.settingsDayStartTime?.value || "07:00").split(":");
+  const nightStartHour = clamp(Math.round(Number(nightHourRaw)), 0, 23);
+  const nightStartMinute = clamp(Math.round(Number(nightMinuteRaw)), 0, 59);
+  const dayStartHour = clamp(Math.round(Number(dayHourRaw)), 0, 23);
+  const dayStartMinute = clamp(Math.round(Number(dayMinuteRaw)), 0, 59);
+  const idleTimeoutSeconds = clamp(Math.round(Number(el.settingsIdleTimeout?.value ?? 60)), 0, 86400);
+  const idleBrightnessPercent = clamp(Math.round(Number(el.settingsIdleBrightness?.value ?? 10)), 0, 100);
 
   if (!wifiCountryCode) {
     setStatus(t("settings.language.invalid_country"), true);
@@ -3251,6 +3755,16 @@ async function saveSettings() {
     },
     ui: {
       language,
+      brightness_percent: brightnessPercent,
+      night_brightness_percent: nightBrightnessPercent,
+      night_mode: nightMode,
+      night_mode_auto: nightMode === 2,
+      night_start_hour: nightStartHour,
+      night_start_minute: nightStartMinute,
+      day_start_hour: dayStartHour,
+      day_start_minute: dayStartMinute,
+      idle_timeout_seconds: idleTimeoutSeconds,
+      idle_brightness_percent: idleBrightnessPercent,
     },
     reboot: true,
   };
@@ -3335,6 +3849,34 @@ function clamp(value, min, max) {
 function snap(value) {
   return Math.round(value / GRID) * GRID;
 }
+function pagesInPhysicalNavOrder() {
+  const pages = editor.layout?.pages || [];
+
+  if (pages.length <= 1) {
+    return [...pages];
+  }
+
+  // Page 0 is always the fixed Home/Main page.
+  const home = pages[0];
+  const extras = pages.slice(1);
+
+  const left = [];
+  const right = [];
+
+  extras.forEach((page, index) => {
+    if ((index & 1) === 0) {
+      // Firmware places pages 1, 3, ... on the left,
+      // filling from the centre outwards.
+      left.unshift(page);
+    } else {
+      // Firmware places pages 2, 4, ... on the right,
+      // filling from the centre outwards.
+      right.push(page);
+    }
+  });
+
+  return [...left, home, ...right];
+}
 
 function selectedPage() {
   if (!editor.layout) return null;
@@ -3358,6 +3900,340 @@ function inspectorSliderEntityDomain() {
   }
   return normalizeSliderEntityDomain(selectedWidget()?.slider_entity_domain);
 }
+function setButtonCustomIconValue(iconName) {
+  if (!el.fButtonCustomIcon) {
+    return;
+  }
+
+  const value =
+    typeof iconName === "string"
+      ? iconName.trim()
+      : "";
+
+  const select = el.fButtonCustomIcon;
+
+  /*
+   * Remove a previously-added compatibility option.
+   */
+  const previous =
+    select.querySelector(
+      'option[data-legacy-button-icon="true"]'
+    );
+
+  if (previous) {
+    previous.remove();
+  }
+
+  if (!value) {
+    select.value = "";
+    return;
+  }
+
+  /*
+   * Use the normal picker option when the configured
+   * icon is part of BETTA's supported icon list.
+   */
+  const known = Array.from(select.options).some(
+    (option) => option.value === value
+  );
+
+  if (known) {
+    select.value = value;
+    return;
+  }
+
+  /*
+   * Preserve icons from older layouts even when they
+   * are not currently offered by the picker.
+   */
+  const option = document.createElement("option");
+
+  option.value = value;
+  option.textContent =
+    `${value} (existing)`;
+
+  option.dataset.legacyButtonIcon = "true";
+
+  select.appendChild(option);
+  select.value = value;
+}
+function setSliderCustomIconValue(iconName) {
+  if (!el.fSliderCustomIcon) {
+    return;
+  }
+
+  const normalized =
+    typeof iconName === "string"
+      ? iconName.trim()
+      : "";
+
+  const existingLegacy =
+    el.fSliderCustomIcon.querySelector(
+      'option[data-legacy-slider-icon="true"]'
+    );
+
+  if (existingLegacy) {
+    existingLegacy.remove();
+  }
+
+  if (!normalized) {
+    if (el.fSliderCustomIcon.options.length > 0) {
+      el.fSliderCustomIcon.selectedIndex = 0;
+    }
+    return;
+  }
+
+  const supported =
+    Array.from(el.fSliderCustomIcon.options).some(
+      option => option.value === normalized
+    );
+
+  if (!supported) {
+    const option = document.createElement("option");
+    option.value = normalized;
+    option.textContent = normalized;
+    option.dataset.legacySliderIcon = "true";
+    el.fSliderCustomIcon.appendChild(option);
+  }
+
+  el.fSliderCustomIcon.value = normalized;
+}
+
+function updateSliderIconControls() {
+  const showIcon =
+    !el.fSliderShowIcon ||
+    el.fSliderShowIcon.value !== "false";
+
+  if (el.fSliderIconModeWrap) {
+    el.fSliderIconModeWrap.classList.toggle(
+      "hidden",
+      !showIcon
+    );
+  }
+
+  const custom =
+    showIcon &&
+    el.fSliderIconMode &&
+    el.fSliderIconMode.value === "custom";
+
+  if (el.fSliderCustomIconWrap) {
+    el.fSliderCustomIconWrap.classList.toggle(
+      "hidden",
+      !custom
+    );
+  }
+}
+function updateTimerIconControls() {
+  const mode = document.getElementById("fTimerIconMode");
+  const wrap = document.getElementById("fTimerCustomIconWrap");
+  if (!mode || !wrap) return;
+  wrap.classList.toggle("hidden", mode.value !== "custom");
+}
+
+function syncTimerInspector(widget) {
+  if (!widget) return;
+
+  const configuredIcon =
+    typeof widget.icon === "string" ? widget.icon.trim() : "";
+  const mode = document.getElementById("fTimerIconMode");
+  const input = document.getElementById("fTimerCustomIcon");
+
+  if (mode) mode.value = configuredIcon ? "custom" : "automatic";
+  if (input) {
+    input.innerHTML = el.fButtonCustomIcon
+      ? el.fButtonCustomIcon.innerHTML
+      : "";
+    if (
+      configuredIcon &&
+      !Array.from(input.options).some(option => option.value === configuredIcon)
+    ) {
+      const option = document.createElement("option");
+      option.value = configuredIcon;
+      option.textContent = `${configuredIcon} (existing)`;
+      input.appendChild(option);
+    }
+    input.value = configuredIcon;
+  }
+  updateTimerIconControls();
+}
+
+const timerIconModeControl = document.getElementById("fTimerIconMode");
+if (timerIconModeControl) {
+  timerIconModeControl.addEventListener("change", () => {
+    updateTimerIconControls();
+    autoApplyInspector();
+  });
+}
+
+function setSensorCustomIconValue(iconName) {
+  if (!el.fSensorCustomIcon) {
+    return;
+  }
+
+  const value =
+    typeof iconName === "string"
+      ? iconName.trim()
+      : "";
+
+  const select = el.fSensorCustomIcon;
+
+  const previous = select.querySelector(
+    'option[data-legacy-sensor-icon="true"]'
+  );
+
+  if (previous) {
+    previous.remove();
+  }
+
+  if (!value) {
+    select.value = "";
+    return;
+  }
+
+  const known = Array.from(select.options).some(
+    (option) => option.value === value
+  );
+
+  if (known) {
+    select.value = value;
+    return;
+  }
+
+  /*
+   * Preserve an existing custom icon from an older layout even
+   * when it is not currently offered by the Sensor picker.
+   */
+  const option = document.createElement("option");
+
+  option.value = value;
+  option.textContent = `${value} (existing)`;
+  option.dataset.legacySensorIcon = "true";
+
+  select.appendChild(option);
+  select.value = value;
+}
+
+function updateSensorIconControls() {
+  if (
+    !el.fSensorShowIcon ||
+    !el.fSensorIconModeWrap ||
+    !el.fSensorIconMode ||
+    !el.fSensorCustomIconWrap
+  ) {
+    return;
+  }
+
+  const showIcon =
+    el.fSensorShowIcon.value !== "false";
+
+  el.fSensorIconModeWrap.classList.toggle(
+    "hidden",
+    !showIcon
+  );
+
+  const customIcon =
+    showIcon &&
+    el.fSensorIconMode.value === "custom";
+
+  el.fSensorCustomIconWrap.classList.toggle(
+    "hidden",
+    !customIcon
+  );
+}
+
+const COMMON_DISPLAY_WIDGET_TYPES = new Set([
+  "graph", "heating_tile", "light_tile", "fan_tile", "media_player",
+  "roborock", "roborock_tile", "todo", "todo_list", "weather_tile", "weather_3day",
+  "binary_sensor", "input_number", "select", "input_text", "input_datetime",
+  "alarm_control_panel", "update", "calendar", "person", "device_tracker"
+]);
+/* All normal entity-backed tiles share the same MDI registry. Image/empty tiles
+ * deliberately stay out because their primary visual is not an icon. */
+const COMMON_ICON_WIDGET_TYPES = new Set([
+  "graph", "heating_tile", "light_tile", "fan_tile", "media_player",
+  "roborock", "roborock_tile", "todo", "todo_list",
+  "binary_sensor", "input_number", "select", "input_text", "input_datetime",
+  "alarm_control_panel", "update", "calendar", "person", "device_tracker"
+]);
+const STATE_ICON_COLOR_WIDGET_TYPES = new Set([
+  "button", "light_tile", "heating_tile"
+]);
+
+function updateStateColorControls() {
+  if (el.fStateOffColorWrap) el.fStateOffColorWrap.classList.toggle("hidden", el.fStateOffColorMode?.value !== "custom");
+  if (el.fStateOnColorWrap) el.fStateOnColorWrap.classList.toggle("hidden", el.fStateOnColorMode?.value !== "custom");
+}
+
+function setCommonCustomIconValue(value) {
+  const select = el.fCommonCustomIcon;
+  if (!select) return;
+  const wanted = String(value || "").trim();
+  select.innerHTML = el.fButtonCustomIcon
+    ? el.fButtonCustomIcon.innerHTML
+    : "";
+  if (!wanted) return;
+  const known = Array.from(select.options).some((option) => option.value === wanted);
+  if (!known) {
+    const option = document.createElement("option");
+    option.value = wanted;
+    option.textContent = `${wanted} (existing)`;
+    select.appendChild(option);
+  }
+  select.value = wanted;
+}
+
+function updateCommonIconControls() {
+  if (!el.fCommonShowIcon || !el.fCommonIconModeWrap || !el.fCommonIconMode || !el.fCommonCustomIconWrap) return;
+  const widget = selectedWidget();
+  const iconCapable = widget && COMMON_ICON_WIDGET_TYPES.has(widget.type);
+  const showIcon = iconCapable && el.fCommonShowIcon.value !== "false";
+  el.fCommonShowIcon.closest("label")?.classList.toggle("hidden", !iconCapable);
+  el.fCommonIconModeWrap.classList.toggle("hidden", !showIcon);
+  el.fCommonCustomIconWrap.classList.toggle("hidden", !showIcon || el.fCommonIconMode.value !== "custom");
+}
+
+function updateButtonIconControls() {
+  if (
+    !el.fButtonAppearance ||
+    !el.fButtonIconMode ||
+    !el.fButtonIconModeWrap ||
+    !el.fButtonCustomIconWrap
+  ) {
+    return;
+  }
+
+  const appearance = normalizeButtonAppearance(
+    el.fButtonAppearance.value
+  );
+
+  const entityId = String(selectedWidget()?.entity_id || el.fEntity?.value || "");
+  const isRunnable = entityId.startsWith("script.") || entityId.startsWith("scene.") || entityId.startsWith("automation.");
+  /* One-shot runnable entities have no useful switch presentation. Always
+   * expose their icon controls, even when an older layout still says switch. */
+  const usesIcon = appearance === "icon" || isRunnable;
+
+  el.fButtonIconModeWrap.classList.toggle(
+    "hidden",
+    !usesIcon
+  );
+
+  const customIcon =
+    usesIcon &&
+    el.fButtonIconMode.value === "custom";
+
+  el.fButtonCustomIconWrap.classList.toggle(
+    "hidden",
+    !customIcon
+  );
+}
+function inspectorButtonAppearance() {
+  if (el.fButtonAppearance) {
+    return normalizeButtonAppearance(el.fButtonAppearance.value);
+  }
+  return normalizeButtonAppearance(
+    selectedWidget()?.button_appearance
+  );
+}
 
 function inspectorButtonMode() {
   if (el.fButtonMode) {
@@ -3366,31 +4242,50 @@ function inspectorButtonMode() {
   return normalizeButtonMode(selectedWidget()?.button_mode);
 }
 
+const WIDGET_ENTITY_DOMAINS = Object.freeze({
+  sensor: ["sensor"],
+  graph: ["sensor"],
+  binary_sensor: ["binary_sensor"],
+  input_number: ["input_number", "number"],
+  select: ["select", "input_select"],
+  input_text: ["input_text"],
+  input_datetime: ["input_datetime"],
+  alarm_control_panel: ["alarm_control_panel"],
+  update: ["update"],
+  calendar: ["calendar"],
+  image: ["image", "camera"],
+  person: ["person"],
+  device_tracker: ["device_tracker"],
+  light_tile: ["light"],
+  fan_tile: ["fan"],
+  heating_tile: ["climate"],
+  timer: ["timer"],
+  weather_tile: ["weather"],
+  weather_3day: ["weather"],
+  todo_list: ["todo"],
+  media_player: ["media_player"],
+  roborock_tile: ["vacuum"],
+});
+
 function allowedEntityDomainsForWidgetType(
   type,
   sliderDomain = DEFAULT_SLIDER_ENTITY_DOMAIN,
   buttonMode = DEFAULT_BUTTON_MODE,
 ) {
   if (type === "empty_tile") return [];
-  if (type === "sensor" || type === "graph") return ["sensor"];
   if (type === "button") {
     const normalizedMode = normalizeButtonMode(buttonMode);
-    return buttonModeRequiresMediaPlayer(normalizedMode) ? ["media_player"] : ["switch", "media_player"];
+    if (buttonModeRequiresMediaPlayer(normalizedMode)) return ["media_player"];
+    if (buttonModeRequiresRunnable(normalizedMode)) return ["script", "scene", "automation"];
+    return ["switch", "button", "input_boolean", "automation", "media_player"];
   }
-  if (type === "light_tile") return ["light"];
-  if (type === "heating_tile") return ["climate"];
-  if (type === "weather_tile" || type === "weather_3day") return ["weather"];
-  if (type === "todo_list") return ["todo"];
-  if (type === "media_player") return ["media_player"];
-  if (type === "roborock_tile") return ["vacuum"];
   if (type === "slider") {
     const normalized = normalizeSliderEntityDomain(sliderDomain);
-    if (normalized === "auto") {
-      return ["light", "media_player", "cover"];
-    }
-    return [normalized];
+    return normalized === "auto"
+      ? ["light", "media_player", "cover", "fan"]
+      : [normalized];
   }
-  return [];
+  return WIDGET_ENTITY_DOMAINS[type] || [];
 }
 
 function expectedDomainForWidgetType(
@@ -3741,11 +4636,14 @@ function clearLightEntityPickerSearchDebounce() {
 
 function cancelLightEntityPickerRequest() {
   const config = entityPickerConfig();
-  const params = new URLSearchParams();
-  params.set("domain", config.domain);
+  const domains = Array.isArray(config.domains) && config.domains.length ? config.domains : [config.domain];
   const search = entityPickerSearchValue();
-  if (search) params.set("search", search);
-  fetch(`/api/ha/light_entities?${params.toString()}`, { method: "DELETE", cache: "no-store" }).catch(() => {});
+  for (const domain of domains) {
+    const params = new URLSearchParams();
+    params.set("domain", domain);
+    if (search) params.set("search", search);
+    fetch(`/api/ha/light_entities?${params.toString()}`, { method: "DELETE", cache: "no-store" }).catch(() => {});
+  }
 }
 
 function entityPickerConfig(widgetType = editor.lightPicker.widgetType) {
@@ -3777,11 +4675,13 @@ function entityPickerCacheKey(domain, search = entityPickerSearchValue()) {
   return `${domain}|${String(search || "").trim().toLowerCase()}`;
 }
 
-function normalizeEntityPickerItems(items, domain) {
+function normalizeEntityPickerItems(items, domainOrDomains) {
   if (!Array.isArray(items)) return [];
-  const prefix = `${domain}.`;
+  const domains = Array.isArray(domainOrDomains) ? domainOrDomains : [domainOrDomains];
+  const prefixes = domains.filter(Boolean).map((domain) => `${domain}.`);
   return items
-    .filter((item) => item && typeof item.id === "string" && item.id.startsWith(prefix))
+    .filter((item) => item && typeof item.id === "string" &&
+      prefixes.some((prefix) => item.id.startsWith(prefix)))
     .map((item) => ({
       id: item.id,
       name: String(item.name || item.id),
@@ -3849,7 +4749,8 @@ function renderLightEntityPicker(data = {}) {
   const sourceItems = Object.prototype.hasOwnProperty.call(data, "items")
     ? data.items
     : editor.lightPicker.items;
-  const items = normalizeEntityPickerItems(sourceItems, domain);
+  const pickerDomains = Array.isArray(config.domains) && config.domains.length ? config.domains : [domain];
+  const items = normalizeEntityPickerItems(sourceItems, pickerDomains);
 
   if (el.lightEntityPickerTitle) {
     el.lightEntityPickerTitle.textContent = t(config.titleKey, {}, config.titleFallback);
@@ -3936,6 +4837,8 @@ function renderLightEntityPicker(data = {}) {
         addWidget(config.widgetType || editor.lightPicker.widgetType, {
           entityId: item.id,
           title: item.name || item.id,
+          buttonMode: config.buttonMode,
+          sliderDomain: config.sliderDomain,
         });
         closeLightEntityPicker();
         setStatus(t("entity_picker.added_widget", { widget: widgetLabel, entity: item.id }));
@@ -3952,6 +4855,7 @@ async function fetchLightEntityPicker(options = {}) {
   const pollCount = Number(options.pollCount || 0);
   const config = entityPickerConfig();
   const domain = config.domain;
+  const domains = Array.isArray(config.domains) && config.domains.length ? config.domains : [domain];
   const search = entityPickerSearchValue();
   const itemsLabel = entityPickerItemsLabel(config);
   if (!entityPickerSearchReady(config)) {
@@ -3980,7 +4884,28 @@ async function fetchLightEntityPicker(options = {}) {
   if (refresh) params.set("refresh", "1");
 
   try {
-    const data = await apiGet(`/api/ha/light_entities${params.toString() ? `?${params.toString()}` : ""}`);
+    let data;
+    if (domains.length === 1) {
+      data = await apiGet(`/api/ha/light_entities${params.toString() ? `?${params.toString()}` : ""}`);
+    } else {
+      const results = await Promise.all(domains.map(async (pickerDomain) => {
+        const domainParams = new URLSearchParams(params);
+        domainParams.set("domain", pickerDomain);
+        return apiGet(`/api/ha/light_entities?${domainParams.toString()}`);
+      }));
+      const merged = new Map();
+      for (const result of results) {
+        for (const item of (Array.isArray(result.items) ? result.items : [])) {
+          const key = item.entity_id || JSON.stringify(item);
+          merged.set(key, item);
+        }
+      }
+      data = {
+        ...results[0],
+        items: Array.from(merged.values()),
+        pending: results.some((result) => result.pending === true),
+      };
+    }
     if (requestSeq !== editor.lightPicker.requestSeq) return;
     editor.lightPicker.loading = data.pending === true;
     renderLightEntityPicker(data);
@@ -4004,7 +4929,7 @@ async function fetchLightEntityPicker(options = {}) {
 function openLightEntityPicker(widgetType = "light_tile") {
   const config = entityPickerConfig(widgetType);
   if (!el.lightEntityPickerOverlay) {
-    addWidget(config.widgetType || widgetType);
+    addWidget(config.widgetType || widgetType, { buttonMode: config.buttonMode });
     return;
   }
   editor.lightPicker.widgetType = widgetType;
@@ -4201,12 +5126,206 @@ function renderEntityOptions() {
     }
   }
 }
+function movePage(draggedPageId, targetPageId, placeAfter = false) {
+  if (!editor.layout || !Array.isArray(editor.layout.pages)) return;
+  if (!draggedPageId || !targetPageId) return;
+  if (draggedPageId === targetPageId) return;
 
+  const pages = editor.layout.pages;
+
+  if (pages.length <= 1) return;
+
+  // Page 0 is permanently Home/Main.
+  const home = pages[0];
+
+  // Home itself can never be moved.
+  if (draggedPageId === home.id) return;
+
+  /*
+   * Get the pages exactly as they appear physically from
+   * left to right on the panel.
+   */
+  const physical = pagesInPhysicalNavOrder();
+
+  /*
+   * Remove Home from the movable sequence.
+   *
+   * Example with five pages:
+   *
+   *   C | A | HOME | B | D
+   *
+   * becomes:
+   *
+   *   C | A | B | D
+   */
+  const movable = physical.filter(
+    (page) => page.id !== home.id
+  );
+
+  const fromIndex = movable.findIndex(
+    (page) => page.id === draggedPageId
+  );
+
+  if (fromIndex < 0) return;
+
+  const [draggedPage] = movable.splice(fromIndex, 1);
+
+  /*
+   * Home is a fixed divider.
+   *
+   * Dropping immediately before or after Home means inserting
+   * at the boundary between the left and right page groups.
+   */
+ if (targetPageId === home.id) {
+  const totalMovable = pages.length - 1;
+  const leftCount = Math.ceil(totalMovable / 2);
+
+  /*
+   * Home is the fixed divider:
+   *
+   * drop before Home -> last slot on the left
+   * drop after Home  -> first slot on the right
+   *
+   * Both positions meet at the same boundary in the movable
+   * left-to-right sequence.
+   */
+  const insertIndex = Math.min(
+    leftCount,
+    movable.length
+  );
+
+  movable.splice(insertIndex, 0, draggedPage);
+} else {
+    const targetIndex = movable.findIndex(
+      (page) => page.id === targetPageId
+    );
+
+    if (targetIndex < 0) return;
+
+    const insertIndex = placeAfter
+      ? targetIndex + 1
+      : targetIndex;
+
+    movable.splice(insertIndex, 0, draggedPage);
+  }
+
+  /*
+   * The number of physical slots on each side of Home is fixed
+   * by the total page count.
+   */
+  const leftCount = Math.ceil(movable.length / 2);
+
+  const left = movable.slice(0, leftCount);
+  const right = movable.slice(leftCount);
+
+  /*
+   * Convert physical left-to-right order back into the internal
+   * alternating order expected by ui_pages_apply_tab_style().
+   *
+   * Physical:
+   *
+   *   C | A | HOME | B | D
+   *
+   * Internal:
+   *
+   *   HOME, A, B, C, D
+   */
+  const extras = [];
+  const maxSideCount = Math.max(left.length, right.length);
+
+  for (let i = 0; i < maxSideCount; i++) {
+    const leftIndex = left.length - 1 - i;
+
+    if (leftIndex >= 0) {
+      extras.push(left[leftIndex]);
+    }
+
+    if (i < right.length) {
+      extras.push(right[i]);
+    }
+  }
+
+  editor.layout.pages = [home, ...extras];
+
+  editor.selectedPageId = draggedPageId;
+  editor.selectedWidgetId = null;
+
+  renderAll();
+}
 function renderPages() {
   el.pagesList.innerHTML = "";
-  for (const page of editor.layout.pages) {
+  for (const page of pagesInPhysicalNavOrder()) {
     const li = document.createElement("li");
     li.className = `list-item ${page.id === editor.selectedPageId ? "active selected" : ""}`;
+    li.draggable = false;
+li.dataset.pageId = page.id;
+
+li.addEventListener("dragover", (ev) => {
+  ev.preventDefault();
+  ev.dataTransfer.dropEffect = "move";
+
+  const rect = li.getBoundingClientRect();
+  const placeAfter = ev.clientY > rect.top + rect.height / 2;
+
+  li.classList.toggle("drag-over-before", !placeAfter);
+  li.classList.toggle("drag-over-after", placeAfter);
+});
+
+li.addEventListener("dragleave", () => {
+  li.classList.remove("drag-over-before", "drag-over-after");
+});
+
+li.addEventListener("drop", (ev) => {
+  ev.preventDefault();
+  ev.stopPropagation();
+
+  const draggedPageId =
+    ev.dataTransfer.getData("text/plain");
+
+  const rect = li.getBoundingClientRect();
+  const placeAfter = ev.clientY > rect.top + rect.height / 2;
+
+  li.classList.remove("drag-over-before", "drag-over-after");
+
+  movePage(draggedPageId, page.id, placeAfter);
+});
+const dragHandle = document.createElement("span");
+const isHomePage = page === editor.layout.pages[0];
+
+dragHandle.className = isHomePage
+  ? "page-drag-handle fixed"
+  : "page-drag-handle";
+
+dragHandle.textContent = isHomePage ? "⌂" : "☰";
+
+dragHandle.title = isHomePage
+  ? "Home page — fixed centre position"
+  : "Drag to reorder page";
+
+dragHandle.setAttribute(
+  "aria-label",
+  isHomePage
+    ? "Home page — fixed centre position"
+    : "Drag to reorder page"
+);
+
+dragHandle.draggable = !isHomePage;
+
+dragHandle.addEventListener("dragstart", (ev) => {
+  ev.stopPropagation();
+
+  ev.dataTransfer.effectAllowed = "move";
+  ev.dataTransfer.setData("text/plain", page.id);
+
+  li.classList.add("dragging");
+});
+
+dragHandle.addEventListener("dragend", (ev) => {
+  ev.stopPropagation();
+  li.classList.remove("dragging");
+});
+
+li.appendChild(dragHandle);
 
     const label = document.createElement("span");
     const badge = isEnergyPage(page) ? " ⚡" : "";
@@ -4291,7 +5410,7 @@ function startInlinePageRename(li, labelSpan, page) {
 function renderPagesMini() {
   if (!el.pagesMiniList) return;
   el.pagesMiniList.innerHTML = "";
-  for (const page of editor.layout.pages) {
+  for (const page of pagesInPhysicalNavOrder()) {
     const button = document.createElement("button");
     button.type = "button";
     button.className = `mini-page-btn ${page.id === editor.selectedPageId ? "active" : ""}`;
@@ -4360,6 +5479,8 @@ function renderWidgets() {
   const addButtons = [
     el.addSensorBtn,
     el.addButtonBtn,
+    el.addScriptBtn,
+    el.addSceneBtn,
     el.addSliderBtn,
     el.addGraphBtn,
     el.addEmptyTileBtn,
@@ -4833,6 +5954,54 @@ function renderCanvas() {
     box.style.zIndex = isEmptyTile ? "1" : "10";
     const previewState = isEmptyTile ? "design" : (editor.states.get(widget.entity_id) || "unavailable");
     let extraHint = "";
+    if (widget.type === "button") {
+  const appearance = normalizeButtonAppearance(
+    widget.button_appearance
+  );
+
+  extraHint =
+    appearance === "icon"
+      ? `<div class="w-hint">● Icon button</div>`
+      : `<div class="w-hint">◯━━ Switch</div>`;
+}
+    if (widget.type === "timer") {
+  const showTitle = widget.show_title !== false;
+  const showIcon = widget.show_icon !== false;
+  const showState = widget.show_state !== false;
+
+  const timerControls = [];
+
+  if (widget.timer_show_start !== false) {
+    timerControls.push("Start");
+  }
+  if (widget.timer_show_pause !== false) {
+    timerControls.push("Pause");
+  }
+  if (widget.timer_show_cancel !== false) {
+    timerControls.push("Cancel");
+  }
+  if (widget.timer_show_finish !== false) {
+    timerControls.push("Finish");
+  }
+
+  box.innerHTML = `
+    <div class="w-type">timer</div>
+    ${showIcon ? `<div class="w-title">⏱</div>` : ""}
+    ${showTitle ? `<div class="w-title">${previewTitle}</div>` : ""}
+    ${showState ? `<div class="w-state">${previewState}</div>` : ""}
+    ${
+      timerControls.length
+        ? `<div class="w-hint">${timerControls.join(" · ")}</div>`
+        : ""
+    }
+    <div class="resize-handle"></div>
+  `;
+
+  geometryStyle(box, widget.rect);
+  attachDragAndResize(box, widget);
+  el.canvas.appendChild(box);
+  continue;
+}
     if (widget.type === "weather_3day") {
       /* Mirrors the firmware layout in w_weather_tile.c:
        *   compact/panels3: ROWS_TOP=108, BOTTOM_PAD=12, ROW_HEIGHT=36, ROW_GAP=2
@@ -4885,6 +6054,8 @@ function renderInspector() {
     if (el.sliderOptions) {
       el.sliderOptions.classList.add("hidden");
     }
+    if (el.commonDisplayOptions) el.commonDisplayOptions.classList.add("hidden");
+    if (el.stateColorOptions) el.stateColorOptions.classList.add("hidden");
     if (el.graphOptions) {
       el.graphOptions.classList.add("hidden");
     }
@@ -4924,6 +6095,15 @@ function renderInspector() {
     if (el.heatingOptions) {
       el.heatingOptions.classList.add("hidden");
     }
+    if (el.sensorOptions) {
+      el.sensorOptions.classList.add("hidden");
+    }
+    const timerOptions =
+    document.getElementById("timerOptions");
+
+  if (timerOptions) {
+    timerOptions.classList.add("hidden");
+  }
     if (el.fHeatingStyleVariant) {
       el.fHeatingStyleVariant.value = "default";
     }
@@ -4946,12 +6126,39 @@ function renderInspector() {
   el.fH.value = widget.rect.h;
 
   const isButton = widget.type === "button";
+  const isSensor = widget.type === "sensor";
   const isSlider = widget.type === "slider";
   const isGraph = widget.type === "graph";
   const isHeating = widget.type === "heating_tile";
+  const usesCommonDisplay = COMMON_DISPLAY_WIDGET_TYPES.has(widget.type);
+  const usesStateColors = STATE_ICON_COLOR_WIDGET_TYPES.has(widget.type);
+  if (el.stateColorOptions) el.stateColorOptions.classList.toggle("hidden", !usesStateColors);
+  if (usesStateColors) {
+    const off = typeof widget.state_icon_off_color === "string" ? widget.state_icon_off_color.trim() : "";
+    const on = typeof widget.state_icon_on_color === "string" ? widget.state_icon_on_color.trim() : "";
+    if (el.fStateOffColorMode) el.fStateOffColorMode.value = off ? "custom" : "default";
+    if (el.fStateOnColorMode) el.fStateOnColorMode.value = on ? "custom" : "default";
+    if (el.fStateOffColor) el.fStateOffColor.value = normalizeHexColor(off, "#8ea1b4");
+    if (el.fStateOnColor) el.fStateOnColor.value = normalizeHexColor(on, "#ffcf6b");
+    updateStateColorControls();
+  }
+  if (el.commonDisplayOptions) el.commonDisplayOptions.classList.toggle("hidden", !usesCommonDisplay);
+  if (usesCommonDisplay) {
+    const configuredIcon = typeof widget.icon === "string" ? widget.icon.trim() : "";
+    if (el.fCommonShowTitle) el.fCommonShowTitle.value = widget.show_title !== false ? "true" : "false";
+    if (el.fCommonShowIcon) el.fCommonShowIcon.value = widget.show_icon !== false ? "true" : "false";
+    if (el.fCommonShowState) el.fCommonShowState.value = widget.show_state !== false ? "true" : "false";
+    if (el.fCommonIconMode) el.fCommonIconMode.value = configuredIcon ? "custom" : "automatic";
+    setCommonCustomIconValue(configuredIcon);
+    updateCommonIconControls();
+  }
+
   if (el.buttonOptions) {
     el.buttonOptions.classList.toggle("hidden", !isButton);
   }
+  if (el.sensorOptions) {
+  el.sensorOptions.classList.toggle("hidden", !isSensor);
+}
   if (el.sliderOptions) {
     el.sliderOptions.classList.toggle("hidden", !isSlider);
   }
@@ -4961,26 +6168,194 @@ function renderInspector() {
   if (el.heatingOptions) {
     el.heatingOptions.classList.toggle("hidden", !isHeating);
   }
-  if (isButton) {
-    const accent = normalizeHexColor(widget.button_accent_color, DEFAULT_BUTTON_ACCENT_COLOR);
-    const buttonMode = normalizeButtonMode(widget.button_mode);
-    widget.button_accent_color = accent;
-    widget.button_mode = buttonMode;
-    if (el.fButtonAccentColor) {
-      el.fButtonAccentColor.value = accent;
-    }
-    if (el.fButtonMode) {
-      el.fButtonMode.value = buttonMode;
-    }
-  } else {
-    if (el.fButtonAccentColor) {
-      el.fButtonAccentColor.value = DEFAULT_BUTTON_ACCENT_COLOR;
-    }
-    if (el.fButtonMode) {
-      el.fButtonMode.value = DEFAULT_BUTTON_MODE;
-    }
+  const timerOptions =
+    document.getElementById("timerOptions");
+
+  if (timerOptions) {
+    timerOptions.classList.toggle(
+      "hidden",
+      widget.type !== "timer"
+    );
   }
+  if (
+    widget.type === "timer" &&
+    typeof syncTimerInspector === "function"
+  ) {
+    syncTimerInspector(widget);
+  }
+
+ if (isSensor) {
+  const configuredIcon =
+    typeof widget.icon === "string"
+      ? widget.icon.trim()
+      : "";
+
+  if (el.fSensorShowTitle) {
+    el.fSensorShowTitle.value =
+      widget.show_title !== false ? "true" : "false";
+  }
+
+if (el.fSensorShowIcon) {
+    el.fSensorShowIcon.value =
+      widget.show_icon !== false ? "true" : "false";
+  }
+
+  if (el.fSensorShowState) {
+    el.fSensorShowState.value =
+      widget.show_state !== false ? "true" : "false";
+  }
+
+  if (el.fSensorDecimalPlaces) {
+    const precision = Number(widget.sensor_decimal_places);
+    el.fSensorDecimalPlaces.value =
+      Number.isInteger(precision) && precision >= 0 && precision <= 6
+        ? String(precision)
+        : "";
+  }
+
+  if (el.fSensorIconMode) {
+    el.fSensorIconMode.value =
+      configuredIcon ? "custom" : "automatic";
+  }
+
+  setSensorCustomIconValue(configuredIcon);
+  updateSensorIconControls();
+}
+if (isButton) {
+  let appearance = normalizeButtonAppearance(
+    widget.button_appearance
+  );
+  const runnableButton = String(widget.entity_id || "").startsWith("script.") ||
+    String(widget.entity_id || "").startsWith("scene.") ||
+    String(widget.entity_id || "").startsWith("automation.");
+  if (runnableButton) appearance = "icon";
+  const buttonMode = normalizeButtonMode(
+    widget.button_mode
+  );
+
+  const configuredIcon =
+    typeof widget.icon === "string"
+      ? widget.icon.trim()
+      : "";
+
+  const iconMode =
+    configuredIcon.length > 0
+      ? "custom"
+      : "automatic";
+
+   const showTitle =
+    widget.show_title !== false;
+
+  const showState =
+    widget.show_state !== false;
+
+  widget.button_appearance = appearance;
+  widget.button_mode = buttonMode;
+  widget.show_title = showTitle;
+  widget.show_state = showState;
+
+  if (el.fButtonShowTitle) {
+    el.fButtonShowTitle.value =
+      showTitle ? "true" : "false";
+  }
+
+  if (el.fButtonShowState) {
+    el.fButtonShowState.value =
+      showState ? "true" : "false";
+  }
+
+  if (el.fButtonAppearance) {
+    el.fButtonAppearance.value = appearance;
+  }
+
+  if (el.fButtonMode) {
+    el.fButtonMode.value = buttonMode;
+  }
+
+  if (el.fButtonIconMode) {
+    el.fButtonIconMode.value = iconMode;
+  }
+
+  if (el.fButtonCustomIcon) {
+    setButtonCustomIconValue(configuredIcon);
+  }
+
+  updateButtonIconControls();
+} else {
+    if (el.fButtonShowTitle) {
+    el.fButtonShowTitle.value = "true";
+  }
+
+  if (el.fButtonShowState) {
+    el.fButtonShowState.value = "true";
+  }
+  if (el.fButtonAppearance) {
+    el.fButtonAppearance.value =
+      DEFAULT_BUTTON_APPEARANCE;
+  }
+
+  if (el.fButtonAccentColor) {
+    el.fButtonAccentColor.value =
+      DEFAULT_BUTTON_ACCENT_COLOR;
+  }
+
+  if (el.fButtonMode) {
+    el.fButtonMode.value =
+      DEFAULT_BUTTON_MODE;
+  }
+
+  if (el.fButtonIconMode) {
+    el.fButtonIconMode.value = "automatic";
+  }
+
+   setButtonCustomIconValue("");
+
+  updateButtonIconControls();
+}
+
+
   if (isSlider) {
+        const showTitle =
+      widget.show_title !== false;
+
+    const showIcon =
+      widget.show_icon !== false;
+
+    const showState =
+      widget.show_state !== false;
+
+    const configuredIcon =
+      typeof widget.icon === "string"
+        ? widget.icon.trim()
+        : "";
+
+    if (el.fSliderShowTitle) {
+      el.fSliderShowTitle.value =
+        showTitle ? "true" : "false";
+    }
+
+    if (el.fSliderShowIcon) {
+      el.fSliderShowIcon.value =
+        showIcon ? "true" : "false";
+    }
+
+    if (el.fSliderShowState) {
+      el.fSliderShowState.value =
+        showState ? "true" : "false";
+    }
+
+    if (el.fSliderIconMode) {
+      el.fSliderIconMode.value =
+        configuredIcon
+          ? "custom"
+          : "automatic";
+    }
+
+    setSliderCustomIconValue(
+      configuredIcon || "mdi:swap-vertical"
+    );
+
+    updateSliderIconControls();
     const sliderEntityDomain = normalizeSliderEntityDomain(widget.slider_entity_domain);
     const direction = normalizeSliderDirection(widget.slider_direction);
     const accent = normalizeHexColor(widget.slider_accent_color, DEFAULT_SLIDER_ACCENT_COLOR);
@@ -4996,13 +6371,34 @@ function renderInspector() {
     if (el.fSliderAccentColor) {
       el.fSliderAccentColor.value = accent;
     }
-  } else {
+   } else {
     if (el.fSliderEntityDomain) {
       el.fSliderEntityDomain.value = DEFAULT_SLIDER_ENTITY_DOMAIN;
     }
+
+    if (el.fSliderShowTitle) {
+      el.fSliderShowTitle.value = "true";
+    }
+
+    if (el.fSliderShowIcon) {
+      el.fSliderShowIcon.value = "true";
+    }
+
+    if (el.fSliderShowState) {
+      el.fSliderShowState.value = "true";
+    }
+
+    if (el.fSliderIconMode) {
+      el.fSliderIconMode.value = "automatic";
+    }
+
+    setSliderCustomIconValue("mdi:swap-vertical");
+    updateSliderIconControls();
+
     if (el.fSliderDirection) {
       el.fSliderDirection.value = DEFAULT_SLIDER_DIRECTION;
     }
+
     if (el.fSliderAccentColor) {
       el.fSliderAccentColor.value = DEFAULT_SLIDER_ACCENT_COLOR;
     }
@@ -5184,9 +6580,16 @@ function addWidget(type, options = {}) {
     setStatus(t("layout.status.energy_page_only"), true);
     return null;
   }
-  const sliderDomain = DEFAULT_SLIDER_ENTITY_DOMAIN;
+  const sliderDomain = type === "slider" && SLIDER_ENTITY_DOMAINS.has(options.sliderDomain)
+    ? options.sliderDomain
+    : DEFAULT_SLIDER_ENTITY_DOMAIN;
+  const resolvedButtonMode = type === "button" && BUTTON_MODES.has(options.buttonMode)
+    ? options.buttonMode
+    : DEFAULT_BUTTON_MODE;
   const id = createWidgetIdForPage(page, type);
-  const entityId = typeof options.entityId === "string" ? options.entityId : pickDefaultEntityForWidgetType(type, sliderDomain);
+  const entityId = typeof options.entityId === "string"
+    ? options.entityId
+    : pickDefaultEntityForWidgetType(type, sliderDomain, resolvedButtonMode);
   const secondaryEntityId = type === "heating_tile" ? pickDefaultEntityForWidgetType("sensor") : "";
   const compact = isCompactCanvas();
   const defaultW = compact
@@ -5195,14 +6598,14 @@ function addWidget(type, options = {}) {
       : type === "media_player" ? 300
       : type === "roborock_tile" ? 460
       : type === "weather_tile" ? 220
-      : (type === "light_tile" || type === "empty_tile") ? 140
+      : (type === "light_tile" || type === "fan_tile" || type === "empty_tile") ? 140
       : type === "heating_tile" ? 150
       : 180
     : type === "weather_3day" ? 360
       : type === "todo_list" ? 360
       : type === "media_player" ? 360
       : type === "roborock_tile" ? 360
-      : (type === "light_tile" || type === "heating_tile" || type === "weather_tile" || type === "empty_tile") ? 300
+      : (type === "light_tile" || type === "fan_tile" || type === "heating_tile" || type === "weather_tile" || type === "empty_tile") ? 300
       : 220;
   const defaultH = compact
     ? type === "weather_3day" ? 240
@@ -5210,14 +6613,14 @@ function addWidget(type, options = {}) {
       : type === "media_player" ? 220
       : type === "roborock_tile" ? 300
       : type === "weather_tile" ? 180
-      : (type === "light_tile" || type === "empty_tile") ? 140
+      : (type === "light_tile" || type === "fan_tile" || type === "empty_tile") ? 140
       : type === "heating_tile" ? 150
       : 110
     : type === "weather_3day" ? 260
       : type === "todo_list" ? 360
       : type === "media_player" ? 280
       : type === "roborock_tile" ? 300
-      : (type === "light_tile" || type === "heating_tile" || type === "weather_tile" || type === "empty_tile") ? 260
+      : (type === "light_tile" || type === "fan_tile" || type === "heating_tile" || type === "weather_tile" || type === "empty_tile") ? 260
       : 120;
   const rect = clampRectToCanvas({ x: 20, y: 20, w: defaultW, h: defaultH }, type);
 
@@ -5229,25 +6632,67 @@ function addWidget(type, options = {}) {
     secondary_entity_id: secondaryEntityId,
     rect,
   };
-  if (type === "slider") {
-    widget.slider_entity_domain = DEFAULT_SLIDER_ENTITY_DOMAIN;
+  if (COMMON_DISPLAY_WIDGET_TYPES.has(type)) {
+    widget.icon = "";
+    widget.show_title = true;
+    widget.show_icon = true;
+    widget.show_state = true;
+  }
+  if (type === "sensor") {
+  // Empty icon means Automatic.
+  widget.icon = "";
+
+  widget.show_title = true;
+  widget.show_icon = true;
+  widget.show_state = true;
+}
+
+    if (type === "slider") {
+    widget.slider_entity_domain = sliderDomain;
     widget.slider_direction = DEFAULT_SLIDER_DIRECTION;
     widget.slider_accent_color = DEFAULT_SLIDER_ACCENT_COLOR;
+
+    // Empty icon means Automatic.
+    widget.icon = "";
+
+    widget.show_title = true;
+    widget.show_icon = true;
+    widget.show_state = true;
   }
   if (type === "button") {
-    widget.button_mode = DEFAULT_BUTTON_MODE;
-    widget.button_accent_color = DEFAULT_BUTTON_ACCENT_COLOR;
+  widget.button_appearance = DEFAULT_BUTTON_APPEARANCE;
+  widget.button_mode = resolvedButtonMode;
+
+    // Empty icon means Automatic.
+    widget.icon = "";
   }
-  if (type === "graph") {
+   if (type === "graph") {
     widget.graph_line_color = DEFAULT_GRAPH_LINE_COLOR;
     widget.graph_time_window_min = DEFAULT_GRAPH_TIME_WINDOW_MIN;
   }
 
-  page.widgets.push(widget);
-  editor.selectedWidgetId = id;
-  renderAll();
-  onSetupWizardWidgetAdded(widget);
-  return widget;
+if (type === "timer") {
+  /*
+   * Empty icon means automatic icon selection.
+   * The firmware defaults this to mdi:timer-outline.
+   */
+  widget.icon = "";
+
+  widget.show_title = true;
+  widget.show_icon = true;
+  widget.show_state = true;
+
+  widget.timer_show_start = true;
+  widget.timer_show_pause = true;
+  widget.timer_show_cancel = true;
+  widget.timer_show_finish = true;
+}
+
+page.widgets.push(widget);
+editor.selectedWidgetId = id;
+renderAll();
+onSetupWizardWidgetAdded(widget);
+return widget;
 }
 
 function deleteWidget() {
@@ -5316,17 +6761,188 @@ function applyInspector(options = {}) {
   } else {
     widget.secondary_entity_id = "";
   }
-  if (widgetType === "button") {
-    widget.button_mode = buttonMode;
-    widget.button_accent_color = normalizeHexColor(el.fButtonAccentColor?.value, DEFAULT_BUTTON_ACCENT_COLOR);
+  if (STATE_ICON_COLOR_WIDGET_TYPES.has(widgetType)) {
+    if (el.fStateOffColorMode?.value === "custom") widget.state_icon_off_color = normalizeHexColor(el.fStateOffColor?.value, "#8ea1b4");
+    else delete widget.state_icon_off_color;
+    if (el.fStateOnColorMode?.value === "custom") widget.state_icon_on_color = normalizeHexColor(el.fStateOnColor?.value, "#ffcf6b");
+    else delete widget.state_icon_on_color;
+
+    /* button_accent_color is legacy-only. If it survives while the new
+     * state color fields are cleared, layout normalization recreates custom
+     * colors on reload and "Default" appears not to save. */
+    if (widgetType === "button") delete widget.button_accent_color;
   } else {
-    delete widget.button_mode;
-    delete widget.button_accent_color;
+    delete widget.state_icon_off_color;
+    delete widget.state_icon_on_color;
   }
+  if (COMMON_DISPLAY_WIDGET_TYPES.has(widgetType)) {
+    widget.show_title = el.fCommonShowTitle?.value !== "false";
+    widget.show_icon = el.fCommonShowIcon?.value !== "false";
+    widget.show_state = el.fCommonShowState?.value !== "false";
+    widget.icon = el.fCommonIconMode?.value === "custom"
+      ? (el.fCommonCustomIcon?.value?.trim() || "")
+      : "";
+  }
+  if (widgetType === "sensor") {
+  widget.show_title =
+    el.fSensorShowTitle?.value !== "false";
+
+  widget.show_icon =
+    el.fSensorShowIcon?.value !== "false";
+
+  widget.show_state =
+    el.fSensorShowState?.value !== "false";
+
+  const precisionText = el.fSensorDecimalPlaces?.value ?? "";
+  if (precisionText === "") {
+    delete widget.sensor_decimal_places;
+  } else {
+    const precision = Number(precisionText);
+    if (Number.isInteger(precision) && precision >= 0 && precision <= 6) {
+      widget.sensor_decimal_places = precision;
+    }
+  }
+
+  const sensorIconMode =
+    el.fSensorIconMode?.value === "custom"
+      ? "custom"
+      : "automatic";
+
+  if (sensorIconMode === "custom") {
+    widget.icon =
+      typeof el.fSensorCustomIcon?.value === "string"
+        ? el.fSensorCustomIcon.value.trim()
+        : "";
+  } else {
+    widget.icon = "";
+  }
+}
+  if (widgetType === "button") {
+  const runnableButton = String(widget.entity_id || "").startsWith("script.") ||
+    String(widget.entity_id || "").startsWith("scene.") ||
+    String(widget.entity_id || "").startsWith("automation.");
+  widget.button_appearance = runnableButton
+    ? "icon"
+    : normalizeButtonAppearance(el.fButtonAppearance?.value);
+
+  widget.button_mode = buttonMode;
+
+  widget.show_title =
+    el.fButtonShowTitle?.value !== "false";
+
+  widget.show_state =
+    el.fButtonShowState?.value !== "false";
+
+  const iconMode =
+    el.fButtonIconMode?.value === "custom"
+      ? "custom"
+      : "automatic";
+
+  if (iconMode === "custom") {
+    widget.icon =
+      typeof el.fButtonCustomIcon?.value === "string"
+        ? el.fButtonCustomIcon.value.trim()
+        : "";
+  } else {
+    widget.icon = "";
+  }
+} else {
+  delete widget.button_appearance;
+  delete widget.button_mode;
+  delete widget.button_accent_color;
+}
+
+/*
+ * Timer display/control options.
+ *
+ * Keep these in the normal inspector apply path so explicit false
+ * values survive Save -> reload.  Missing controls default to true
+ * for backwards compatibility with older Timer widgets.
+ */
+if (widgetType === "timer") {
+  const timerCheckboxValue = (id, fallback = true) => {
+    const control = document.getElementById(id);
+    return control ? Boolean(control.checked) : fallback;
+  };
+
+  widget.show_title = timerCheckboxValue(
+    "fTimerShowTitle",
+    widget.show_title !== false
+  );
+
+  widget.show_icon = timerCheckboxValue(
+    "fTimerShowIcon",
+    widget.show_icon !== false
+  );
+
+  widget.show_state = timerCheckboxValue(
+    "fTimerShowState",
+    widget.show_state !== false
+  );
+
+  widget.timer_show_start = timerCheckboxValue(
+    "fTimerShowStart",
+    widget.timer_show_start !== false
+  );
+
+  widget.timer_show_pause = timerCheckboxValue(
+    "fTimerShowPause",
+    widget.timer_show_pause !== false
+  );
+
+  widget.timer_show_cancel = timerCheckboxValue(
+    "fTimerShowCancel",
+    widget.timer_show_cancel !== false
+  );
+
+  widget.timer_show_finish = timerCheckboxValue(
+    "fTimerShowFinish",
+    widget.timer_show_finish !== false
+  );
+
+  const timerIconMode =
+    document.getElementById("fTimerIconMode")?.value === "custom"
+      ? "custom"
+      : "automatic";
+
+  if (timerIconMode === "custom") {
+    widget.icon =
+      document.getElementById("fTimerCustomIcon")?.value?.trim() || "";
+  } else {
+    widget.icon = "";
+  }
+}
+
   if (widgetType === "slider") {
     widget.slider_entity_domain = sliderDomain;
-    widget.slider_direction = normalizeSliderDirection(el.fSliderDirection?.value);
-    widget.slider_accent_color = normalizeHexColor(el.fSliderAccentColor?.value, DEFAULT_SLIDER_ACCENT_COLOR);
+    widget.slider_direction =
+      normalizeSliderDirection(el.fSliderDirection?.value);
+    widget.slider_accent_color =
+      normalizeHexColor(
+        el.fSliderAccentColor?.value,
+        DEFAULT_SLIDER_ACCENT_COLOR
+      );
+
+    widget.show_title =
+      el.fSliderShowTitle?.value !== "false";
+
+    widget.show_icon =
+      el.fSliderShowIcon?.value !== "false";
+
+    widget.show_state =
+      el.fSliderShowState?.value !== "false";
+
+    const sliderIconMode =
+      el.fSliderIconMode?.value === "custom"
+        ? "custom"
+        : "automatic";
+
+    if (sliderIconMode === "custom") {
+      widget.icon =
+        el.fSliderCustomIcon?.value?.trim() || "";
+    } else {
+      widget.icon = "";
+    }
   } else {
     delete widget.slider_entity_domain;
     delete widget.slider_direction;
@@ -5443,6 +7059,27 @@ function importLayoutFromText(text) {
 
 function bindUi() {
   setupSettingsWorkspace();
+
+  // Common display controls apply to light/heating/weather/etc. They must be
+  // bound once during UI setup, not only while rendering a Sensor inspector.
+  // The old placement made Light Tile controls visually change without
+  // updating the widget model, so Save persisted the previous show_state.
+  bindInspectorAutoApply(el.fCommonShowTitle);
+  bindInspectorAutoApply(el.fCommonShowState);
+  bindInspectorAutoApply(el.fCommonShowIcon, ["change"], { refreshInspector: true });
+  if (el.fCommonIconMode) {
+    el.fCommonIconMode.addEventListener("change", () => {
+      /* Do not apply/re-render when entering custom mode: until an icon is
+       * chosen widget.icon is empty, and renderInspector() would immediately
+       * collapse the mode back to Automatic. */
+      updateCommonIconControls();
+      if (el.fCommonIconMode.value !== "custom") {
+        autoApplyInspector({ refreshInspector: true });
+      }
+    });
+  }
+  bindInspectorAutoApply(el.fCommonCustomIcon, ["change"], { refreshInspector: true });
+
   for (const button of el.settingsNavButtons || []) {
     button.onclick = () => setActiveSettingsSection(button.dataset.settingsSection);
   }
@@ -5479,8 +7116,69 @@ function bindUi() {
     input.onblur = () => applyEnergyPageConfig();
   }
   el.addSensorBtn.onclick = () => openLightEntityPicker("sensor");
+  if (el.addBinarySensorBtn) {
+    el.addBinarySensorBtn.onclick = () => openLightEntityPicker("binary_sensor");
+  }
   el.addButtonBtn.onclick = () => openLightEntityPicker("button");
+  if (el.addInputBooleanBtn) {
+    el.addInputBooleanBtn.onclick = () => openLightEntityPicker("input_boolean");
+  }
+  if (el.addHaButtonBtn) {
+  el.addHaButtonBtn.onclick = () => openLightEntityPicker("ha_button");
+}
+  if (el.addLockBtn) {
+    el.addLockBtn.onclick = () => openLightEntityPicker("lock");
+  }
+
+if (el.addAutomationBtn) {
+    el.addAutomationBtn.onclick = () => openLightEntityPicker("automation");
+  }
+  if (el.addAutomationTriggerBtn) {
+    el.addAutomationTriggerBtn.onclick = () => openLightEntityPicker("automation_trigger");
+  }
+  if (el.addScriptBtn) {
+    el.addScriptBtn.onclick = () => openLightEntityPicker("button_script");
+  }
+  if (el.addSceneBtn) {
+    el.addSceneBtn.onclick = () => openLightEntityPicker("button_scene");
+  }
   el.addSliderBtn.onclick = () => addWidget("slider");
+  if (el.addCoverBtn) {
+    el.addCoverBtn.onclick = () => openLightEntityPicker("cover");
+  }
+  if (el.addFanBtn) {
+    el.addFanBtn.onclick = () => openLightEntityPicker("fan");
+  }
+  if (el.addInputNumberBtn) {
+    el.addInputNumberBtn.onclick = () => openLightEntityPicker("input_number");
+  }
+  if (el.addSelectBtn) {
+    el.addSelectBtn.onclick = () => openLightEntityPicker("select");
+  }
+  if (el.addInputTextBtn) {
+    el.addInputTextBtn.onclick = () => openLightEntityPicker("input_text");
+  }
+  if (el.addInputDatetimeBtn) {
+    el.addInputDatetimeBtn.onclick = () => openLightEntityPicker("input_datetime");
+  }
+  if (el.addAlarmControlBtn) {
+    el.addAlarmControlBtn.onclick = () => openLightEntityPicker("alarm_control_panel");
+  }
+  if (el.addUpdateBtn) {
+    el.addUpdateBtn.onclick = () => openLightEntityPicker("update");
+  }
+  if (el.addCalendarBtn) {
+    el.addCalendarBtn.onclick = () => openLightEntityPicker("calendar");
+  }
+  if (el.addImageBtn) {
+    el.addImageBtn.onclick = () => openLightEntityPicker("image");
+  }
+  if (el.addPersonBtn) {
+    el.addPersonBtn.onclick = () => openLightEntityPicker("person");
+  }
+  if (el.addDeviceTrackerBtn) {
+    el.addDeviceTrackerBtn.onclick = () => openLightEntityPicker("device_tracker");
+  }
   el.addGraphBtn.onclick = () => openLightEntityPicker("graph");
   el.addEmptyTileBtn.onclick = () => addWidget("empty_tile");
   el.addLightTileBtn.onclick = () => openLightEntityPicker("light_tile");
@@ -5492,6 +7190,9 @@ function bindUi() {
   el.addWeather3DayBtn.onclick = () => openLightEntityPicker("weather_3day");
   if (el.addTodoListBtn) {
     el.addTodoListBtn.onclick = () => openLightEntityPicker("todo_list");
+    }
+  if (el.addTimerBtn) {
+    el.addTimerBtn.onclick = () => openLightEntityPicker("timer");
   }
   if (el.addMediaPlayerBtn) {
     el.addMediaPlayerBtn.onclick = () => openLightEntityPicker("media_player");
@@ -5649,6 +7350,7 @@ function bindUi() {
       if (el.fSliderAccentColor) {
         el.fSliderAccentColor.value = normalizeHexColor(el.fSliderAccentColor.value, DEFAULT_SLIDER_ACCENT_COLOR);
       }
+
     }
     if (el.fType.value === "graph") {
       if (el.fGraphLineColor) {
@@ -5734,6 +7436,50 @@ function bindUi() {
       autoApplyInspector();
     };
   }
+
+  if (el.fSliderShowTitle) {
+  el.fSliderShowTitle.addEventListener("change", () => {
+    if (inspectorWidgetType() === "slider") {
+      autoApplyInspector();
+    }
+  });
+}
+
+if (el.fSliderShowIcon) {
+  el.fSliderShowIcon.addEventListener("change", () => {
+    updateSliderIconControls();
+
+    if (inspectorWidgetType() === "slider") {
+      autoApplyInspector();
+    }
+  });
+}
+
+if (el.fSliderIconMode) {
+  el.fSliderIconMode.addEventListener("change", () => {
+    updateSliderIconControls();
+
+    if (inspectorWidgetType() === "slider") {
+      autoApplyInspector();
+    }
+  });
+}
+
+if (el.fSliderCustomIcon) {
+  el.fSliderCustomIcon.addEventListener("change", () => {
+    if (inspectorWidgetType() === "slider") {
+      autoApplyInspector();
+    }
+  });
+}
+
+if (el.fSliderShowState) {
+  el.fSliderShowState.addEventListener("change", () => {
+    if (inspectorWidgetType() === "slider") {
+      autoApplyInspector();
+    }
+  });
+}
   if (el.fSecondaryEntity) {
     el.fSecondaryEntity.oninput = () => scheduleEntityAutocomplete("secondary");
     el.fSecondaryEntity.onfocus = () => scheduleEntityAutocomplete("secondary", true);
@@ -5741,7 +7487,98 @@ function bindUi() {
     el.fSecondaryEntity.onblur = () => autoApplyInspector();
   }
   bindInspectorAutoApply(el.fTitle, ["input"], { softEntityValidation: true });
+  bindInspectorAutoApply(
+  el.fSensorShowTitle,
+  ["change"],
+  { refreshInspector: true, softEntityValidation: true }
+);
+
+bindInspectorAutoApply(
+  el.fSensorShowState,
+  ["change"],
+  { refreshInspector: true, softEntityValidation: true }
+);
+
+bindInspectorAutoApply(
+  el.fSensorDecimalPlaces,
+  ["change"],
+  { refreshInspector: true, softEntityValidation: true }
+);
+
+if (el.fSensorShowIcon) {
+  el.fSensorShowIcon.addEventListener("change", () => {
+    updateSensorIconControls();
+
+    if (inspectorWidgetType() === "sensor") {
+      autoApplyInspector();
+    }
+  });
+}
+
+if (el.fSensorIconMode) {
+  el.fSensorIconMode.addEventListener("change", () => {
+    updateSensorIconControls();
+
+    if (inspectorWidgetType() === "sensor") {
+      autoApplyInspector();
+    }
+  });
+}
+
+bindInspectorAutoApply(
+  el.fSensorCustomIcon,
+  ["input", "change"],
+  { softEntityValidation: true }
+);
+
+ bindInspectorAutoApply(
+  el.fButtonAppearance,
+  ["change"],
+  { refreshInspector: true, softEntityValidation: true }
+);
+
+if (el.fButtonAppearance) {
+  el.fButtonAppearance.addEventListener("change", () => {
+    updateButtonIconControls();
+
+    if (inspectorWidgetType() === "button") {
+      autoApplyInspector();
+    }
+  });
+}
+ if (el.fButtonIconMode) {
+  el.fButtonIconMode.addEventListener("change", () => {
+    updateButtonIconControls();
+
+    if (inspectorWidgetType() === "button") {
+      autoApplyInspector();
+    }
+  });
+}
+
+bindInspectorAutoApply(
+  el.fButtonCustomIcon,
+  ["input", "change"],
+  { softEntityValidation: true }
+);
+
+  bindInspectorAutoApply(
+  el.fButtonShowTitle,
+  ["change"],
+  { refreshInspector: true, softEntityValidation: true }
+);
+
+  bindInspectorAutoApply(
+  el.fButtonShowState,
+  ["change"],
+  { refreshInspector: true, softEntityValidation: true }
+);
+
   bindInspectorAutoApply(el.fButtonAccentColor, ["input", "change"], { softEntityValidation: true });
+  if (el.fStateOffColorMode) el.fStateOffColorMode.addEventListener("change", () => { updateStateColorControls(); autoApplyInspector(); });
+  if (el.fStateOnColorMode) el.fStateOnColorMode.addEventListener("change", () => { updateStateColorControls(); autoApplyInspector(); });
+  bindInspectorAutoApply(el.fStateOffColor, ["input", "change"], { softEntityValidation: true });
+  bindInspectorAutoApply(el.fStateOnColor, ["input", "change"], { softEntityValidation: true });
   bindInspectorAutoApply(el.fSliderDirection, ["change"], { softEntityValidation: true });
   bindInspectorAutoApply(el.fSliderAccentColor, ["input", "change"], { softEntityValidation: true });
   bindInspectorAutoApply(el.fGraphLineColor, ["input", "change"], { softEntityValidation: true });
@@ -5922,6 +7759,18 @@ function bindUi() {
         setProvisioningInfo("ha", t("provision.save_failed", { error: err.message }), true);
       }
     };
+  }
+  if (el.applyDisplaySettingsBtn) {
+    el.applyDisplaySettingsBtn.onclick = async () => {
+      try {
+        await applyDisplaySettings();
+      } catch (err) {
+        setStatus(t("status.display_settings_apply_failed", { error: err.message }), true);
+      }
+    };
+  }
+  if (el.settingsNightMode) {
+    el.settingsNightMode.onchange = updateNightScheduleVisibility;
   }
   el.saveSettingsBtn.onclick = async () => {
     try {

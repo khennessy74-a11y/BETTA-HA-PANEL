@@ -1,34 +1,173 @@
-name: Build BETTA HA Panel - panels3
+# SPDX-License-Identifier: LicenseRef-FNCL-1.1
+# Copyright (c) 2026 khennessy74-a11y
+name: Build BETTA HA Panel
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - development-next
+      - recovery-admin-stable
+      - weather-rebuild
 
 jobs:
   build:
-    runs-on: ubuntu-latest
-
+    runs-on: ubuntu-24.04
     container:
       image: espressif/idf:v5.5.2
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - variant: panels3
+            sdkconfig_defaults: "sdkconfig.defaults.s3;sdkconfig.defaults.panels3"
+            sdkconfig: sdkconfig.panels3
+          - variant: panel4
+            sdkconfig_defaults: "sdkconfig.defaults;sdkconfig.defaults.panel4"
+            sdkconfig: sdkconfig.panel4
+          - variant: panel10
+            sdkconfig_defaults: "sdkconfig.defaults;sdkconfig.defaults.panel10"
+            sdkconfig: sdkconfig.panel10
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           submodules: recursive
 
-      - name: Build panels3
+      - name: Build ${{ matrix.variant }}
         shell: bash
         run: |
           . ${IDF_PATH}/export.sh
-          idf.py -B build-panels3 \
-            -DSDKCONFIG_DEFAULTS="sdkconfig.defaults.s3;sdkconfig.defaults.panels3" \
-            -DSDKCONFIG=sdkconfig.panels3 \
+          idf.py -B build-${{ matrix.variant }} \
+            -DSDKCONFIG_DEFAULTS="${{ matrix.sdkconfig_defaults }}" \
+            -DSDKCONFIG="${{ matrix.sdkconfig }}" \
             build
 
+      - name: Package ${{ matrix.variant }} release images
+        shell: bash
+        run: |
+          . ${IDF_PATH}/export.sh
+          BUILD_DIR="build-${{ matrix.variant }}"
+          mkdir -p release/ota
+
+          APP_BIN="$(python -c 'import json,sys; d=json.load(open(sys.argv[1])); print(d["app"]["file"])' "$BUILD_DIR/flasher_args.json")"
+          CHIP="$(python -c 'import json,sys; d=json.load(open(sys.argv[1])); print(d["extra_esptool_args"]["chip"])' "$BUILD_DIR/flasher_args.json")"
+
+          python -m esptool --chip "$CHIP" merge_bin             -o "release/betta-ha-panel-v0.9-${{ matrix.variant }}.factory.bin"             @<(grep -v '^--' "$BUILD_DIR/flash_args" | sed "s# \([^/]\)# $BUILD_DIR/\1#g")
+
+          cp "$BUILD_DIR/$APP_BIN" "release/ota/betta-ha-panel-v0.9-${{ matrix.variant }}.ota.bin"
+
+      - name: Package settings-preserving USB flash kit
+        shell: bash
+        run: |
+          BUILD_DIR="build-${{ matrix.variant }}"
+          KIT_DIR="release/preserve-${{ matrix.variant }}"
+          mkdir -p "$KIT_DIR"
+
+          CHIP="$(python -c 'import json,sys; d=json.load(open(sys.argv[1])); print(d["extra_esptool_args"]["chip"])' "$BUILD_DIR/flasher_args.json")"
+
+          # Copy every binary referenced by ESP-IDF's normal flash_args.
+          # These are written as separate segments, unlike the merged factory
+          # image, so unused gaps in flash (including NVS) are never touched.
+          while read -r offset file; do
+            [ -z "$offset" ] && continue
+            case "$offset" in
+              --*) continue ;;
+            esac
+            src="$BUILD_DIR/$file"
+            if [ -f "$src" ]; then
+              cp "$src" "$KIT_DIR/$(basename "$file")"
+            fi
+          done < "$BUILD_DIR/flash_args"
+
+          python - "$BUILD_DIR/flash_args" "$KIT_DIR/flash-preserve.ps1" "$CHIP" <<'PY'
+          import pathlib
+          import shlex
+          import sys
+
+          flash_args_path = pathlib.Path(sys.argv[1])
+          out_path = pathlib.Path(sys.argv[2])
+          chip = sys.argv[3]
+
+          segments = []
+          for raw in flash_args_path.read_text().splitlines():
+              line = raw.strip()
+              if not line or line.startswith("#") or line.startswith("--"):
+                  continue
+              parts = shlex.split(line)
+              if len(parts) < 2:
+                  continue
+              offset, filename = parts[0], parts[1]
+
+              # Belt-and-braces guard: never include the S3 NVS partition
+              # even if a future ESP-IDF build starts emitting an NVS image.
+              if offset.lower() == "0x9000":
+                  continue
+
+              segments.append((offset, pathlib.Path(filename).name))
+
+          ps = [
+              "param(",
+              '    [string]$Port = "COM3"',
+              ")",
+              "$ErrorActionPreference = \"Stop\"",
+              "$Here = Split-Path -Parent $MyInvocation.MyCommand.Path",
+              'Write-Host "Flashing firmware while preserving NVS/settings..."',
+              'Write-Host "Port: $Port"',
+              "",
+              "$argsList = @(",
+              f'    "--chip", "{chip}",',
+              '    "-p", $Port,',
+              '    "--before", "default_reset",',
+              '    "--after", "hard_reset",',
+              '    "write_flash"',
+          ]
+
+          for i, (offset, filename) in enumerate(segments):
+              comma = "," if i < len(segments) - 1 else ""
+              ps.append(f'    "{offset}", (Join-Path $Here "{filename}"){comma}')
+
+          ps += [
+              ")",
+              "",
+              "python -m esptool @argsList",
+              "if ($LASTEXITCODE -ne 0) {",
+              '    throw "esptool failed with exit code $LASTEXITCODE"',
+              "}",
+              "",
+              'Write-Host "Flash complete. NVS/settings were not overwritten."',
+          ]
+
+          out_path.write_text("\n".join(ps) + "\n", encoding="utf-8")
+          PY
+
+          cat > "$KIT_DIR/README.txt" <<'EOF'
+          SETTINGS-PRESERVING USB FLASH
+
+          Use this for routine development/test flashes when you want to keep:
+          - Home Assistant connection/settings
+          - panel settings
+          - persisted weather Today min/max cache
+          - other NVS-backed settings
+
+          Windows PowerShell:
+            .\\flash-preserve.ps1 -Port COM3
+
+          Change COM3 to the panel's actual serial port.
+
+          IMPORTANT:
+          - This is for updating an already configured panel.
+          - For a clean first install or recovery, use the .factory.bin instead.
+          - The factory image is intentionally a full merged image and may erase
+            the NVS partition.
+          EOF
+
       - name: Upload firmware
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
-          name: betta-ha-panel-panels3
+          name: betta-ha-panel-${{ matrix.variant }}
           path: |
-            build-panels3/*.bin
-            build-panels3/**/*.bin
+            release/betta-ha-panel-v0.9-${{ matrix.variant }}.factory.bin
+            release/ota/betta-ha-panel-v0.9-${{ matrix.variant }}.ota.bin
+            release/preserve-${{ matrix.variant }}/

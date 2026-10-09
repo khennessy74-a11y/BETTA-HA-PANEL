@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: LicenseRef-FNCL-1.1
  * Copyright (c) 2026 Cpt_Kirk
+ * Copyright (c) 2026 khennessy74-a11y
  */
 #include "settings/runtime_settings.h"
 
@@ -128,6 +129,16 @@ static esp_err_t write_public_settings_file(const runtime_settings_t *settings)
     cJSON_AddItemToObject(root, "time", time_cfg);
 
     cJSON_AddStringToObject(ui, "language", settings->ui_language);
+    cJSON_AddNumberToObject(ui, "brightness_percent", settings->display_brightness_percent);
+    cJSON_AddNumberToObject(ui, "night_brightness_percent", settings->display_night_brightness_percent);
+    cJSON_AddBoolToObject(ui, "night_mode_auto", settings->display_night_mode_auto);
+    cJSON_AddNumberToObject(ui, "night_mode", settings->display_night_mode);
+    cJSON_AddNumberToObject(ui, "night_start_hour", settings->display_night_start_hour);
+    cJSON_AddNumberToObject(ui, "night_start_minute", settings->display_night_start_minute);
+    cJSON_AddNumberToObject(ui, "day_start_hour", settings->display_day_start_hour);
+    cJSON_AddNumberToObject(ui, "day_start_minute", settings->display_day_start_minute);
+    cJSON_AddNumberToObject(ui, "idle_timeout_seconds", settings->display_idle_timeout_seconds);
+    cJSON_AddNumberToObject(ui, "idle_brightness_percent", settings->display_idle_brightness_percent);
     cJSON_AddItemToObject(root, "ui", ui);
 
     char *payload = cJSON_PrintUnformatted(root);
@@ -252,6 +263,41 @@ static esp_err_t parse_settings_json(
 
     if (cJSON_IsObject(ui)) {
         json_copy_string(ui, "language", out->ui_language, sizeof(out->ui_language));
+        cJSON *brightness = cJSON_GetObjectItemCaseSensitive(ui, "brightness_percent");
+        if (cJSON_IsNumber(brightness)) {
+            int value = brightness->valueint;
+            out->display_brightness_percent = value < 0 ? 0 : (value > 100 ? 100 : value);
+        }
+        cJSON *night_brightness = cJSON_GetObjectItemCaseSensitive(ui, "night_brightness_percent");
+        if (cJSON_IsNumber(night_brightness)) {
+            int value = night_brightness->valueint;
+            out->display_night_brightness_percent = value < 0 ? 0 : (value > 100 ? 100 : value);
+        }
+        cJSON *night_auto = cJSON_GetObjectItemCaseSensitive(ui, "night_mode_auto");
+        if (cJSON_IsBool(night_auto)) {
+            out->display_night_mode_auto = cJSON_IsTrue(night_auto);
+            out->display_night_mode = out->display_night_mode_auto ? 2 : 0;
+        }
+        cJSON *night_mode = cJSON_GetObjectItemCaseSensitive(ui, "night_mode");
+        if (cJSON_IsNumber(night_mode) && night_mode->valueint >= 0 && night_mode->valueint <= 2) {
+            out->display_night_mode = night_mode->valueint;
+            out->display_night_mode_auto = night_mode->valueint == 2;
+        }
+        cJSON *night_hour = cJSON_GetObjectItemCaseSensitive(ui, "night_start_hour");
+        if (cJSON_IsNumber(night_hour) && night_hour->valueint >= 0 && night_hour->valueint <= 23) out->display_night_start_hour = night_hour->valueint;
+        cJSON *night_minute = cJSON_GetObjectItemCaseSensitive(ui, "night_start_minute");
+        if (cJSON_IsNumber(night_minute) && night_minute->valueint >= 0 && night_minute->valueint <= 59) out->display_night_start_minute = night_minute->valueint;
+        cJSON *day_hour = cJSON_GetObjectItemCaseSensitive(ui, "day_start_hour");
+        if (cJSON_IsNumber(day_hour) && day_hour->valueint >= 0 && day_hour->valueint <= 23) out->display_day_start_hour = day_hour->valueint;
+        cJSON *day_minute = cJSON_GetObjectItemCaseSensitive(ui, "day_start_minute");
+        if (cJSON_IsNumber(day_minute) && day_minute->valueint >= 0 && day_minute->valueint <= 59) out->display_day_start_minute = day_minute->valueint;
+        cJSON *idle_timeout = cJSON_GetObjectItemCaseSensitive(ui, "idle_timeout_seconds");
+        if (cJSON_IsNumber(idle_timeout) && idle_timeout->valueint >= 0 && idle_timeout->valueint <= 86400) out->display_idle_timeout_seconds = idle_timeout->valueint;
+        cJSON *idle_brightness = cJSON_GetObjectItemCaseSensitive(ui, "idle_brightness_percent");
+        if (cJSON_IsNumber(idle_brightness)) {
+            int value = idle_brightness->valueint;
+            out->display_idle_brightness_percent = value < 0 ? 0 : (value > 100 ? 100 : value);
+        }
     } else {
         json_copy_string(root, "language", out->ui_language, sizeof(out->ui_language));
     }
@@ -406,6 +452,16 @@ void runtime_settings_set_defaults(runtime_settings_t *out)
     strlcpy(out->ntp_server, APP_NTP_SERVER, sizeof(out->ntp_server));
     strlcpy(out->time_tz, APP_TIME_TZ, sizeof(out->time_tz));
     strlcpy(out->ui_language, APP_UI_DEFAULT_LANGUAGE, sizeof(out->ui_language));
+    out->display_brightness_percent = APP_DISPLAY_ACTIVE_BRIGHTNESS_PERCENT;
+    out->display_night_brightness_percent = 20;
+    out->display_night_mode_auto = false;
+    out->display_night_mode = 0;
+    out->display_night_start_hour = 22;
+    out->display_night_start_minute = 0;
+    out->display_day_start_hour = 7;
+    out->display_day_start_minute = 0;
+    out->display_idle_timeout_seconds = APP_DISPLAY_DIM_TIMEOUT_MS / 1000;
+    out->display_idle_brightness_percent = APP_DISPLAY_DIM_BRIGHTNESS_PERCENT;
 }
 
 esp_err_t runtime_settings_load(runtime_settings_t *out)

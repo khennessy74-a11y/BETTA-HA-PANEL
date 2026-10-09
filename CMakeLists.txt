@@ -1,8 +1,9 @@
 # SPDX-License-Identifier: LicenseRef-FNCL-1.1
 # Copyright (c) 2026 Cpt_Kirk
+# Copyright (c) 2026 khennessy74-a11y
 cmake_minimum_required(VERSION 3.16)
 
-set(BETTAOS_RELEASE_VERSION "v0.8.2")
+set(BETTAOS_RELEASE_VERSION "v0.9")
 
 # sdkconfig.h is not yet generated here (top-level CMake runs before the
 # application's kconfig). We infer the panel variant from the SDKCONFIG_DEFAULTS

@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: LicenseRef-FNCL-1.1
  * Copyright (c) 2026 Cpt_Kirk
+ * Copyright (c) 2026 khennessy74-a11y
  */
 #pragma once
 
@@ -23,6 +24,7 @@ typedef struct {
     uint8_t op_code;
     int payload_len;
     int payload_offset;
+    int error_type;
     esp_err_t tls_esp_err;
     int tls_stack_err;
     int tls_cert_flags;
@@ -43,4 +45,13 @@ void ha_ws_stop(void);
 bool ha_ws_is_connected(void);
 bool ha_ws_is_running(void);
 esp_err_t ha_ws_send_text(const char *text);
+esp_err_t ha_ws_send_text_wait(const char *text, uint32_t timeout_ms);
+typedef struct {
+    int written;
+    bool client_connected_before;
+    bool client_connected_after;
+    uint32_t free_heap;
+    uint32_t largest_free_block;
+} ha_ws_send_diag_t;
+bool ha_ws_get_last_send_diag(ha_ws_send_diag_t *out);
 bool ha_ws_get_cached_resolved_ipv4(char *host_out, size_t host_out_sz, char *ip_out, size_t ip_out_sz);

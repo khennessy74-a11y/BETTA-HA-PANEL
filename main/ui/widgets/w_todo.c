@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: LicenseRef-FNCL-1.1
  * Copyright (c) 2026 Cpt_Kirk
+ * Copyright (c) 2026 khennessy74-a11y
  *
  * Todo list widget. Displays the items of a HA `todo.*` entity as a
  * touch-friendly scrollable list. Items are pulled on demand via the
@@ -31,6 +32,7 @@
 #include "ui/fonts/app_text_fonts.h"
 #include "ui/theme/theme_default.h"
 #include "ui/ui_i18n.h"
+#include "ui/widgets/widget_display_options.h"
 
 #define W_TODO_TAG "w_todo"
 /* Focus is on showing all *open* items; completed ones are appended at the
@@ -58,6 +60,7 @@ typedef struct {
 typedef struct w_todo_ctx {
     lv_obj_t *card;
     lv_obj_t *title_label;
+    lv_obj_t *icon_label;
     lv_obj_t *status_label;
     lv_obj_t *list_container;
     lv_obj_t *placeholder_label;
@@ -1108,6 +1111,10 @@ esp_err_t w_todo_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widget_
     lv_obj_set_flex_flow(header, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(header, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
 
+    lv_obj_t *custom_icon = lv_label_create(header);
+    lv_obj_align(custom_icon, LV_ALIGN_TOP_RIGHT, 0, 0);
+    widget_display_set_visible(custom_icon, def->show_icon);
+    if (def->show_icon && !widget_display_apply_mdi(custom_icon, def->icon[0] ? def->icon : "mdi:format-list-checks")) widget_display_set_visible(custom_icon, false);
     lv_obj_t *title = lv_label_create(header);
     lv_label_set_text(title, def->title[0] ? def->title : def->id);
     lv_obj_set_style_text_color(title, theme_default_color_text_primary(), LV_PART_MAIN);
@@ -1140,7 +1147,10 @@ esp_err_t w_todo_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widget_
     }
     ctx->card = card;
     ctx->title_label = title;
+    ctx->icon_label = custom_icon;
     ctx->status_label = status;
+    widget_display_set_visible(title, def->show_title);
+    widget_display_set_visible(status, def->show_state);
     ctx->list_container = list;
     snprintf(ctx->entity_id, sizeof(ctx->entity_id), "%s", def->entity_id);
     ctx->staging_mutex = xSemaphoreCreateMutex();

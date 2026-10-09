@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: LicenseRef-FNCL-1.1 | Copyright (c) 2026 Cpt_Kirk -->
+<!-- SPDX-License-Identifier: LicenseRef-FNCL-1.1 | Copyright (c) 2026 Cpt_Kirk | Copyright (c) 2026 khennessy74-a11y -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -156,15 +156,36 @@
                   <div class="dropdown-group">
                     <div class="dropdown-group-label">Control</div>
                     <button class="dropdown-item" type="button" role="menuitem" data-add-target="addButtonBtn">Button</button>
+                    <button class="dropdown-item" type="button" role="menuitem" data-add-target="addHaButtonBtn">HA Button</button>
+                    <button class="dropdown-item" type="button" role="menuitem" data-add-target="addLockBtn">Lock</button>
+                    <button class="dropdown-item" type="button" role="menuitem" data-add-target="addInputBooleanBtn">Input Boolean</button>
+                    <button class="dropdown-item" type="button" role="menuitem" data-add-target="addAutomationBtn">Automation</button>
+                    <button class="dropdown-item" type="button" role="menuitem" data-add-target="addAutomationTriggerBtn">Automation Trigger</button>
+                    <button class="dropdown-item" type="button" role="menuitem" data-add-target="addScriptBtn">Script</button>
+                    <button class="dropdown-item" type="button" role="menuitem" data-add-target="addSceneBtn">Scene</button>
                     <button class="dropdown-item" type="button" role="menuitem" data-add-target="addSliderBtn">Slider</button>
+                    <button class="dropdown-item" type="button" role="menuitem" data-add-target="addCoverBtn">Cover</button>
+                    <button class="dropdown-item" type="button" role="menuitem" data-add-target="addFanBtn">Fan</button>
+                    <button class="dropdown-item" type="button" role="menuitem" data-add-target="addInputNumberBtn">Number / Input Number</button>
+                    <button class="dropdown-item" type="button" role="menuitem" data-add-target="addSelectBtn">Select</button>
+                    <button class="dropdown-item" type="button" role="menuitem" data-add-target="addInputTextBtn">Input Text</button>
+                    <button class="dropdown-item" type="button" role="menuitem" data-add-target="addInputDatetimeBtn">Input Date/Time</button>
+                    <button class="dropdown-item" type="button" role="menuitem" data-add-target="addAlarmControlBtn">Alarm Control Panel</button>
+                    <button class="dropdown-item" type="button" role="menuitem" data-add-target="addUpdateBtn">Update</button>
+                    <button class="dropdown-item" type="button" role="menuitem" data-add-target="addCalendarBtn">Calendar</button>
+                    <button class="dropdown-item" type="button" role="menuitem" data-add-target="addImageBtn">Image / Camera</button>
+                    <button class="dropdown-item" type="button" role="menuitem" data-add-target="addPersonBtn">Person</button>
+                    <button class="dropdown-item" type="button" role="menuitem" data-add-target="addDeviceTrackerBtn">Device Tracker</button>
                     <button class="dropdown-item" type="button" role="menuitem" data-add-target="addLightTileBtn">Light Tile</button>
                     <button class="dropdown-item" type="button" role="menuitem" data-add-target="addHeatingTileBtn">Heating Tile</button>
+                    <button class="dropdown-item" type="button" role="menuitem" data-add-target="addTimerBtn">Timer</button>
                     <button class="dropdown-item" type="button" role="menuitem" data-add-target="addMediaPlayerBtn">Media Player</button>
                     <button class="dropdown-item" type="button" role="menuitem" data-add-target="addRoborockTileBtn">Roborock</button>
                   </div>
                   <div class="dropdown-group">
                     <div class="dropdown-group-label">Data</div>
                     <button class="dropdown-item" type="button" role="menuitem" data-add-target="addSensorBtn">Sensor</button>
+                    <button class="dropdown-item" type="button" role="menuitem" data-add-target="addBinarySensorBtn">Binary Sensor</button>
                     <button class="dropdown-item" type="button" role="menuitem" data-add-target="addGraphBtn">Graph</button>
                     <button class="dropdown-item" type="button" role="menuitem" data-add-target="addTodoListBtn">Todo List</button>
                   </div>
@@ -184,12 +205,33 @@
             <!-- Hidden legacy add buttons (kept for event-handler compatibility) -->
             <div class="legacy-hidden">
               <button id="addSensorBtn" type="button">+ Sensor</button>
+              <button id="addBinarySensorBtn" type="button">+ Binary Sensor</button>
               <button id="addButtonBtn" type="button">+ Button</button>
+              <button id="addHaButtonBtn" type="button">+ HA Button</button>
+              <button id="addLockBtn" class="btn small hidden" type="button">Lock</button>
+              <button id="addInputBooleanBtn" type="button">+ Input Boolean</button>
+              <button id="addAutomationBtn" type="button">+ Automation</button>
+              <button id="addAutomationTriggerBtn" type="button">+ Automation Trigger</button>
+              <button id="addScriptBtn" type="button">+ Script</button>
+              <button id="addSceneBtn" type="button">+ Scene</button>
               <button id="addSliderBtn" type="button">+ Slider</button>
+              <button id="addCoverBtn" type="button">+ Cover</button>
+              <button id="addFanBtn" type="button">+ Fan</button>
+              <button id="addInputNumberBtn" type="button">+ Number / Input Number</button>
+              <button id="addSelectBtn" type="button">+ Select</button>
+              <button id="addInputTextBtn" type="button">+ Input Text</button>
+              <button id="addInputDatetimeBtn" type="button">+ Input Date/Time</button>
+              <button id="addAlarmControlBtn" type="button">+ Alarm Control Panel</button>
+              <button id="addUpdateBtn" type="button">+ Update</button>
+              <button id="addCalendarBtn" type="button">+ Calendar</button>
+              <button id="addImageBtn" type="button">+ Image / Camera</button>
+              <button id="addPersonBtn" type="button">+ Person</button>
+              <button id="addDeviceTrackerBtn" type="button">+ Device Tracker</button>
               <button id="addGraphBtn" type="button">+ Graph</button>
               <button id="addEmptyTileBtn" type="button">+ Empty Tile</button>
               <button id="addLightTileBtn" type="button">+ Light Tile</button>
               <button id="addHeatingTileBtn" type="button">+ Heating Tile</button>
+              <button id="addTimerBtn" type="button">+ Timer</button>
               <button id="addWeatherTileBtn" type="button">+ Weather</button>
               <button id="addWeather3DayBtn" type="button">+ Weather Forecast</button>
               <button id="addTodoListBtn" type="button">+ Todo List</button>
@@ -221,7 +263,19 @@
                     <option value="graph">graph</option>
                     <option value="empty_tile">empty_tile</option>
                     <option value="light_tile">light_tile</option>
+                    <option value="fan_tile">fan_tile</option>
+                    <option value="input_number">input_number</option>
+                    <option value="select">select</option>
+                    <option value="input_text">input_text</option>
+                    <option value="input_datetime">input_datetime</option>
+                    <option value="alarm_control_panel">alarm_control_panel</option>
+                    <option value="update">update</option>
+                    <option value="calendar">calendar</option>
+                    <option value="image">image</option>
+                    <option value="person">person</option>
+                    <option value="device_tracker">device_tracker</option>
                     <option value="heating_tile">heating_tile</option>
+                    <option value="timer">timer</option>
                     <option value="weather_tile">weather_tile</option>
                     <option value="weather_3day">weather_3day</option>
                     <option value="todo_list">todo_list</option>
@@ -230,7 +284,8 @@
                   </select>
                   <label id="fEntityWrap"><span id="fEntityLabel">Entity</span>
                     <input id="fEntity" type="text" list="entityOptions" />
-                    <datalist id="entityOptions"></datalist>
+                      <datalist id="entityOptions"></datalist>
+                      <datalist id="timerEntityOptions"></datalist>
                   </label>
                   <label id="fSecondaryEntityWrap" class="hidden"><span id="fSecondaryEntityLabel">Actual entity (sensor)</span>
                     <input id="fSecondaryEntity" type="text" list="sensorEntityOptions" />
@@ -244,39 +299,283 @@
                 <summary><span id="inspectorGroupStyleLabel">Style</span></summary>
                 <div class="inspector-group-body">
                   <div id="buttonOptions" class="slider-options hidden">
-                    <label><span id="fButtonModeLabel">Button mode</span>
-                      <select id="fButtonMode">
-                        <option value="auto">auto (default switch)</option>
-                        <option value="play_pause">play/pause (media_player)</option>
-                        <option value="stop">stop (media_player)</option>
-                        <option value="next">next (media_player)</option>
-                        <option value="previous">previous (media_player)</option>
-                      </select>
+                  <label>
+                    <span>Control appearance</span>
+                        <select id="fButtonAppearance">
+                          <option value="switch">Switch</option>
+                          <option value="icon">Icon button</option>
+                        </select>
+                  </label>
+
+                  <label>
+                    <span id="fButtonModeLabel">Button mode</span>
+                        <select id="fButtonMode">
+                          <option value="auto">auto (default switch)</option>
+                          <option value="run">run (script / scene)</option>
+                          <option value="play_pause">play/pause (media_player)</option>
+                          <option value="stop">stop (media_player)</option>
+                          <option value="next">next (media_player)</option>
+                          <option value="previous">previous (media_player)</option>
+                        </select>
+                  </label>
+
+   <label id="fButtonIconModeWrap">
+    <span>Icon</span>
+    <select id="fButtonIconMode">
+      <option value="automatic">Automatic</option>
+      <option value="custom">Custom MDI icon</option>
+    </select>
+  </label>
+
+  <label id="fButtonCustomIconWrap" class="hidden">
+  <span>Custom MDI icon</span>
+  <select id="fButtonCustomIcon">
+    <option value="">Select an icon...</option>
+
+    <optgroup label="General">
+      <option value="mdi:alert-circle">Alert circle</option>
+      <option value="mdi:access-point-network">Access point network</option>
+      <option value="mdi:account-switch">Account switch</option>
+      <option value="mdi:airballoon">Air balloon</option>
+      <option value="mdi:alert-octagon">Alert octagon</option>
+      <option value="mdi:battery-90">Battery 90%</option>
+      <option value="mdi:chart-histogram">Chart</option>
+      <option value="mdi:code-not-equal-variant">Code not equal</option>
+      <option value="mdi:contactless-payment-circle">Contactless payment</option>
+      <option value="mdi:drag">Drag</option>
+      <option value="mdi:hololens">Hololens</option>
+      <option value="mdi:home-assistant">Home Assistant</option>
+      <option value="mdi:lightbulb">Lightbulb</option>
+      <option value="mdi:power">Power</option>
+      <option value="mdi:thermometer">Thermometer</option>
+      <option value="mdi:robot-vacuum">Robot vacuum</option>
+      <option value="mdi:home-automation">Home automation</option>
+      <option value="mdi:script-text">Script text</option>
+      <option value="mdi:window-shutter">Window shutter</option>
+      <option value="mdi:vacuum">Vacuum</option>
+      <option value="mdi:lock">Lock</option>
+      <option value="mdi:lock-open">Lock open</option>
+      <option value="mdi:garage">Garage</option>
+      <option value="mdi:garage-open">Garage open</option>
+      <option value="mdi:door">Door</option>
+      <option value="mdi:door-open">Door open</option>
+      <option value="mdi:blinds">Blinds</option>
+      <option value="mdi:blinds-open">Blinds open</option>
+      <option value="mdi:radiator">Radiator</option>
+      <option value="mdi:motion-sensor">Motion sensor</option>
+      <option value="mdi:battery">Battery</option>
+      <option value="mdi:battery-charging">Battery charging</option>
+      <option value="mdi:solar-power">Solar power</option>
+      <option value="mdi:transmission-tower">Transmission tower</option>
+      <option value="mdi:link-off">Link off</option>
+      <option value="mdi:numeric-5-box">Number 5</option>
+      <option value="mdi:reddit">Reddit</option>
+      <option value="mdi:vector-square">Vector square</option>
+      <option value="mdi:window-maximize">Window maximize</option>
+      <option value="mdi:window-minimize">Window minimize</option>
+      <option value="mdi:window-open">Window open</option>
+      <option value="mdi:window-restore">Window restore</option>
+      <option value="mdi:windows">Windows</option>
+      <option value="mdi:wordpress">WordPress</option>
+      <option value="mdi:assistant">Assistant</option>
+      <option value="mdi:camera-front">Camera</option>
+      <option value="mdi:clock-outline">Clock</option>
+      <option value="mdi:cog">Settings</option>
+      <option value="mdi:domain">Building</option>
+      <option value="mdi:eye-off">Eye off</option>
+      <option value="mdi:fan">Fan</option>
+      <option value="mdi:gate">Gate</option>
+      <option value="mdi:gauge">Gauge</option>
+      <option value="mdi:laptop">Laptop</option>
+      <option value="mdi:plus">Plus</option>
+      <option value="mdi:projector">Projector</option>
+    </optgroup>
+
+    <optgroup label="Navigation">
+      <option value="mdi:arrow-all">Arrow all</option>
+      <option value="mdi:arrow-up">Arrow up</option>
+      <option value="mdi:arrow-right-drop-circle">Arrow right</option>
+      <option value="mdi:chevron-double-left">Double left</option>
+      <option value="mdi:menu">Menu</option>
+      <option value="mdi:menu-down">Menu down</option>
+      <option value="mdi:menu-left">Menu left</option>
+      <option value="mdi:swap-vertical">Swap vertical</option>
+    </optgroup>
+
+    <optgroup label="Media">
+      <option value="mdi:file-music">Music file</option>
+      <option value="mdi:playlist-play">Playlist play</option>
+    </optgroup>
+
+    <optgroup label="Files">
+      <option value="mdi:file-check">File check</option>
+      <option value="mdi:file-code">Code file</option>
+      <option value="mdi:file-outline">File</option>
+    </optgroup>
+
+    <optgroup label="Weather">
+    </optgroup>
+  </select>
+</label>
+
+<label>
+  <span>Show title</span>
+  <select id="fButtonShowTitle">
+    <option value="true">On</option>
+    <option value="false">Off</option>
+  </select>
+</label>
+
+<label>
+  <span>Show state</span>
+  <select id="fButtonShowState">
+    <option value="true">On</option>
+    <option value="false">Off</option>
+  </select>
+</label>
+
+</div>
+
+<div id="sensorOptions" class="slider-options hidden">
+  <label>
+    <span>Show title</span>
+    <select id="fSensorShowTitle">
+      <option value="true">On</option>
+      <option value="false">Off</option>
+    </select>
+  </label>
+
+  <label>
+    <span>Show icon</span>
+    <select id="fSensorShowIcon">
+      <option value="true">On</option>
+      <option value="false">Off</option>
+    </select>
+  </label>
+
+  <label id="fSensorIconModeWrap">
+    <span>Icon</span>
+    <select id="fSensorIconMode">
+      <option value="automatic">Automatic</option>
+      <option value="custom">Custom MDI icon</option>
+    </select>
+  </label>
+
+  <label id="fSensorCustomIconWrap" class="hidden">
+    <span>Custom MDI icon</span>
+    <select id="fSensorCustomIcon">
+    </select>
+  </label>
+
+  <label>
+    <span>Show state</span>
+    <select id="fSensorShowState">
+      <option value="true">On</option>
+      <option value="false">Off</option>
+    </select>
+  </label>
+
+  <label>
+    <span>Decimal places</span>
+    <select id="fSensorDecimalPlaces">
+      <option value="">Automatic</option>
+      <option value="0">0</option>
+      <option value="1">1</option>
+      <option value="2">2</option>
+      <option value="3">3</option>
+      <option value="4">4</option>
+      <option value="5">5</option>
+      <option value="6">6</option>
+    </select>
+  </label>
+</div>
+
+<div id="sliderOptions" class="slider-options hidden">
+  <label><span id="fSliderEntityDomainLabel">Slider entity type</span>
+    <select id="fSliderEntityDomain">
+      <option value="auto">auto (light, media_player, cover)</option>
+      <option value="light">light</option>
+      <option value="media_player">media_player</option>
+      <option value="cover">cover</option>
+    </select>
+  </label>
+
+  <label><span>Show title</span>
+    <select id="fSliderShowTitle">
+      <option value="true">On</option>
+      <option value="false">Off</option>
+    </select>
+  </label>
+
+  <label><span>Show icon</span>
+    <select id="fSliderShowIcon">
+      <option value="true">On</option>
+      <option value="false">Off</option>
+    </select>
+  </label>
+
+  <label id="fSliderIconModeWrap"><span>Icon</span>
+    <select id="fSliderIconMode">
+      <option value="automatic">Automatic</option>
+      <option value="custom">Custom MDI</option>
+    </select>
+  </label>
+
+  <label id="fSliderCustomIconWrap" class="hidden"><span>Custom MDI icon</span>
+    <select id="fSliderCustomIcon">
+    </select>
+  </label>
+
+  <label><span>Show state</span>
+    <select id="fSliderShowState">
+      <option value="true">On</option>
+      <option value="false">Off</option>
+    </select>
+  </label>
+
+  <label><span id="fSliderDirectionLabel">Slider direction</span>
+    <select id="fSliderDirection">
+      <option value="auto">auto (width/height based)</option>
+      <option value="left_to_right">left_to_right (0% -&gt; 100%)</option>
+      <option value="right_to_left">right_to_left (100% -&gt; 0%)</option>
+      <option value="bottom_to_top">bottom_to_top (0% -&gt; 100%)</option>
+      <option value="top_to_bottom">top_to_bottom (100% -&gt; 0%)</option>
+    </select>
+  </label>
+
+  <label><span id="fSliderAccentColorLabel">Slider accent color</span>
+    <input id="fSliderAccentColor" type="color" value="#6fe8ff" />
+  </label>
+</div>
+                  <div id="commonDisplayOptions" class="slider-options hidden">
+                    <label><span>Show title</span>
+                      <select id="fCommonShowTitle"><option value="true">On</option><option value="false">Off</option></select>
                     </label>
-                    <label><span id="fButtonAccentColorLabel">Button accent color</span>
-                      <input id="fButtonAccentColor" type="color" value="#6fe8ff" />
+                    <label><span>Show icon</span>
+                      <select id="fCommonShowIcon"><option value="true">On</option><option value="false">Off</option></select>
+                    </label>
+                    <label><span>Show state</span>
+                      <select id="fCommonShowState"><option value="true">On</option><option value="false">Off</option></select>
+                    </label>
+                    <label id="fCommonIconModeWrap"><span>Icon</span>
+                      <select id="fCommonIconMode"><option value="automatic">Automatic</option><option value="custom">Custom MDI icon</option></select>
+                    </label>
+                    <label id="fCommonCustomIconWrap" class="hidden"><span>Custom MDI icon</span>
+                      <select id="fCommonCustomIcon"></select>
                     </label>
                   </div>
-                  <div id="sliderOptions" class="slider-options hidden">
-                    <label><span id="fSliderEntityDomainLabel">Slider entity type</span>
-                      <select id="fSliderEntityDomain">
-                        <option value="auto">auto (light, media_player, cover)</option>
-                        <option value="light">light</option>
-                        <option value="media_player">media_player</option>
-                        <option value="cover">cover</option>
-                      </select>
+                  <div id="stateColorOptions" class="slider-options hidden">
+                    <label><span>OFF / inactive icon colour</span>
+                      <select id="fStateOffColorMode"><option value="default">Default</option><option value="custom">Custom</option></select>
                     </label>
-                    <label><span id="fSliderDirectionLabel">Slider direction</span>
-                      <select id="fSliderDirection">
-                        <option value="auto">auto (width/height based)</option>
-                        <option value="left_to_right">left_to_right (0% -> 100%)</option>
-                        <option value="right_to_left">right_to_left (100% -> 0%)</option>
-                        <option value="bottom_to_top">bottom_to_top (0% -> 100%)</option>
-                        <option value="top_to_bottom">top_to_bottom (100% -> 0%)</option>
-                      </select>
+                    <label id="fStateOffColorWrap" class="hidden"><span>Custom OFF / inactive colour</span>
+                      <input id="fStateOffColor" type="color" value="#8ea1b4" />
                     </label>
-                    <label><span id="fSliderAccentColorLabel">Slider accent color</span>
-                      <input id="fSliderAccentColor" type="color" value="#6fe8ff" />
+                    <label><span>ON / active icon colour</span>
+                      <select id="fStateOnColorMode"><option value="default">Default</option><option value="custom">Custom</option></select>
+                    </label>
+                    <label id="fStateOnColorWrap" class="hidden"><span>Custom ON / active colour</span>
+                      <input id="fStateOnColor" type="color" value="#ffcf6b" />
                     </label>
                   </div>
                   <div id="graphOptions" class="slider-options hidden">
@@ -322,6 +621,59 @@
                       </select>
                     </label>
                   </div>
+   <div id="timerOptions" class="slider-options hidden">
+  <label>
+    <span>Show title</span>
+    <input id="fTimerShowTitle" type="checkbox" checked />
+  </label>
+
+  <label>
+    <span>Show icon</span>
+    <input id="fTimerShowIcon" type="checkbox" checked />
+  </label>
+
+  <label>
+    <span>Show state</span>
+    <input id="fTimerShowState" type="checkbox" checked />
+  </label>
+
+  <label>
+    <span>Icon</span>
+    <select id="fTimerIconMode">
+      <option value="automatic">Automatic</option>
+      <option value="custom">Custom MDI icon</option>
+    </select>
+  </label>
+
+  <label id="fTimerCustomIconWrap" class="hidden">
+    <span>Custom MDI icon</span>
+    <select id="fTimerCustomIcon"></select>
+  </label>
+
+  <div class="timer-stage1-controls">
+    <strong>Timer controls</strong>
+
+    <label>
+      <span>Show Start</span>
+      <input id="fTimerShowStart" type="checkbox" checked />
+    </label>
+
+    <label>
+      <span>Show Pause</span>
+      <input id="fTimerShowPause" type="checkbox" checked />
+    </label>
+
+    <label>
+      <span>Show Cancel</span>
+      <input id="fTimerShowCancel" type="checkbox" checked />
+    </label>
+
+    <label>
+      <span>Show Finish</span>
+      <input id="fTimerShowFinish" type="checkbox" checked />
+    </label>
+  </div>
+</div>
                   <div id="inspectorStyleEmpty" class="meta hidden" data-i18n-key="inspector.style.empty">No style options for this widget.</div>
                 </div>
               </details>
@@ -380,11 +732,12 @@
             <label><span id="settingsHaTokenLabel">Long-lived Access Token</span>
               <textarea id="settingsHaToken" placeholder="Leave empty to keep the stored token" maxlength="511"></textarea>
             </label>
-            <label class="row">
+            <label class="row row-inline checkbox-row">
               <input id="settingsHaRestEnabled" type="checkbox" />
               <span id="settingsHaRestEnabledLabel">Enable HA REST fallback (Default: Off, WS-only preferred)</span>
             </label>
             <div id="settingsHaInfo" class="meta"></div>
+
           </div>
         </section>
 
@@ -395,7 +748,51 @@
               <input id="settingsNtpServer" type="text" placeholder="pool.ntp.org" maxlength="127" />
             </label>
             <label><span id="settingsTimezoneLabel">Timezone (POSIX TZ)</span>
-              <input id="settingsTimezone" type="text" placeholder="CET-1CEST,M3.5.0/2,M10.5.0/3" maxlength="127" />
+              <select id="settingsTimezone">
+                <optgroup label="Europe">
+                  <option value="GMT0BST,M3.5.0/1,M10.5.0">Europe/London (UK)</option>
+                  <option value="IST-1GMT0,M10.5.0,M3.5.0/1">Europe/Dublin (Ireland)</option>
+                  <option value="WET0WEST,M3.5.0/1,M10.5.0">Europe/Lisbon (Portugal)</option>
+                  <option value="CET-1CEST,M3.5.0/2,M10.5.0/3">Europe/Paris / Berlin / Madrid / Rome</option>
+                  <option value="EET-2EEST,M3.5.0/3,M10.5.0/4">Europe/Helsinki / Athens / Bucharest</option>
+                  <option value="MSK-3">Europe/Moscow</option>
+                </optgroup>
+                <optgroup label="Americas">
+                  <option value="NST3:30NDT,M3.2.0/0:01,M11.1.0/0:01">America/St_Johns (Newfoundland)</option>
+                  <option value="AST4ADT,M3.2.0/2,M11.1.0/2">America/Halifax (Atlantic)</option>
+                  <option value="EST5EDT,M3.2.0/2,M11.1.0/2">America/New_York / Toronto (Eastern)</option>
+                  <option value="CST6CDT,M3.2.0/2,M11.1.0/2">America/Chicago (Central)</option>
+                  <option value="MST7MDT,M3.2.0/2,M11.1.0/2">America/Denver (Mountain)</option>
+                  <option value="MST7">America/Phoenix (Arizona)</option>
+                  <option value="PST8PDT,M3.2.0/2,M11.1.0/2">America/Los_Angeles / Vancouver (Pacific)</option>
+                  <option value="AKST9AKDT,M3.2.0/2,M11.1.0/2">America/Anchorage (Alaska)</option>
+                  <option value="HST10">Pacific/Honolulu (Hawaii)</option>
+                  <option value="BRT3">America/Sao_Paulo (Brazil)</option>
+                  <option value="ART3">America/Argentina/Buenos_Aires</option>
+                </optgroup>
+                <optgroup label="Asia / Middle East">
+                  <option value="IST-5:30">Asia/Kolkata (India)</option>
+                  <option value="PKT-5">Asia/Karachi (Pakistan)</option>
+                  <option value="GST-4">Asia/Dubai (UAE)</option>
+                  <option value="JST-9">Asia/Tokyo (Japan)</option>
+                  <option value="KST-9">Asia/Seoul (South Korea)</option>
+                  <option value="CST-8">Asia/Shanghai / Singapore</option>
+                  <option value="ICT-7">Asia/Bangkok</option>
+                </optgroup>
+                <optgroup label="Australia / Pacific">
+                  <option value="AWST-8">Australia/Perth</option>
+                  <option value="ACST-9:30ACDT,M10.1.0/2,M4.1.0/3">Australia/Adelaide</option>
+                  <option value="AEST-10AEDT,M10.1.0/2,M4.1.0/3">Australia/Sydney / Melbourne</option>
+                  <option value="AEST-10">Australia/Brisbane</option>
+                  <option value="NZST-12NZDT,M9.5.0/2,M4.1.0/3">Pacific/Auckland (New Zealand)</option>
+                </optgroup>
+                <optgroup label="Africa">
+                  <option value="SAST-2">Africa/Johannesburg</option>
+                  <option value="EAT-3">Africa/Nairobi</option>
+                  <option value="WAT-1">Africa/Lagos</option>
+                </optgroup>
+                <option value="UTC0">UTC</option>
+              </select>
             </label>
             <div id="settingsTimeInfo" class="meta"></div>
           </div>
@@ -406,6 +803,36 @@
           <div class="form">
             <label><span id="settingsLanguageLabel">Language</span>
               <select id="settingsLanguage"></select>
+            </label>
+            <label><span id="settingsBrightnessLabel">Screen Brightness</span>
+              <input id="settingsBrightness" type="range" oninput="document.getElementById('settingsBrightnessValue').textContent=this.value+'%'" min="0" max="100" step="1" value="100" />
+              <span id="settingsBrightnessValue">100%</span>
+            </label>
+            <label><span>Night Brightness</span>
+              <input id="settingsNightBrightness" type="range" min="0" max="100" step="1" value="20" oninput="document.getElementById('settingsNightBrightnessValue').textContent=this.value+'%'" />
+              <span id="settingsNightBrightnessValue">20%</span>
+            </label>
+            <label><span>Night Mode</span>
+              <select id="settingsNightMode">
+                <option value="0">Day</option>
+                <option value="1">Night</option>
+                <option value="2">Auto</option>
+              </select>
+            </label>
+            <div id="settingsNightSchedule">
+              <label><span>Night starts</span>
+                <input id="settingsNightStartTime" type="time" step="60" value="22:00" />
+              </label>
+              <label><span>Day starts</span>
+                <input id="settingsDayStartTime" type="time" step="60" value="07:00" />
+              </label>
+            </div>
+            <label><span>Inactivity timeout (seconds, 0 = disabled)</span>
+              <input id="settingsIdleTimeout" type="number" min="0" max="86400" step="1" value="60" />
+            </label>
+            <label><span>Idle brightness (0% = screen off)</span>
+              <input id="settingsIdleBrightness" type="range" min="0" max="100" step="1" value="10" oninput="document.getElementById('settingsIdleBrightnessValue').textContent=this.value+'%'" />
+              <span id="settingsIdleBrightnessValue">10%</span>
             </label>
             <div id="settingsUiInfo" class="meta"></div>
             <div class="row">
@@ -466,6 +893,17 @@
         </section>
 
         <section>
+          <h2 id="settingsLogsHeading">Logs</h2>
+          <div class="form">
+            <div class="ha-connection-log-wrap">
+              <span class="ha-connection-log-title">HA connection log</span>
+              <div class="meta">Live Home Assistant WebSocket connection history from this boot.</div>
+              <div id="settingsHaConnectionLog" class="ha-connection-log">Waiting for connection status...</div>
+            </div>
+          </div>
+        </section>
+
+        <section>
           <h2 id="settingsOtaHeading">Firmware Update</h2>
           <div class="form">
             <label><span id="settingsOtaUrlLabel">OTA URL</span>
@@ -490,6 +928,7 @@
           <h2 id="settingsActionsHeading">Settings Actions</h2>
           <div class="row">
             <button id="reloadSettingsBtn" class="btn">Reload Settings</button>
+            <button id="applyDisplaySettingsBtn" class="btn">Apply Display</button>
             <button id="saveSettingsBtn" class="btn primary">Save + Reboot</button>
           </div>
           <div id="settingsActionsHint" class="meta">After save, the device reboots and may switch from setup AP to your home Wi-Fi.</div>
@@ -617,6 +1056,7 @@
     <option value="CA"></option>
   </datalist>
   <datalist id="energyEntityOptions"></datalist>
-  <script src="/app.js"></script>
+   <script src="/app.js"></script>
+  <script src="/timer_stage1.js"></script>
 </body>
 </html>

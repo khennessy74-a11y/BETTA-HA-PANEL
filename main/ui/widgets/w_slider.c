@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: LicenseRef-FNCL-1.1
  * Copyright (c) 2026 Cpt_Kirk
+ * Copyright (c) 2026 khennessy74-a11y
  */
 #include "ui/ui_widget_factory.h"
 
@@ -12,10 +13,12 @@
 #include "cJSON.h"
 
 #include "ui/fonts/app_text_fonts.h"
+#include "ui/fonts/mdi_font_registry.h"
 #include "ui/theme/theme_default.h"
 #include "ui/ui_i18n.h"
 #include "ui/ui_bindings.h"
 #include "ui/ui_memory.h"
+#include "ui/widgets/tile_layout_shared.h"
 
 typedef enum {
     W_SLIDER_DIR_AUTO = 0,
@@ -29,9 +32,19 @@ typedef struct {
     char entity_id[APP_MAX_ENTITY_ID_LEN];
     lv_obj_t *card;
     lv_obj_t *title_label;
+    lv_obj_t *icon_label;
     lv_obj_t *state_label;
     lv_obj_t *value_label;
     lv_obj_t *slider;
+    lv_obj_t *cover_tilt_slider;
+    lv_obj_t *cover_open_btn;
+    lv_obj_t *cover_stop_btn;
+    lv_obj_t *cover_close_btn;
+    bool is_cover;
+    uint32_t cover_supported_features;
+    bool show_title;
+    bool show_icon;
+    bool show_state;
     w_slider_direction_t direction_cfg;
     w_slider_direction_t direction_effective;
     lv_color_t accent_color;
@@ -41,6 +54,10 @@ typedef struct {
     bool dragging;
     bool suppress_event;
     int last_sent_value;
+    char cover_state[16];
+    int cover_tilt_position;
+    int cover_tilt_last_sent_value;
+    bool cover_has_tilt_position;
 } w_slider_ctx_t;
 
 static const uint32_t W_SLIDER_FILL_OFF_HEX = 0x8C98A4;
@@ -123,9 +140,21 @@ static int slider_extract_percent_value(const ha_state_t *state, bool *out_has_n
 
     cJSON *attrs = cJSON_Parse(state->attributes_json);
     if (attrs != NULL) {
+        cJSON *percentage = cJSON_GetObjectItemCaseSensitive(attrs, "percentage");
+        cJSON *current_position = cJSON_GetObjectItemCaseSensitive(attrs, "current_position");
         cJSON *brightness_pct = cJSON_GetObjectItemCaseSensitive(attrs, "brightness_pct");
         cJSON *brightness = cJSON_GetObjectItemCaseSensitive(attrs, "brightness");
-        if (cJSON_IsNumber(brightness_pct)) {
+        if (cJSON_IsNumber(percentage)) {
+            value = clamp_percent((int)(percentage->valuedouble + 0.5));
+            if (out_has_numeric != NULL) {
+                *out_has_numeric = true;
+            }
+        } else if (cJSON_IsNumber(current_position)) {
+            value = clamp_percent((int)(current_position->valuedouble + 0.5));
+            if (out_has_numeric != NULL) {
+                *out_has_numeric = true;
+            }
+        } else if (cJSON_IsNumber(brightness_pct)) {
             value = clamp_percent((int)(brightness_pct->valuedouble + 0.5));
             if (out_has_numeric != NULL) {
                 *out_has_numeric = true;
@@ -284,6 +313,76 @@ static void slider_apply_native_orientation(w_slider_ctx_t *ctx)
     lv_obj_set_style_base_dir(ctx->slider, LV_BASE_DIR_LTR, LV_PART_MAIN);
     lv_slider_set_range(ctx->slider, reversed ? 100 : 0, reversed ? 0 : 100);
 }
+static void slider_apply_icon(w_slider_ctx_t *ctx, const char *icon_name)
+{
+    if (ctx == NULL || ctx->icon_label == NULL) {
+        return;
+    }
+
+    const char *requested =
+    (icon_name != NULL && icon_name[0] != '\0')
+        ? icon_name
+        : "mdi:swap-vertical";
+
+    uint32_t codepoint = 0;
+
+    if (!mdi_icon_lookup(requested, &codepoint)) {
+        /*
+         * Fall back to a known Slider-style icon if the configured
+         * icon is not available in the embedded MDI registry.
+         */
+        if (!mdi_icon_lookup("mdi:swap-vertical", &codepoint)) {
+            lv_obj_add_flag(ctx->icon_label, LV_OBJ_FLAG_HIDDEN);
+            return;
+        }
+    }
+
+    const lv_font_t *font = mdi_font_icon_56();
+
+    if (font == NULL) {
+        font = mdi_font_large();
+    }
+
+    if (font == NULL) {
+        lv_obj_add_flag(ctx->icon_label, LV_OBJ_FLAG_HIDDEN);
+        return;
+    }
+
+    lv_font_glyph_dsc_t glyph_dsc;
+
+    if (!lv_font_get_glyph_dsc(
+            font,
+            &glyph_dsc,
+            codepoint,
+            0)) {
+        lv_obj_add_flag(ctx->icon_label, LV_OBJ_FLAG_HIDDEN);
+        return;
+    }
+
+    char icon_utf8[5] = {0};
+
+    if (!mdi_icon_codepoint_to_utf8(
+        codepoint,
+        icon_utf8)) {
+    lv_obj_add_flag(ctx->icon_label, LV_OBJ_FLAG_HIDDEN);
+    return;
+}
+
+    lv_obj_set_style_text_font(
+        ctx->icon_label,
+        font,
+        LV_PART_MAIN);
+
+    lv_label_set_text(
+        ctx->icon_label,
+        icon_utf8);
+
+    if (ctx->show_icon) {
+        lv_obj_clear_flag(
+            ctx->icon_label,
+            LV_OBJ_FLAG_HIDDEN);
+    }
+}
 
 static void slider_set_value_label(lv_obj_t *label, int value)
 {
@@ -297,44 +396,133 @@ static void slider_set_value_label(lv_obj_t *label, int value)
 
 static void slider_apply_layout(lv_obj_t *card, w_slider_ctx_t *ctx)
 {
-    if (card == NULL || ctx == NULL || ctx->state_label == NULL || ctx->title_label == NULL || ctx->slider == NULL) {
+    if (card == NULL || ctx == NULL ||
+        ctx->state_label == NULL ||
+        ctx->value_label == NULL ||
+        ctx->title_label == NULL ||
+        ctx->icon_label == NULL ||
+        ctx->slider == NULL) {
         return;
     }
 
-    lv_obj_align(ctx->state_label, LV_ALIGN_TOP_LEFT, 0, APP_UI_TILE_LAYOUT_TUNED ? 2 : 0);
-    lv_obj_align(ctx->value_label, LV_ALIGN_TOP_RIGHT, 0, APP_UI_TILE_LAYOUT_TUNED ? 2 : 0);
-    lv_obj_align(ctx->title_label, LV_ALIGN_BOTTOM_MID, 0, APP_UI_TILE_LAYOUT_TUNED ? -12 : -10);
+    const lv_coord_t card_w = lv_obj_get_width(card);
+    const lv_coord_t card_h = lv_obj_get_height(card);
+    const lv_coord_t min_dim = card_w < card_h ? card_w : card_h;
+    const lv_font_t *text_font = app_font_text_for_min_dim(min_dim);
+    lv_obj_set_style_text_font(ctx->title_label, text_font, LV_PART_MAIN);
+    lv_obj_set_style_text_font(ctx->state_label, text_font, LV_PART_MAIN);
+    lv_obj_set_style_text_font(ctx->value_label, text_font, LV_PART_MAIN);
+
+    const lv_coord_t tuned_top =
+        APP_UI_TILE_LAYOUT_TUNED ? 2 : 0;
+
+    const lv_coord_t tuned_bottom =
+        APP_UI_TILE_LAYOUT_TUNED ? -12 : -10;
+
+    /*
+     * Position the optional text elements first.
+     */
+    if (ctx->show_state) {
+        lv_obj_align(
+            ctx->state_label,
+            LV_ALIGN_TOP_LEFT,
+            0,
+            tuned_top);
+
+        lv_obj_align(
+            ctx->value_label,
+            LV_ALIGN_TOP_RIGHT,
+            0,
+            tuned_top);
+    }
+
+    if (ctx->show_title) {
+        lv_obj_align(
+            ctx->title_label,
+            LV_ALIGN_BOTTOM_MID,
+            0,
+            tuned_bottom);
+    }
+
+    /*
+     * Keep the icon centred.  It is deliberately allowed to sit
+     * over the slider visually, rather than consuming a separate
+     * row of valuable slider space.
+     */
+    if (ctx->show_icon) {
+        lv_obj_align(
+            ctx->icon_label,
+            LV_ALIGN_CENTER,
+            0,
+            0);
+    }
 
     lv_obj_update_layout(card);
 
-    const lv_coord_t top_gap = APP_UI_TILE_LAYOUT_TUNED ? 10 : 8;
-    const lv_coord_t bottom_gap = APP_UI_TILE_LAYOUT_TUNED ? 12 : 10;
+    const lv_coord_t top_gap =
+        APP_UI_TILE_LAYOUT_TUNED ? 10 : 8;
+
+    const lv_coord_t bottom_gap =
+        APP_UI_TILE_LAYOUT_TUNED ? 12 : 10;
+
     const lv_coord_t min_h = 50;
 
     lv_coord_t content_w =
-        lv_obj_get_width(card) - lv_obj_get_style_pad_left(card, LV_PART_MAIN) - lv_obj_get_style_pad_right(card, LV_PART_MAIN);
+        lv_obj_get_width(card) -
+        lv_obj_get_style_pad_left(card, LV_PART_MAIN) -
+        lv_obj_get_style_pad_right(card, LV_PART_MAIN);
+
     lv_coord_t content_h =
-        lv_obj_get_height(card) - lv_obj_get_style_pad_top(card, LV_PART_MAIN) - lv_obj_get_style_pad_bottom(card, LV_PART_MAIN);
+        lv_obj_get_height(card) -
+        lv_obj_get_style_pad_top(card, LV_PART_MAIN) -
+        lv_obj_get_style_pad_bottom(card, LV_PART_MAIN);
+
     if (content_w < 24) {
         content_w = 24;
     }
+
     if (content_h < 24) {
         content_h = 24;
     }
 
-    lv_coord_t top = lv_obj_get_y(ctx->state_label) + lv_obj_get_height(ctx->state_label) + top_gap;
-    lv_coord_t bottom = lv_obj_get_y(ctx->title_label) - bottom_gap;
+    /*
+     * Only reserve the top text area when state/value are visible.
+     */
+    lv_coord_t top = 0;
+
+    if (ctx->show_state) {
+        top =
+            lv_obj_get_y(ctx->state_label) +
+            lv_obj_get_height(ctx->state_label) +
+            top_gap;
+    }
+
+    /*
+     * Only reserve the bottom title area when the title is visible.
+     */
+    lv_coord_t bottom = content_h;
+
+    if (ctx->show_title) {
+        bottom =
+            lv_obj_get_y(ctx->title_label) -
+            bottom_gap;
+    }
+
     if (top < 0) {
         top = 0;
     }
+
     if (bottom > content_h) {
         bottom = content_h;
     }
+
     if (bottom < (top + min_h)) {
         bottom = top + min_h;
+
         if (bottom > content_h) {
             bottom = content_h;
             top = bottom - min_h;
+
             if (top < 0) {
                 top = 0;
             }
@@ -344,63 +532,138 @@ static void slider_apply_layout(lv_obj_t *card, w_slider_ctx_t *ctx)
     lv_coord_t area_h = bottom - top;
     lv_coord_t area_w = content_w;
 
-    ctx->direction_effective = slider_effective_direction(ctx, card);
-    bool vertical = slider_direction_is_vertical(ctx->direction_effective);
+    ctx->direction_effective =
+        slider_effective_direction(ctx, card);
+
+    bool vertical =
+        slider_direction_is_vertical(
+            ctx->direction_effective);
 
     lv_coord_t slider_x = 0;
     lv_coord_t slider_y = top;
     lv_coord_t slider_w = area_w;
     lv_coord_t slider_h = area_h;
-    lv_coord_t target_thickness = (content_w < content_h) ? content_w : content_h;
+
+    lv_coord_t target_thickness =
+        (content_w < content_h)
+            ? content_w
+            : content_h;
+
     if (target_thickness < 2) {
         target_thickness = 2;
     }
 
     if (vertical) {
         slider_w = target_thickness;
+
         if (slider_w > area_w) {
             slider_w = area_w;
         }
+
         if (slider_w < 2) {
             slider_w = 2;
         }
+
         slider_h = area_h;
         slider_x = (area_w - slider_w) / 2;
     } else {
         slider_w = area_w;
         slider_h = target_thickness;
+
         if (slider_h > area_h) {
             slider_h = area_h;
         }
+
         if (slider_h < 2) {
             slider_h = 2;
         }
-        slider_y = top + (area_h - slider_h) / 2;
+
+        slider_y =
+            top +
+            (area_h - slider_h) / 2;
     }
 
-    lv_obj_set_pos(ctx->slider, slider_x, slider_y);
-    lv_obj_set_size(ctx->slider, slider_w, slider_h);
-    lv_coord_t thickness = vertical ? slider_w : slider_h;
+    lv_obj_set_pos(
+        ctx->slider,
+        slider_x,
+        slider_y);
+
+    /*
+     * Cover action buttons occupy the lower part of the card. Keep the
+     * primary position slider clear of them, and place the optional tilt
+     * slider in the gap immediately above the buttons.
+     */
+    if (ctx->is_cover) {
+        const lv_coord_t cover_controls_top = content_h - 78;
+        if (slider_y + slider_h > cover_controls_top) {
+            slider_h = cover_controls_top - slider_y;
+            if (slider_h < 18) slider_h = 18;
+        }
+
+        if (ctx->cover_tilt_slider != NULL) {
+            lv_coord_t tilt_y = cover_controls_top - 24;
+            if (tilt_y < top) tilt_y = top;
+            lv_obj_set_pos(ctx->cover_tilt_slider, 0, tilt_y);
+            lv_obj_set_size(ctx->cover_tilt_slider, area_w, 14);
+        }
+    }
+
+    lv_obj_set_size(
+        ctx->slider,
+        slider_w,
+        slider_h);
+
+    lv_coord_t thickness =
+        vertical ? slider_w : slider_h;
+
     if (thickness < 2) {
         thickness = 2;
     }
-    lv_coord_t radius = thickness / 2;
+
+    lv_coord_t radius =
+        thickness / 2;
+
     if (radius < 1) {
         radius = 1;
     }
-    lv_obj_set_style_radius(ctx->slider, radius, LV_PART_MAIN);
-    lv_obj_set_style_radius(ctx->slider, radius, LV_PART_INDICATOR);
-    lv_obj_set_style_radius(ctx->slider, radius, LV_PART_KNOB);
+
+    lv_obj_set_style_radius(
+        ctx->slider,
+        radius,
+        LV_PART_MAIN);
+
+    lv_obj_set_style_radius(
+        ctx->slider,
+        radius,
+        LV_PART_INDICATOR);
+
+    lv_obj_set_style_radius(
+        ctx->slider,
+        radius,
+        LV_PART_KNOB);
 
     slider_apply_native_orientation(ctx);
+
+    /*
+     * Keep the icon above the slider so the glyph remains visible
+     * over both the track and indicator.
+     */
+    if (ctx->show_icon) {
+        lv_obj_move_foreground(ctx->icon_label);
+    }
 }
 
 static void slider_apply_visual(w_slider_ctx_t *ctx)
 {
-    if (ctx == NULL || ctx->card == NULL || ctx->title_label == NULL || ctx->state_label == NULL ||
-        ctx->value_label == NULL || ctx->slider == NULL) {
-        return;
-    }
+    if (ctx == NULL ||
+    ctx->card == NULL ||
+    ctx->title_label == NULL ||
+    ctx->icon_label == NULL ||
+    ctx->state_label == NULL ||
+    ctx->value_label == NULL ||
+    ctx->slider == NULL) {
+    return;
+}
 
     lv_obj_t *card = ctx->card;
 
@@ -418,6 +681,7 @@ static void slider_apply_visual(w_slider_ctx_t *ctx)
     lv_obj_set_style_bg_color(card, card_bg, LV_PART_MAIN);
     lv_obj_set_style_bg_opa(card, LV_OPA_COVER, LV_PART_MAIN);
     lv_obj_set_style_text_color(ctx->title_label, lv_color_hex(APP_UI_COLOR_TEXT_PRIMARY), LV_PART_MAIN);
+    lv_obj_set_style_text_color(ctx->icon_label, lv_color_hex(APP_UI_COLOR_TEXT_PRIMARY), LV_PART_MAIN);
     lv_obj_set_style_text_color(ctx->state_label, state_color, LV_PART_MAIN);
     lv_obj_set_style_text_color(ctx->value_label, value_color, LV_PART_MAIN);
 
@@ -460,9 +724,79 @@ static void slider_apply_visual(w_slider_ctx_t *ctx)
     ctx->suppress_event = false;
 
     slider_set_value_label(ctx->value_label, ctx->value);
-    lv_label_set_text(
-        ctx->state_label,
-        slider_translate_status_text(ctx->unavailable ? "unavailable" : (ctx->is_on ? "ON" : "OFF")));
+    const char *status_text = ctx->unavailable ? "unavailable" : (ctx->is_on ? "ON" : "OFF");
+    if (ctx->is_cover && !ctx->unavailable && ctx->cover_state[0] != '\0') {
+        status_text = ctx->cover_state;
+    }
+    lv_label_set_text(ctx->state_label, slider_translate_status_text(status_text));
+
+    if (ctx->is_cover) {
+        lv_obj_t *controls[] = {ctx->cover_open_btn, ctx->cover_stop_btn, ctx->cover_close_btn};
+        for (size_t i = 0; i < sizeof(controls) / sizeof(controls[0]); i++) {
+            if (controls[i] == NULL) continue;
+            if (ctx->unavailable) lv_obj_add_state(controls[i], LV_STATE_DISABLED);
+            else lv_obj_clear_state(controls[i], LV_STATE_DISABLED);
+        }
+        if (ctx->unavailable) lv_obj_add_state(ctx->slider, LV_STATE_DISABLED);
+        else lv_obj_clear_state(ctx->slider, LV_STATE_DISABLED);
+
+        if (ctx->cover_tilt_slider != NULL) {
+            lv_obj_set_style_bg_color(ctx->cover_tilt_slider, lv_color_hex(W_SLIDER_TRACK_HEX), LV_PART_MAIN);
+            lv_obj_set_style_bg_opa(ctx->cover_tilt_slider, LV_OPA_COVER, LV_PART_MAIN);
+            lv_obj_set_style_bg_color(ctx->cover_tilt_slider, ctx->accent_color, LV_PART_INDICATOR);
+            lv_obj_set_style_bg_opa(ctx->cover_tilt_slider, LV_OPA_COVER, LV_PART_INDICATOR);
+            lv_obj_set_style_border_width(ctx->cover_tilt_slider, 0, LV_PART_MAIN);
+            lv_obj_set_style_bg_opa(ctx->cover_tilt_slider, LV_OPA_TRANSP, LV_PART_KNOB);
+            lv_obj_set_style_border_opa(ctx->cover_tilt_slider, LV_OPA_TRANSP, LV_PART_KNOB);
+            if (ctx->unavailable) lv_obj_add_state(ctx->cover_tilt_slider, LV_STATE_DISABLED);
+            else lv_obj_clear_state(ctx->cover_tilt_slider, LV_STATE_DISABLED);
+        }
+    }
+}
+
+static void cover_action_event(lv_event_t *event)
+{
+    if (lv_event_get_code(event) != LV_EVENT_CLICKED) {
+        return;
+    }
+    w_slider_ctx_t *ctx = (w_slider_ctx_t *)lv_event_get_user_data(event);
+    if (ctx == NULL || ctx->unavailable || !ctx->is_cover) {
+        return;
+    }
+    lv_obj_t *target = lv_event_get_target(event);
+    if (target == ctx->cover_open_btn) {
+        (void)ui_bindings_cover_action(ctx->entity_id, UI_BINDINGS_COVER_OPEN);
+    } else if (target == ctx->cover_stop_btn) {
+        (void)ui_bindings_cover_action(ctx->entity_id, UI_BINDINGS_COVER_STOP);
+    } else if (target == ctx->cover_close_btn) {
+        (void)ui_bindings_cover_action(ctx->entity_id, UI_BINDINGS_COVER_CLOSE);
+    }
+}
+
+static void cover_tilt_event_cb(lv_event_t *event)
+{
+    w_slider_ctx_t *ctx = (w_slider_ctx_t *)lv_event_get_user_data(event);
+    if (ctx == NULL || ctx->unavailable || !ctx->is_cover || ctx->suppress_event) {
+        return;
+    }
+
+    lv_obj_t *slider = lv_event_get_target(event);
+    if (slider == NULL) {
+        return;
+    }
+
+    lv_event_code_t code = lv_event_get_code(event);
+    if (code == LV_EVENT_RELEASED) {
+        int next_value = clamp_percent(lv_slider_get_value(slider));
+        if (next_value != ctx->cover_tilt_last_sent_value) {
+            if (ui_bindings_set_cover_tilt_position(ctx->entity_id, next_value) == ESP_OK) {
+                ctx->cover_tilt_position = next_value;
+                ctx->cover_tilt_last_sent_value = next_value;
+            } else {
+                lv_slider_set_value(slider, ctx->cover_tilt_position, LV_ANIM_OFF);
+            }
+        }
+    }
 }
 
 static void w_slider_event_cb(lv_event_t *event)
@@ -503,7 +837,9 @@ static void w_slider_event_cb(lv_event_t *event)
         bool next_is_on = next_value > 0;
         ctx->dragging = false;
         if (next_value != ctx->last_sent_value) {
-            esp_err_t err = ui_bindings_set_slider_value(ctx->entity_id, next_value);
+            esp_err_t err = (ctx->is_cover && !(ctx->cover_supported_features & 4U) && (ctx->cover_supported_features & 128U))
+                ? ui_bindings_set_cover_tilt_position(ctx->entity_id, next_value)
+                : ui_bindings_set_slider_value(ctx->entity_id, next_value);
             if (err != ESP_OK) {
                 ctx->value = prev_value;
                 ctx->is_on = prev_is_on;
@@ -541,19 +877,24 @@ esp_err_t w_slider_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widge
 #else
     lv_obj_set_style_border_width(card, 0, LV_PART_MAIN);
 #endif
-    lv_obj_set_style_pad_all(card, 16, LV_PART_MAIN);
+    lv_obj_set_style_pad_all(card, app_tile_card_padding(false), LV_PART_MAIN);
 
     lv_obj_t *title = lv_label_create(card);
     lv_label_set_text(title, def->title[0] ? def->title : def->id);
     lv_obj_set_width(title, def->w - 32);
     lv_obj_set_style_text_font(title, APP_FONT_TEXT_20, LV_PART_MAIN);
     lv_obj_set_style_text_align(title, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
-    lv_obj_align(title, LV_ALIGN_BOTTOM_MID, 0, APP_UI_TILE_LAYOUT_TUNED ? -12 : -10);
+    lv_obj_align(title, LV_ALIGN_BOTTOM_MID, 0, app_tile_title_bottom_y(false));
+
+    lv_obj_t *icon = lv_label_create(card);
+    lv_label_set_text(icon, "");
+    lv_obj_set_style_text_align(icon, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+    lv_obj_align(icon, LV_ALIGN_CENTER, 0, 0);
 
     lv_obj_t *state = lv_label_create(card);
     lv_label_set_text(state, ui_i18n_get("common.off", "OFF"));
     lv_obj_set_style_text_font(state, APP_FONT_TEXT_20, LV_PART_MAIN);
-    lv_obj_align(state, LV_ALIGN_TOP_LEFT, 0, APP_UI_TILE_LAYOUT_TUNED ? 2 : 0);
+    lv_obj_align(state, LV_ALIGN_TOP_LEFT, 0, app_tile_state_top_y(false));
 
     lv_obj_t *value = lv_label_create(card);
     slider_set_value_label(value, 0);
@@ -574,9 +915,61 @@ esp_err_t w_slider_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widge
     snprintf(ctx->entity_id, sizeof(ctx->entity_id), "%s", def->entity_id);
     ctx->card = card;
     ctx->title_label = title;
+    ctx->icon_label = icon;
     ctx->state_label = state;
     ctx->value_label = value;
     ctx->slider = slider;
+    ctx->is_cover = strncmp(def->entity_id, "cover.", 6) == 0;
+    if (ctx->is_cover) {
+        ctx->cover_tilt_slider = lv_slider_create(card);
+        lv_obj_set_size(ctx->cover_tilt_slider, def->w - 32, 18);
+        lv_slider_set_range(ctx->cover_tilt_slider, 0, 100);
+        lv_slider_set_value(ctx->cover_tilt_slider, 0, LV_ANIM_OFF);
+        lv_obj_align(ctx->cover_tilt_slider, LV_ALIGN_BOTTOM_MID, 0, -82);
+        lv_obj_add_flag(ctx->cover_tilt_slider, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_event_cb(ctx->cover_tilt_slider, cover_tilt_event_cb, LV_EVENT_RELEASED, ctx);
+        ctx->cover_open_btn = lv_btn_create(card);
+        ctx->cover_stop_btn = lv_btn_create(card);
+        ctx->cover_close_btn = lv_btn_create(card);
+        lv_obj_set_size(ctx->cover_open_btn, 46, 36);
+        lv_obj_set_size(ctx->cover_stop_btn, 46, 36);
+        lv_obj_set_size(ctx->cover_close_btn, 46, 36);
+        lv_obj_align(ctx->cover_open_btn, LV_ALIGN_BOTTOM_LEFT, 0, -42);
+        lv_obj_align(ctx->cover_stop_btn, LV_ALIGN_BOTTOM_MID, 0, -42);
+        lv_obj_align(ctx->cover_close_btn, LV_ALIGN_BOTTOM_RIGHT, 0, -42);
+        lv_obj_t *open_label = lv_label_create(ctx->cover_open_btn);
+        lv_obj_t *stop_label = lv_label_create(ctx->cover_stop_btn);
+        lv_obj_t *close_label = lv_label_create(ctx->cover_close_btn);
+        lv_label_set_text(open_label, LV_SYMBOL_UP);
+        lv_label_set_text(stop_label, LV_SYMBOL_STOP);
+        lv_label_set_text(close_label, LV_SYMBOL_DOWN);
+        lv_obj_center(open_label);
+        lv_obj_center(stop_label);
+        lv_obj_center(close_label);
+        lv_obj_add_event_cb(ctx->cover_open_btn, cover_action_event, LV_EVENT_CLICKED, ctx);
+        lv_obj_add_event_cb(ctx->cover_stop_btn, cover_action_event, LV_EVENT_CLICKED, ctx);
+        lv_obj_add_event_cb(ctx->cover_close_btn, cover_action_event, LV_EVENT_CLICKED, ctx);
+    }
+
+    ctx->show_title = def->show_title;
+    ctx->show_icon = def->show_icon;
+    ctx->show_state = def->show_state;
+
+    if (!ctx->show_title) {
+        lv_obj_add_flag(title, LV_OBJ_FLAG_HIDDEN);
+    }
+
+    if (!ctx->show_state) {
+        lv_obj_add_flag(state, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(value, LV_OBJ_FLAG_HIDDEN);
+    }
+
+    if (ctx->show_icon) {
+        slider_apply_icon(ctx, def->icon);
+    } else {
+        lv_obj_add_flag(icon, LV_OBJ_FLAG_HIDDEN);
+    }
+
     ctx->direction_cfg = slider_direction_from_text(def->slider_direction);
     ctx->direction_effective = slider_effective_direction(ctx, card);
     ctx->accent_color = lv_color_hex(APP_UI_COLOR_NAV_TAB_ACTIVE);
@@ -586,6 +979,7 @@ esp_err_t w_slider_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widge
     ctx->dragging = false;
     ctx->suppress_event = false;
     ctx->last_sent_value = -1;
+    ctx->cover_tilt_last_sent_value = -1;
 
     lv_color_t parsed_color = lv_color_hex(0);
     if (slider_parse_hex_color(def->slider_accent_color, &parsed_color)) {
@@ -618,10 +1012,59 @@ void w_slider_apply_state(ui_widget_instance_t *instance, const ha_state_t *stat
     if (slider_state_is_unavailable(state->state)) {
         ctx->value = 0;
         ctx->is_on = false;
+        if (ctx->is_cover) ctx->cover_state[0] = '\0';
         ctx->unavailable = true;
         ctx->dragging = false;
         slider_apply_visual(ctx);
         return;
+    }
+
+    if (ctx->is_cover) {
+        snprintf(ctx->cover_state, sizeof(ctx->cover_state), "%.15s", state->state);
+        cJSON *attrs = cJSON_Parse(state->attributes_json);
+        if (attrs != NULL) {
+            cJSON *features = cJSON_GetObjectItemCaseSensitive(attrs, "supported_features");
+            ctx->cover_supported_features = cJSON_IsNumber(features) ? (uint32_t)features->valuedouble : 0U;
+            cJSON *tilt = cJSON_GetObjectItemCaseSensitive(attrs, "current_tilt_position");
+            ctx->cover_has_tilt_position = cJSON_IsNumber(tilt);
+            if (ctx->cover_has_tilt_position) ctx->cover_tilt_position = clamp_percent((int)(tilt->valuedouble + 0.5));
+            cJSON_Delete(attrs);
+        }
+        /* Home Assistant cover feature bits: open=1, close=2, set_position=4, stop=8. */
+        if (ctx->cover_open_btn != NULL) {
+            if (ctx->cover_supported_features & 1U) lv_obj_clear_flag(ctx->cover_open_btn, LV_OBJ_FLAG_HIDDEN);
+            else lv_obj_add_flag(ctx->cover_open_btn, LV_OBJ_FLAG_HIDDEN);
+            if (strcmp(ctx->cover_state, "open") == 0 || strcmp(ctx->cover_state, "opening") == 0) lv_obj_add_state(ctx->cover_open_btn, LV_STATE_DISABLED);
+            else lv_obj_clear_state(ctx->cover_open_btn, LV_STATE_DISABLED);
+        }
+        if (ctx->cover_close_btn != NULL) {
+            if (ctx->cover_supported_features & 2U) lv_obj_clear_flag(ctx->cover_close_btn, LV_OBJ_FLAG_HIDDEN);
+            else lv_obj_add_flag(ctx->cover_close_btn, LV_OBJ_FLAG_HIDDEN);
+            if (strcmp(ctx->cover_state, "closed") == 0 || strcmp(ctx->cover_state, "closing") == 0) lv_obj_add_state(ctx->cover_close_btn, LV_STATE_DISABLED);
+            else lv_obj_clear_state(ctx->cover_close_btn, LV_STATE_DISABLED);
+        }
+        if (ctx->cover_stop_btn != NULL) {
+            if (ctx->cover_supported_features & 8U) lv_obj_clear_flag(ctx->cover_stop_btn, LV_OBJ_FLAG_HIDDEN);
+            else lv_obj_add_flag(ctx->cover_stop_btn, LV_OBJ_FLAG_HIDDEN);
+            if (strcmp(ctx->cover_state, "opening") == 0 || strcmp(ctx->cover_state, "closing") == 0) lv_obj_clear_state(ctx->cover_stop_btn, LV_STATE_DISABLED);
+            else lv_obj_add_state(ctx->cover_stop_btn, LV_STATE_DISABLED);
+        }
+        if (ctx->slider != NULL) {
+            if (ctx->cover_supported_features & 4U) lv_obj_clear_flag(ctx->slider, LV_OBJ_FLAG_HIDDEN);
+            else lv_obj_add_flag(ctx->slider, LV_OBJ_FLAG_HIDDEN);
+        }
+        if (ctx->cover_tilt_slider != NULL) {
+            bool show_tilt = (ctx->cover_supported_features & 128U) && ctx->cover_has_tilt_position;
+            if (show_tilt) {
+                ctx->suppress_event = true;
+                lv_slider_set_value(ctx->cover_tilt_slider, ctx->cover_tilt_position, LV_ANIM_OFF);
+                ctx->suppress_event = false;
+                ctx->cover_tilt_last_sent_value = ctx->cover_tilt_position;
+                lv_obj_clear_flag(ctx->cover_tilt_slider, LV_OBJ_FLAG_HIDDEN);
+            } else {
+                lv_obj_add_flag(ctx->cover_tilt_slider, LV_OBJ_FLAG_HIDDEN);
+            }
+        }
     }
 
     bool has_numeric = false;
@@ -629,6 +1072,7 @@ void w_slider_apply_state(ui_widget_instance_t *instance, const ha_state_t *stat
     bool on_from_text = slider_state_is_on_text(state->state);
     bool is_on = has_numeric ? (value > 0 || on_from_text) : on_from_text;
 
+    if (ctx->is_cover && (ctx->cover_supported_features & 128U) && !(ctx->cover_supported_features & 4U) && ctx->cover_has_tilt_position) value = ctx->cover_tilt_position;
     ctx->value = clamp_percent(value);
     ctx->is_on = is_on;
     ctx->unavailable = false;
@@ -649,6 +1093,7 @@ void w_slider_mark_unavailable(ui_widget_instance_t *instance)
 
     ctx->value = 0;
     ctx->is_on = false;
+    if (ctx->is_cover) ctx->cover_state[0] = '\0';
     ctx->unavailable = true;
     ctx->dragging = false;
     slider_apply_visual(ctx);

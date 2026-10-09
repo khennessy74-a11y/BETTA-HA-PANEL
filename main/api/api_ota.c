@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: LicenseRef-FNCL-1.1
  * Copyright (c) 2026 Cpt_Kirk
+ * Copyright (c) 2026 khennessy74-a11y
  */
 #include "api/api_routes.h"
 
@@ -20,6 +21,7 @@
 #include "esp_ota_ops.h"
 #include "esp_partition.h"
 #include "esp_system.h"
+#include "esp_chip_info.h"
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
@@ -391,6 +393,16 @@ static esp_err_t ota_stream_init(api_ota_stream_t *stream, size_t total)
     return ESP_OK;
 }
 
+static bool ota_project_is_betta_family(const char *name)
+{
+    if (name == NULL || name[0] == '\0') {
+        return false;
+    }
+    return strncmp(name, "betta-ha-panel", strlen("betta-ha-panel")) == 0 ||
+           strncmp(name, "betta86-ha-panel", strlen("betta86-ha-panel")) == 0 ||
+           strncmp(name, "BETTA-HA-PANEL", strlen("BETTA-HA-PANEL")) == 0;
+}
+
 static esp_err_t ota_stream_validate_header(api_ota_stream_t *stream)
 {
     if (stream == NULL || stream->header_len < OTA_HEADER_CHECK_LEN) {
@@ -405,8 +417,21 @@ static esp_err_t ota_stream_validate_header(api_ota_stream_t *stream)
 
     const esp_app_desc_t *new_app = (const esp_app_desc_t *)(stream->header_buf + OTA_APP_DESC_OFFSET);
     const esp_app_desc_t *running_app = esp_app_get_description();
+
+    /* Project names changed as hardware variants were introduced.  Permit
+     * upgrades between known BETTA project-name variants, but never use that
+     * compatibility allowance to cross chip families. */
+    esp_chip_info_t chip_info = {0};
+    esp_chip_info(&chip_info);
+    if ((int)image_header->chip_id != (int)chip_info.model) {
+        ota_stream_set_error(stream, "OTA image is for a different ESP chip");
+        return ESP_ERR_INVALID_RESPONSE;
+    }
+
     if (running_app != NULL &&
-        strncmp(new_app->project_name, running_app->project_name, sizeof(new_app->project_name)) != 0) {
+        strncmp(new_app->project_name, running_app->project_name, sizeof(new_app->project_name)) != 0 &&
+        !(ota_project_is_betta_family(new_app->project_name) &&
+          ota_project_is_betta_family(running_app->project_name))) {
         ota_stream_set_error(stream, "OTA image project name does not match this firmware");
         return ESP_ERR_INVALID_RESPONSE;
     }

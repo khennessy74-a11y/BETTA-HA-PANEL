@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: LicenseRef-FNCL-1.1
  * Copyright (c) 2026 Cpt_Kirk
+ * Copyright (c) 2026 khennessy74-a11y
  */
 #pragma once
 
@@ -11,7 +12,18 @@
 
 typedef void (*ui_pages_show_cb_t)(const char *page_id, uint16_t index);
 
+typedef struct {
+    lv_coord_t screen_w;
+    lv_coord_t screen_h;
+    lv_coord_t content_x;
+    lv_coord_t content_y;
+    lv_coord_t content_w;
+    lv_coord_t content_h;
+    lv_coord_t nav_h;
+} ui_pages_geometry_t;
+
 void ui_pages_init(void);
+const ui_pages_geometry_t *ui_pages_geometry(void);
 void ui_pages_reset(void);
 lv_obj_t *ui_pages_add(const char *page_id, const char *title);
 bool ui_pages_show(const char *page_id);

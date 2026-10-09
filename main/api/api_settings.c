@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: LicenseRef-FNCL-1.1
  * Copyright (c) 2026 Cpt_Kirk
+ * Copyright (c) 2026 khennessy74-a11y
  */
 #include "api/api_routes.h"
 
@@ -11,9 +12,11 @@
 #include "cJSON.h"
 #include "esp_system.h"
 #include "esp_timer.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 
 #include "app_config.h"
-#include "bsp/display.h"
+#include "drivers/display_init.h"
 #include "ha/ha_client.h"
 #include "net/wifi_mgr.h"
 #include "settings/i18n_store.h"
@@ -153,8 +156,26 @@ static bool normalize_ui_language(char *language, size_t language_len)
 static void restart_timer_cb(void *arg)
 {
     (void)arg;
+
+    /* Save + Reboot is a warm software reset.  On the S3 panel the hosted
+     * Wi-Fi/C6 transport can survive that reset in a stale state even though
+     * the STA still reports connected, leaving HA WebSocket reconnect stuck
+     * until a power cycle.  Tear down HA first, then explicitly recover the
+     * hosted transport before restarting so the next boot starts from the
+     * same clean network state seen after flash/power-on. */
+    ha_client_stop();
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+    esp_err_t recover_err = wifi_mgr_force_transport_recover();
+    if (recover_err != ESP_OK) {
+        /* A normal Wi-Fi reconnect is still better than carrying the stale
+         * session into the software reboot if full transport recovery fails. */
+        (void)wifi_mgr_force_reconnect();
+    }
+#endif
+    vTaskDelay(pdMS_TO_TICKS(250));
+
     /* Avoid random panel colors during software reset. */
-    (void)bsp_display_backlight_off();
+    (void)display_set_brightness_percent(0);
     esp_restart();
 }
 
@@ -253,6 +274,16 @@ esp_err_t api_settings_get_handler(httpd_req_t *req)
     cJSON_AddItemToObject(root, "time", time_cfg);
 
     cJSON_AddStringToObject(ui, "language", settings->ui_language);
+    cJSON_AddNumberToObject(ui, "brightness_percent", settings->display_brightness_percent);
+    cJSON_AddNumberToObject(ui, "night_brightness_percent", settings->display_night_brightness_percent);
+    cJSON_AddBoolToObject(ui, "night_mode_auto", settings->display_night_mode_auto);
+    cJSON_AddNumberToObject(ui, "night_mode", settings->display_night_mode);
+    cJSON_AddNumberToObject(ui, "night_start_hour", settings->display_night_start_hour);
+    cJSON_AddNumberToObject(ui, "night_start_minute", settings->display_night_start_minute);
+    cJSON_AddNumberToObject(ui, "day_start_hour", settings->display_day_start_hour);
+    cJSON_AddNumberToObject(ui, "day_start_minute", settings->display_day_start_minute);
+    cJSON_AddNumberToObject(ui, "idle_timeout_seconds", settings->display_idle_timeout_seconds);
+    cJSON_AddNumberToObject(ui, "idle_brightness_percent", settings->display_idle_brightness_percent);
     cJSON_AddItemToObject(root, "ui", ui);
 
     cJSON_AddBoolToObject(root, "ok", true);
@@ -320,6 +351,25 @@ static bool update_bool_setting(cJSON *obj, const char *key, bool *dst, bool *ou
         *out_invalid_type = true;
     }
     return false;
+}
+
+static bool update_int_setting(cJSON *obj, const char *key, int *dst, int min_value, int max_value, bool *out_invalid_type)
+{
+    cJSON *item = cJSON_GetObjectItemCaseSensitive(obj, key);
+    if (item == NULL) {
+        return false;
+    }
+    if (!cJSON_IsNumber(item)) {
+        if (out_invalid_type != NULL) *out_invalid_type = true;
+        return false;
+    }
+    int value = item->valueint;
+    if (value < min_value || value > max_value) {
+        if (out_invalid_type != NULL) *out_invalid_type = true;
+        return false;
+    }
+    *dst = value;
+    return true;
 }
 
 esp_err_t api_settings_put_handler(httpd_req_t *req)
@@ -414,6 +464,31 @@ esp_err_t api_settings_put_handler(httpd_req_t *req)
     if (cJSON_IsObject(ui)) {
         (void)update_string_setting(
             ui, "language", settings->ui_language, sizeof(settings->ui_language), &invalid_type, &too_long);
+        (void)update_int_setting(
+            ui, "brightness_percent", &settings->display_brightness_percent, 0, 100, &invalid_type);
+        (void)update_int_setting(
+            ui, "night_brightness_percent", &settings->display_night_brightness_percent, 0, 100, &invalid_type);
+        bool legacy_night_mode_updated = update_bool_setting(
+            ui, "night_mode_auto", &settings->display_night_mode_auto, &invalid_type);
+        bool night_mode_updated = update_int_setting(
+            ui, "night_mode", &settings->display_night_mode, 0, 2, &invalid_type);
+        if (night_mode_updated) {
+            settings->display_night_mode_auto = settings->display_night_mode == 2;
+        } else if (legacy_night_mode_updated) {
+            settings->display_night_mode = settings->display_night_mode_auto ? 2 : 0;
+        }
+        (void)update_int_setting(
+            ui, "night_start_hour", &settings->display_night_start_hour, 0, 23, &invalid_type);
+        (void)update_int_setting(
+            ui, "night_start_minute", &settings->display_night_start_minute, 0, 59, &invalid_type);
+        (void)update_int_setting(
+            ui, "day_start_hour", &settings->display_day_start_hour, 0, 23, &invalid_type);
+        (void)update_int_setting(
+            ui, "day_start_minute", &settings->display_day_start_minute, 0, 59, &invalid_type);
+        (void)update_int_setting(
+            ui, "idle_timeout_seconds", &settings->display_idle_timeout_seconds, 0, 86400, &invalid_type);
+        (void)update_int_setting(
+            ui, "idle_brightness_percent", &settings->display_idle_brightness_percent, 0, 100, &invalid_type);
     }
 
     (void)update_string_setting(
@@ -489,10 +564,25 @@ esp_err_t api_settings_put_handler(httpd_req_t *req)
     }
 
     esp_err_t save_err = runtime_settings_save(settings);
-    free(settings);
     if (save_err != ESP_OK) {
+        free(settings);
         return httpd_resp_send_500(req);
     }
+
+    if (!reboot) {
+        display_configure_night_mode(
+            settings->display_brightness_percent,
+            settings->display_night_brightness_percent,
+            settings->display_night_mode,
+            settings->display_night_start_hour,
+            settings->display_night_start_minute,
+            settings->display_day_start_hour,
+            settings->display_day_start_minute);
+        display_configure_idle(
+            settings->display_idle_timeout_seconds,
+            settings->display_idle_brightness_percent);
+    }
+    free(settings);
 
     cJSON *resp = cJSON_CreateObject();
     if (resp == NULL) {

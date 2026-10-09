@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: LicenseRef-FNCL-1.1
  * Copyright (c) 2026 Cpt_Kirk
+ * Copyright (c) 2026 khennessy74-a11y
  */
 #include "ui/ui_widget_factory.h"
 
@@ -18,6 +19,9 @@
 #include "ui/fonts/mdi_font_registry.h"
 #include "ui/ui_i18n.h"
 #include "ui/ui_memory.h"
+#include "ui/widgets/widget_display_options.h"
+#include "ui/widgets/tile_layout_shared.h"
+#include "ui/widgets/state_icon_color.h"
 #include "ui/theme/theme_default.h"
 
 #ifndef APP_HAVE_LIGHT_COLOR_BUTTON_IMAGES
@@ -54,6 +58,15 @@ typedef struct {
     int min_color_temp_kelvin;
     int max_color_temp_kelvin;
     lv_coord_t configured_min_dim;
+    char custom_icon[APP_MAX_ICON_LEN];
+    bool show_title;
+    bool show_icon;
+    bool show_state;
+    lv_color_t state_off_color;
+    lv_color_t state_on_color;
+    bool has_state_off_color;
+    bool has_state_on_color;
+    bool suppress_next_click;
 } w_light_tile_ctx_t;
 
 #define ICON_CP_MDI_LIGHTBULB_ON 0xF06E8U
@@ -478,42 +491,8 @@ static void light_position_icon_between_state_and_title(lv_obj_t *card, lv_coord
         return;
     }
 
-    /* Layout once so child coordinates/heights are valid before calculating placement. */
-    lv_obj_update_layout(card);
-
-    if (gap < 0) {
-        gap = 0;
-    }
-    lv_coord_t top = lv_obj_get_y(state_label) + lv_obj_get_height(state_label) + gap;
-    lv_coord_t bottom = lv_obj_get_y(title) - gap;
-    lv_coord_t icon_h = lv_obj_get_height(icon);
-
-    if (icon_h < 1) {
-        const lv_font_t *font = lv_obj_get_style_text_font(icon, LV_PART_MAIN);
-        if (font != NULL) {
-            icon_h = font->line_height;
-        }
-    }
-
-    lv_coord_t y = top;
-    lv_coord_t room = bottom - top;
-    if (room >= icon_h) {
-        y = top + (room - icon_h) / 2;
-    }
-
-    lv_coord_t max_y = bottom - icon_h;
-    if (max_y < top) {
-        max_y = top;
-    }
-    y += bias_y;
-    if (y < top) {
-        y = top;
-    }
-    if (y > max_y) {
-        y = max_y;
-    }
-
-    lv_obj_align(icon, LV_ALIGN_TOP_MID, bias_x, y);
+    app_tile_position_icon_between_labels(card, icon, state_label, title, gap, bias_y);
+    lv_obj_set_x(icon, bias_x);
 }
 
 static void light_apply_visual(lv_obj_t *card, const w_light_tile_ctx_t *ctx, bool is_on, int brightness, const char *status_text)
@@ -539,16 +518,18 @@ static void light_apply_visual(lv_obj_t *card, const w_light_tile_ctx_t *ctx, bo
     const bool can_adjust_color = ctx != NULL && !ctx->unavailable && (ctx->can_color || ctx->can_color_temp);
     const bool has_rgb_color = ctx != NULL && ctx->has_rgb_color;
     const uint32_t icon_on_color = (is_on && has_rgb_color) ? ctx->rgb_color : APP_UI_COLOR_LIGHT_ICON_ON;
+    const lv_color_t resolved_icon_color = is_on
+        ? (ctx != NULL && ctx->has_state_on_color ? ctx->state_on_color : lv_color_hex(icon_on_color))
+        : (ctx != NULL && ctx->has_state_off_color ? ctx->state_off_color : lv_color_hex(APP_UI_COLOR_CARD_ICON_OFF));
 
-    lv_obj_set_style_text_color(
-        w.icon, is_on ? lv_color_hex(icon_on_color) : lv_color_hex(APP_UI_COLOR_CARD_ICON_OFF), LV_PART_MAIN);
+    lv_obj_set_style_text_color(w.icon, resolved_icon_color, LV_PART_MAIN);
     lv_obj_set_style_text_color(w.title, lv_color_hex(APP_UI_COLOR_TEXT_PRIMARY), LV_PART_MAIN);
     lv_obj_set_style_text_color(
         w.state_label, is_on ? lv_color_hex(APP_UI_COLOR_STATE_ON) : lv_color_hex(APP_UI_COLOR_STATE_OFF), LV_PART_MAIN);
 
     if (can_dim) {
         lv_obj_clear_flag(w.slider, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_clear_flag(w.value_label, LV_OBJ_FLAG_HIDDEN);
+        widget_display_set_visible(w.value_label, ctx == NULL || ctx->show_state);
         lv_obj_set_style_bg_color(
             w.slider, is_on ? lv_color_hex(APP_UI_COLOR_LIGHT_TRACK_ON) : lv_color_hex(APP_UI_COLOR_LIGHT_TRACK_OFF), LV_PART_MAIN);
         lv_obj_set_style_bg_opa(w.slider, LV_OPA_COVER, LV_PART_MAIN);
@@ -618,10 +599,25 @@ static void light_apply_visual(lv_obj_t *card, const w_light_tile_ctx_t *ctx, bo
     lv_slider_set_value(w.slider, can_dim ? clamp_percent(brightness) : (is_on ? 100 : 0), LV_ANIM_OFF);
     light_set_value_label(w.value_label, brightness);
     lv_label_set_text(w.icon, light_icon_text_for_font(icon_font));
+    if (ctx != NULL && ctx->custom_icon[0] != '\0') {
+        (void)widget_display_apply_mdi(w.icon, ctx->custom_icon);
+    }
     lv_label_set_text(w.state_label, light_translate_status(status_text != NULL ? status_text : (is_on ? "ON" : "OFF")));
+    if (ctx != NULL) {
+        widget_display_set_visible(w.title, ctx->show_title);
+        widget_display_set_visible(w.icon, ctx->show_icon);
+        widget_display_set_visible(w.state_label, ctx->show_state);
+        widget_display_set_visible(w.value_label, ctx->show_state && can_dim);
+    }
     light_position_icon_between_state_and_title(
         card, layout->icon_gap, layout->icon_bias_y,
         can_adjust_color ? light_icon_bias_x_for_button_size(color_button_size) : 0);
+    /* Positioning/layout can update child flags on the S3. Enforce display
+     * options last so Hide State remains authoritative after every refresh. */
+    if (ctx != NULL) {
+        widget_display_set_visible(w.state_label, ctx->show_state);
+        widget_display_set_visible(w.value_label, ctx->show_state && can_dim);
+    }
 }
 
 typedef enum {
@@ -1448,7 +1444,17 @@ static void w_light_tile_card_event_cb(lv_event_t *event)
         return;
     }
 
+    if (code == LV_EVENT_LONG_PRESSED) {
+        ctx->suppress_next_click = true;
+        w_light_tile_open_color_popup(ctx);
+        return;
+    }
+
     if (code == LV_EVENT_CLICKED) {
+        if (ctx->suppress_next_click) {
+            ctx->suppress_next_click = false;
+            return;
+        }
         if (ctx->unavailable) {
             return;
         }
@@ -1587,6 +1593,7 @@ esp_err_t w_light_tile_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_w
     lv_label_set_text(state_label, ui_i18n_get("common.off", "OFF"));
     lv_obj_set_style_text_font(state_label, APP_FONT_TEXT_16, LV_PART_MAIN);
     lv_obj_align(state_label, LV_ALIGN_TOP_LEFT, 0, 2);
+    widget_display_set_visible(state_label, def->show_state);
 
     lv_obj_t *slider = lv_slider_create(card);
     lv_obj_set_width(slider, def->w);
@@ -1603,6 +1610,7 @@ esp_err_t w_light_tile_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_w
     lv_label_set_text(value_label, "0 %");
     lv_obj_set_style_text_font(value_label, APP_FONT_TEXT_16, LV_PART_MAIN);
     lv_obj_align(value_label, LV_ALIGN_TOP_RIGHT, 0, 2);
+    widget_display_set_visible(value_label, def->show_state);
 
     lv_obj_t *color_button = lv_btn_create(card);
     lv_obj_set_size(color_button, light_color_button_size_for_class(light_tile_class_from_dim(configured_min_dim)),
@@ -1640,13 +1648,20 @@ esp_err_t w_light_tile_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_w
     ctx->can_color_temp = false;
     ctx->has_rgb_color = false;
     ctx->rgb_color = APP_UI_COLOR_LIGHT_ICON_ON;
+    ctx->has_state_off_color = state_icon_parse_color(def->state_icon_off_color, &ctx->state_off_color);
+    ctx->has_state_on_color = state_icon_parse_color(def->state_icon_on_color, &ctx->state_on_color);
     ctx->has_color_temp_kelvin = false;
     ctx->color_temp_kelvin = 3000;
     ctx->min_color_temp_kelvin = 2000;
     ctx->max_color_temp_kelvin = 6500;
     ctx->configured_min_dim = configured_min_dim;
+    ctx->show_title = def->show_title;
+    ctx->show_icon = def->show_icon;
+    ctx->show_state = def->show_state;
+    snprintf(ctx->custom_icon, sizeof(ctx->custom_icon), "%s", def->icon);
 
     lv_obj_add_event_cb(card, w_light_tile_card_event_cb, LV_EVENT_CLICKED, ctx);
+    lv_obj_add_event_cb(card, w_light_tile_card_event_cb, LV_EVENT_LONG_PRESSED, ctx);
     lv_obj_add_event_cb(card, w_light_tile_card_event_cb, LV_EVENT_SIZE_CHANGED, ctx);
     lv_obj_add_event_cb(card, w_light_tile_card_event_cb, LV_EVENT_DELETE, ctx);
     lv_obj_add_event_cb(color_button, w_light_tile_color_button_event_cb, LV_EVENT_CLICKED, ctx);

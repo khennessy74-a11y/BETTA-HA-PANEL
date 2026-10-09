@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: LicenseRef-FNCL-1.1
  * Copyright (c) 2026 Cpt_Kirk
+ * Copyright (c) 2026 khennessy74-a11y
  */
 #include "ui/ui_widget_factory.h"
 
@@ -8,14 +9,21 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "cJSON.h"
+#include "ha/ha_model.h"
+
 #include "ui/fonts/app_text_fonts.h"
 #include "ui/theme/theme_default.h"
 #include "ui/ui_i18n.h"
 #include "ui/ui_bindings.h"
 #include "ui/ui_memory.h"
+#include "ui/fonts/mdi_font_registry.h"
+#include "ui/widgets/tile_layout_shared.h"
+#include "ui/widgets/state_icon_color.h"
 
 typedef enum {
     W_BUTTON_MODE_AUTO = 0,
+    W_BUTTON_MODE_RUN,
     W_BUTTON_MODE_PLAY_PAUSE,
     W_BUTTON_MODE_STOP,
     W_BUTTON_MODE_NEXT,
@@ -24,16 +32,25 @@ typedef enum {
 
 typedef struct {
     char entity_id[APP_MAX_ENTITY_ID_LEN];
+    char icon[APP_MAX_ICON_LEN];
+    char entity_icon[APP_MAX_ICON_LEN];
     lv_obj_t *card;
     lv_obj_t *title_label;
     lv_obj_t *state_label;
     lv_obj_t *action_switch;
     lv_obj_t *action_icon;
     lv_color_t accent_color;
+    bool has_custom_accent;
+    lv_color_t state_off_color;
+    lv_color_t state_on_color;
+    bool has_state_off_color;
+    bool has_state_on_color;
     w_button_mode_t mode;
+    bool use_icon_appearance;
     bool show_title;
     bool show_status;
     bool suppress_event;
+    bool suppress_click;
     bool is_on;
     bool unavailable;
 } w_button_ctx_t;
@@ -45,7 +62,6 @@ static const uint32_t W_BUTTON_SWITCH_TRACK_OFF_HEX = 0x3A3E43;
  * every call site re-reads the active palette. */
 #define W_BUTTON_SWITCH_ACCENT_DEFAULT_HEX (APP_UI_COLOR_NAV_TAB_ACTIVE)
 static const uint32_t W_BUTTON_SWITCH_KNOB_HEX = 0xEAF2FA;
-static const lv_coord_t W_BUTTON_SWITCH_HEIGHT_PX = 40;
 
 static bool button_is_hex_digit(char c)
 {
@@ -118,7 +134,8 @@ static bool state_is_on(const char *state)
         return false;
     }
     return (strcmp(state, "on") == 0) || (strcmp(state, "open") == 0) || (strcmp(state, "playing") == 0) ||
-           (strcmp(state, "home") == 0);
+           (strcmp(state, "home") == 0) || (strcmp(state, "locked") == 0) || (strcmp(state, "locking") == 0) ||
+           (strcmp(state, "jammed") == 0);
 }
 
 static bool button_entity_is_media_player(const char *entity_id)
@@ -129,10 +146,58 @@ static bool button_entity_is_media_player(const char *entity_id)
     return strncmp(entity_id, "media_player.", strlen("media_player.")) == 0;
 }
 
+static bool button_entity_is_script(const char *entity_id)
+{
+    if (entity_id == NULL) {
+        return false;
+    }
+    return strncmp(entity_id, "script.", strlen("script.")) == 0;
+}
+
+static bool button_entity_is_scene(const char *entity_id)
+{
+    if (entity_id == NULL) {
+        return false;
+    }
+    return strncmp(entity_id, "scene.", strlen("scene.")) == 0;
+}
+
+static bool button_entity_is_automation(const char *entity_id)
+{
+    if (entity_id == NULL) {
+        return false;
+    }
+    return strncmp(entity_id, "automation.", strlen("automation.")) == 0;
+}
+
+static bool button_entity_is_ha_button(const char *entity_id)
+{
+    if (entity_id == NULL) {
+        return false;
+    }
+    return strncmp(entity_id, "button.", strlen("button.")) == 0;
+}
+
+static bool button_entity_is_lock(const char *entity_id)
+{
+    return entity_id != NULL &&
+           strncmp(entity_id, "lock.", strlen("lock.")) == 0;
+}
+
+static bool button_entity_is_runnable(const char *entity_id)
+{
+    return button_entity_is_script(entity_id) ||
+           button_entity_is_scene(entity_id) ||
+           button_entity_is_automation(entity_id);
+}
+
 static w_button_mode_t button_mode_from_text(const char *mode_text)
 {
     if (mode_text == NULL || mode_text[0] == '\0' || strcmp(mode_text, "auto") == 0) {
         return W_BUTTON_MODE_AUTO;
+    }
+    if (strcmp(mode_text, "run") == 0) {
+        return W_BUTTON_MODE_RUN;
     }
     if (strcmp(mode_text, "play_pause") == 0) {
         return W_BUTTON_MODE_PLAY_PAUSE;
@@ -154,21 +219,118 @@ static bool button_mode_uses_switch(w_button_mode_t mode)
     return mode == W_BUTTON_MODE_AUTO;
 }
 
-static const char *button_icon_symbol(w_button_mode_t mode, bool is_on)
+static bool button_visual_uses_switch(
+    const w_button_ctx_t *ctx)
+{
+    return ctx != NULL &&
+           button_mode_uses_switch(ctx->mode) &&
+           !ctx->use_icon_appearance;
+}
+
+static const char *button_icon_symbol(
+    w_button_mode_t mode,
+    bool is_on)
 {
     switch (mode) {
+    case W_BUTTON_MODE_RUN:
+        return is_on
+            ? LV_SYMBOL_STOP
+            : LV_SYMBOL_PLAY;
+
     case W_BUTTON_MODE_PLAY_PAUSE:
-        return is_on ? LV_SYMBOL_PAUSE : LV_SYMBOL_PLAY;
+        return is_on
+            ? LV_SYMBOL_PAUSE
+            : LV_SYMBOL_PLAY;
+
     case W_BUTTON_MODE_STOP:
         return LV_SYMBOL_STOP;
+
     case W_BUTTON_MODE_NEXT:
         return LV_SYMBOL_NEXT;
+
     case W_BUTTON_MODE_PREVIOUS:
         return LV_SYMBOL_PREV;
+
     case W_BUTTON_MODE_AUTO:
+        return LV_SYMBOL_POWER;
+
     default:
         return "";
     }
+}
+
+
+static bool button_apply_custom_mdi_icon(
+    w_button_ctx_t *ctx)
+{
+    if (ctx == NULL ||
+        ctx->action_icon == NULL) {
+        return false;
+    }
+
+    const char *icon_name = ctx->icon[0] != '\0' ? ctx->icon : ctx->entity_icon;
+    if (icon_name == NULL || icon_name[0] == '\0') {
+        return false;
+    }
+
+    uint32_t codepoint = 0;
+
+    if (!mdi_icon_lookup(
+            icon_name,
+            &codepoint)) {
+        /* HA may expose an MDI name that is newer than BETTA's curated
+         * registry. Keep the automatic fallback safe, but do not silently
+         * replace a known entity icon with the power symbol. */
+        return false;
+    }
+
+    lv_coord_t card_w = lv_obj_get_width(ctx->card);
+    lv_coord_t card_h = lv_obj_get_height(ctx->card);
+    lv_coord_t min_dim = card_w < card_h ? card_w : card_h;
+    const lv_font_t *font = NULL;
+    const lv_font_t *candidates[4] = {0};
+    if (min_dim >= 260) {
+        candidates[0] = mdi_font_icon_72();
+        candidates[1] = mdi_font_icon_56();
+        candidates[2] = mdi_font_icon_42();
+    } else if (min_dim >= 170) {
+        candidates[0] = mdi_font_icon_56();
+        candidates[1] = mdi_font_icon_42();
+        candidates[2] = mdi_font_icon_72();
+    } else {
+        candidates[0] = mdi_font_icon_42();
+        candidates[1] = mdi_font_icon_56();
+        candidates[2] = mdi_font_icon_72();
+    }
+    candidates[3] = mdi_font_large();
+
+    lv_font_glyph_dsc_t glyph_dsc = {0};
+    for (size_t i = 0; i < sizeof(candidates) / sizeof(candidates[0]); i++) {
+        if (candidates[i] != NULL && lv_font_get_glyph_dsc(candidates[i], &glyph_dsc, codepoint, 0)) {
+            font = candidates[i];
+            break;
+        }
+    }
+    if (font == NULL) return false;
+
+    char utf8[5] = {0};
+
+    if (!mdi_icon_codepoint_to_utf8(
+            codepoint,
+            utf8)) {
+        return false;
+    }
+
+    lv_obj_set_style_text_font(
+        ctx->action_icon,
+        font,
+        LV_PART_MAIN);
+
+    lv_label_set_text(
+        ctx->action_icon,
+        utf8);
+
+    return true;
 }
 
 static bool button_label_visible(lv_obj_t *obj)
@@ -195,6 +357,21 @@ static const char *button_translate_status_text(const char *status_text)
     }
     if (strcmp(status_text, "paused") == 0) {
         return ui_i18n_get("common.paused", "paused");
+    }
+    if (strcmp(status_text, "locked") == 0) {
+        return ui_i18n_get("lock.locked", "LOCKED");
+    }
+    if (strcmp(status_text, "locking") == 0) {
+        return ui_i18n_get("lock.locking", "LOCKING");
+    }
+    if (strcmp(status_text, "unlocked") == 0) {
+        return ui_i18n_get("lock.unlocked", "UNLOCKED");
+    }
+    if (strcmp(status_text, "unlocking") == 0) {
+        return ui_i18n_get("lock.unlocking", "UNLOCKING");
+    }
+    if (strcmp(status_text, "jammed") == 0) {
+        return ui_i18n_get("lock.jammed", "JAMMED");
     }
     return status_text;
 }
@@ -299,6 +476,26 @@ static void button_calc_action_area(lv_obj_t *card, w_button_ctx_t *ctx, lv_coor
     *out_area_h = area_h;
 }
 
+static void button_apply_responsive_typography(lv_obj_t *card, w_button_ctx_t *ctx)
+{
+    if (card == NULL || ctx == NULL) {
+        return;
+    }
+
+    lv_coord_t card_w = lv_obj_get_width(card);
+    lv_coord_t card_h = lv_obj_get_height(card);
+    lv_coord_t min_dim = card_w < card_h ? card_w : card_h;
+    const lv_font_t *text_font = app_font_text_for_min_dim(min_dim);
+
+    if (ctx->title_label != NULL) {
+        lv_obj_set_style_text_font(ctx->title_label, text_font, LV_PART_MAIN);
+        lv_obj_set_width(ctx->title_label, card_w > 24 ? card_w - 24 : card_w);
+    }
+    if (ctx->state_label != NULL) {
+        lv_obj_set_style_text_font(ctx->state_label, text_font, LV_PART_MAIN);
+    }
+}
+
 static bool button_card_is_compact(lv_obj_t *card)
 {
     if (card == NULL) {
@@ -383,7 +580,12 @@ static void button_layout_switch(lv_obj_t *card, w_button_ctx_t *ctx)
         max_w = 20;
     }
 
-    lv_coord_t switch_h = (area_h < W_BUTTON_SWITCH_HEIGHT_PX) ? area_h : W_BUTTON_SWITCH_HEIGHT_PX;
+    /* Let larger cards breathe while preserving the familiar 40 px switch
+     * around the normal button size. */
+    lv_coord_t desired_switch_h = area_h / 2;
+    if (desired_switch_h < 24) desired_switch_h = 24;
+    if (desired_switch_h > 56) desired_switch_h = 56;
+    lv_coord_t switch_h = (area_h < desired_switch_h) ? area_h : desired_switch_h;
     if (switch_h < 20) {
         switch_h = 20;
     }
@@ -412,64 +614,116 @@ static void button_layout_switch(lv_obj_t *card, w_button_ctx_t *ctx)
     lv_obj_set_size(ctx->action_switch, switch_w, switch_h);
 }
 
-static void button_layout_icon(lv_obj_t *card, w_button_ctx_t *ctx)
+static void button_layout_icon(
+    lv_obj_t *card,
+    w_button_ctx_t *ctx,
+    bool custom_mdi)
 {
-    if (card == NULL || ctx == NULL || ctx->action_icon == NULL) {
+    if (card == NULL ||
+        ctx == NULL ||
+        ctx->action_icon == NULL) {
         return;
     }
 
     lv_obj_update_layout(card);
 
-        const bool compact = button_card_is_compact(card);
-    const lv_coord_t top_gap_base =
-#if APP_UI_TILE_LAYOUT_TUNED
-        compact ? 10 : 14;
-#else
-        12;
-#endif
-    const lv_coord_t bottom_gap_base =
-#if APP_UI_TILE_LAYOUT_TUNED
-        compact ? 12 : 16;
-#else
-        14;
-#endif
-        const lv_coord_t min_height = compact ? 26 : 30;
+    const bool compact =
+        button_card_is_compact(card);
 
-    lv_coord_t top_gap = button_label_visible(ctx->state_label) ? top_gap_base : 4;
-    lv_coord_t bottom_gap = button_label_visible(ctx->title_label) ? bottom_gap_base : 4;
+    const lv_coord_t matched_gap = app_tile_icon_gap(compact);
+
+    const lv_coord_t min_height =
+        compact ? 26 : 30;
+
+    lv_coord_t top_gap =
+        button_label_visible(ctx->state_label)
+            ? matched_gap
+            : 4;
+
+    lv_coord_t bottom_gap =
+        button_label_visible(ctx->title_label)
+            ? matched_gap
+            : 4;
+
     lv_coord_t content_w = 24;
     lv_coord_t top = 0;
     lv_coord_t area_h = 20;
-    button_calc_action_area(card, ctx, top_gap, bottom_gap, min_height, &content_w, &top, &area_h);
 
-    lv_coord_t target_icon_h = (area_h * 9) / 10;
+    button_calc_action_area(
+        card,
+        ctx,
+        top_gap,
+        bottom_gap,
+        min_height,
+        &content_w,
+        &top,
+        &area_h);
+
+    lv_coord_t target_icon_h =
+        (area_h * 9) / 10;
+
     if (target_icon_h < 20) {
         target_icon_h = 20;
     }
-    lv_obj_set_style_text_font(ctx->action_icon, button_pick_icon_font(target_icon_h), LV_PART_MAIN);
-    lv_obj_set_width(ctx->action_icon, content_w);
-    lv_obj_update_layout(ctx->action_icon);
 
-    lv_coord_t icon_h = lv_obj_get_height(ctx->action_icon);
+    /*
+     * Custom MDI icons already have their correct
+     * MDI font assigned by button_apply_custom_mdi_icon().
+     *
+     * LVGL built-in symbols use the normal text font.
+     */
+    if (!custom_mdi) {
+        lv_obj_set_style_text_font(
+            ctx->action_icon,
+            button_pick_icon_font(target_icon_h),
+            LV_PART_MAIN);
+    }
+
+    lv_obj_set_width(
+        ctx->action_icon,
+        content_w);
+
+    lv_obj_update_layout(
+        ctx->action_icon);
+
+    lv_coord_t icon_h =
+        lv_obj_get_height(ctx->action_icon);
+
     if (icon_h < 20) {
         icon_h = 20;
     }
-    lv_coord_t y = top + (area_h - icon_h) / 2;
-    if (y < 0) {
-        y = 0;
-    }
 
-    lv_obj_set_pos(ctx->action_icon, 0, y);
+    /* Use the exact same state/title corridor as the light tile.
+     * On the S3 480 compact cards the light tile carries a small upward
+     * optical bias, so mirror it here instead of independently centring the
+     * button icon. */
+    app_tile_position_icon_between_labels(
+        card,
+        ctx->action_icon,
+        ctx->state_label,
+        ctx->title_label,
+        matched_gap,
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+        compact ? -2 : 2
+#else
+        compact ? 0 : 2
+#endif
+    );
 }
-
+    
 static void button_apply_visual(lv_obj_t *card, w_button_ctx_t *ctx, bool is_on, bool unavailable, const char *status_text)
 {
-    if (card == NULL || ctx == NULL || ctx->title_label == NULL || ctx->state_label == NULL) {
+    if (card == NULL || ctx == NULL || ctx->title_label == NULL) {
         return;
     }
 
     ctx->is_on = is_on;
     ctx->unavailable = unavailable;
+
+    /* Keep labels and their available action area proportional to the card.
+     * This is reapplied on every visual/layout refresh so resized buttons do
+     * not retain creation-time typography. */
+    button_apply_responsive_typography(card, ctx);
 
     const lv_color_t card_bg =
         lv_color_hex((is_on && !unavailable) ? APP_UI_COLOR_CARD_BG_ON : APP_UI_COLOR_CARD_BG_OFF);
@@ -485,14 +739,16 @@ static void button_apply_visual(lv_obj_t *card, w_button_ctx_t *ctx, bool is_on,
     } else {
         lv_obj_add_flag(ctx->title_label, LV_OBJ_FLAG_HIDDEN);
     }
-    if (ctx->show_status) {
-        lv_obj_clear_flag(ctx->state_label, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_set_style_text_color(ctx->state_label, state_color, LV_PART_MAIN);
-    } else {
-        lv_obj_add_flag(ctx->state_label, LV_OBJ_FLAG_HIDDEN);
+    if (ctx->state_label != NULL) {
+        if (ctx->show_status) {
+            lv_obj_clear_flag(ctx->state_label, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_set_style_text_color(ctx->state_label, state_color, LV_PART_MAIN);
+        } else {
+            lv_obj_add_flag(ctx->state_label, LV_OBJ_FLAG_HIDDEN);
+        }
     }
 
-    if (button_mode_uses_switch(ctx->mode)) {
+    if (button_visual_uses_switch(ctx)) {
         if (ctx->action_switch != NULL) {
             const lv_color_t track_off =
                 unavailable ? lv_color_hex(APP_UI_COLOR_CARD_BORDER) : lv_color_hex(W_BUTTON_SWITCH_TRACK_OFF_HEX);
@@ -543,15 +799,58 @@ static void button_apply_visual(lv_obj_t *card, w_button_ctx_t *ctx, bool is_on,
         }
 
         if (ctx->action_icon != NULL) {
-            lv_obj_clear_flag(ctx->action_icon, LV_OBJ_FLAG_HIDDEN);
-            lv_label_set_text(ctx->action_icon, button_icon_symbol(ctx->mode, is_on && !unavailable));
-            lv_obj_set_style_text_color(ctx->action_icon, unavailable ? lv_color_hex(APP_UI_COLOR_TEXT_MUTED) : ctx->accent_color,
-                LV_PART_MAIN);
-            button_layout_icon(card, ctx);
+    lv_obj_clear_flag(
+        ctx->action_icon,
+        LV_OBJ_FLAG_HIDDEN);
+
+    /*
+     * A configured MDI icon overrides the automatic
+     * action icon.
+     *
+     * If the configured name is unknown, the font is
+     * unavailable, or the glyph isn't compiled into
+     * the font, fall back to the existing automatic
+     * LVGL symbol.
+     */
+    const bool custom_mdi =
+        button_apply_custom_mdi_icon(ctx);
+
+    if (!custom_mdi) {
+        /* Only use the generic action symbol when HA did not supply an icon.
+         * If HA supplied one but BETTA cannot render it, show its name rather
+         * than misleadingly presenting the power icon as the entity icon. */
+        if (ctx->icon[0] == '\0' && ctx->entity_icon[0] != '\0') {
+            lv_obj_set_style_text_font(ctx->action_icon, APP_FONT_TEXT_14, LV_PART_MAIN);
+            lv_label_set_text(ctx->action_icon, ctx->entity_icon);
+        } else {
+            lv_label_set_text(
+                ctx->action_icon,
+                button_icon_symbol(
+                    ctx->mode,
+                    is_on && !unavailable));
         }
     }
 
-    if (ctx->show_status) {
+    /* Match Light tile semantics while keeping an explicit button colour
+     * authoritative in both states.  Light tiles use CARD_ICON_OFF when off,
+     * not TEXT_PRIMARY. */
+    lv_obj_set_style_text_color(
+        ctx->action_icon,
+        unavailable
+            ? lv_color_hex(APP_UI_COLOR_TEXT_MUTED)
+            : (is_on
+                   ? (ctx->has_state_on_color ? ctx->state_on_color : lv_color_hex(APP_UI_COLOR_LIGHT_ICON_ON))
+                   : (ctx->has_state_off_color ? ctx->state_off_color : lv_color_hex(APP_UI_COLOR_CARD_ICON_OFF))),
+        LV_PART_MAIN);
+
+    button_layout_icon(
+        card,
+        ctx,
+        custom_mdi);
+}
+    }
+
+    if (ctx->show_status && ctx->state_label != NULL) {
         lv_label_set_text(
             ctx->state_label,
             button_translate_status_text(status_text != NULL ? status_text : (is_on ? "ON" : "OFF")));
@@ -565,6 +864,12 @@ static const char *button_status_text_for_state(const w_button_ctx_t *ctx, const
     }
     if (unavailable) {
         return "unavailable";
+    }
+    if (button_entity_is_lock(ctx->entity_id)) {
+        if (state != NULL && state->state[0] != '\0') {
+            return state->state;
+        }
+        return is_on ? "locked" : "unlocked";
     }
     if (ctx->mode == W_BUTTON_MODE_AUTO) {
         return is_on ? "ON" : "OFF";
@@ -582,9 +887,40 @@ static void button_run_primary_action(w_button_ctx_t *ctx)
     }
 
     if (button_mode_uses_switch(ctx->mode)) {
+        if (button_entity_is_ha_button(ctx->entity_id)) {
+            if (ui_bindings_press_button(ctx->entity_id) == ESP_OK) {
+                button_apply_visual(ctx->card, ctx, false, false, "pressed");
+            }
+            return;
+        }
+
         bool next = !ctx->is_on;
         if (ui_bindings_toggle_entity(ctx->entity_id) == ESP_OK) {
             button_apply_visual(ctx->card, ctx, next, false, next ? "ON" : "OFF");
+        }
+        return;
+    }
+
+    if (ctx->mode == W_BUTTON_MODE_RUN) {
+        if (button_entity_is_automation(ctx->entity_id)) {
+            (void)ui_bindings_trigger_automation(ctx->entity_id);
+            return;
+        }
+
+        if (button_entity_is_scene(ctx->entity_id)) {
+            /* Scenes have no meaningful "running" state to cancel; every tap
+             * just re-activates it. */
+            (void)ui_bindings_run_entity(ctx->entity_id);
+            return;
+        }
+        if (ctx->is_on) {
+            if (ui_bindings_cancel_entity(ctx->entity_id) == ESP_OK) {
+                button_apply_visual(ctx->card, ctx, false, false, "OFF");
+            }
+        } else {
+            if (ui_bindings_run_entity(ctx->entity_id) == ESP_OK) {
+                button_apply_visual(ctx->card, ctx, true, false, "ON");
+            }
         }
         return;
     }
@@ -612,7 +948,30 @@ static void w_button_card_event_cb(lv_event_t *event)
     }
 
     if (code == LV_EVENT_CLICKED) {
-        button_run_primary_action(ctx);
+        if (ctx->suppress_click) {
+            ctx->suppress_click = false;
+            return;
+        }
+        if (button_entity_is_lock(ctx->entity_id)) {
+            /* Locking is safe on a normal tap. Unlocking deliberately requires
+             * a long press so a stray touch cannot unlock an entry. */
+            if (!ctx->is_on) {
+                if (ui_bindings_set_lock_state(ctx->entity_id, true) == ESP_OK) {
+                    button_apply_visual(ctx->card, ctx, true, false, "locked");
+                }
+            }
+        } else {
+            button_run_primary_action(ctx);
+        }
+    } else if (code == LV_EVENT_LONG_PRESSED) {
+        if (button_entity_is_lock(ctx->entity_id) && ctx->is_on && !ctx->unavailable) {
+            /* LVGL may emit CLICKED after LONG_PRESSED. Consume that follow-up
+             * click so a successful unlock cannot immediately relock. */
+            ctx->suppress_click = true;
+            if (ui_bindings_set_lock_state(ctx->entity_id, false) == ESP_OK) {
+                button_apply_visual(ctx->card, ctx, false, false, "unlocked");
+            }
+        }
     } else if (code == LV_EVENT_DELETE) {
         free(ctx);
     }
@@ -626,7 +985,8 @@ static void w_button_switch_event_cb(lv_event_t *event)
     }
 
     w_button_ctx_t *ctx = (w_button_ctx_t *)lv_event_get_user_data(event);
-    if (ctx == NULL || ctx->suppress_event || ctx->unavailable || !button_mode_uses_switch(ctx->mode)) {
+    if (ctx == NULL || ctx->suppress_event || ctx->unavailable || !button_mode_uses_switch(ctx->mode) ||
+        button_entity_is_ha_button(ctx->entity_id) || button_entity_is_lock(ctx->entity_id)) {
         return;
     }
 
@@ -659,9 +1019,13 @@ esp_err_t w_button_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widge
 #else
     lv_obj_set_style_border_width(card, 0, LV_PART_MAIN);
 #endif
-    lv_obj_set_style_pad_all(card, 16, LV_PART_MAIN);
+    const bool compact_layout = button_card_is_compact(card);
+    lv_obj_set_style_pad_all(card, app_tile_card_padding(compact_layout), LV_PART_MAIN);
 
     const bool is_media_player = button_entity_is_media_player(def->entity_id);
+    const bool is_runnable = button_entity_is_runnable(def->entity_id);
+    const bool is_ha_button = button_entity_is_ha_button(def->entity_id);
+    const bool is_lock = button_entity_is_lock(def->entity_id);
     const char *title_text = def->title;
     if (!is_media_player && (title_text == NULL || title_text[0] == '\0')) {
         title_text = def->id;
@@ -675,20 +1039,12 @@ esp_err_t w_button_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widge
     lv_obj_set_width(title, def->w - 32);
     lv_obj_set_style_text_font(title, APP_FONT_TEXT_20, LV_PART_MAIN);
     lv_obj_set_style_text_align(title, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
-#if APP_UI_TILE_LAYOUT_TUNED
-    lv_obj_align(title, LV_ALIGN_BOTTOM_MID, 0, -12);
-#else
-    lv_obj_align(title, LV_ALIGN_BOTTOM_MID, 0, -10);
-#endif
+    lv_obj_align(title, LV_ALIGN_BOTTOM_MID, 0, app_tile_title_bottom_y(compact_layout));
 
     lv_obj_t *state_label = lv_label_create(card);
     lv_label_set_text(state_label, ui_i18n_get("common.off", "OFF"));
     lv_obj_set_style_text_font(state_label, APP_FONT_TEXT_20, LV_PART_MAIN);
-#if APP_UI_TILE_LAYOUT_TUNED
-    lv_obj_align(state_label, LV_ALIGN_TOP_LEFT, 0, 2);
-#else
-    lv_obj_align(state_label, LV_ALIGN_TOP_LEFT, 0, 0);
-#endif
+    lv_obj_align(state_label, LV_ALIGN_TOP_LEFT, 0, app_tile_state_top_y(compact_layout));
 
     lv_obj_t *action_switch = lv_switch_create(card);
     lv_obj_clear_flag(action_switch, LV_OBJ_FLAG_EVENT_BUBBLE);
@@ -706,19 +1062,52 @@ esp_err_t w_button_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widge
         lv_obj_del(card);
         return ESP_ERR_NO_MEM;
     }
-    snprintf(ctx->entity_id, sizeof(ctx->entity_id), "%s", def->entity_id);
-    ctx->card = card;
+    snprintf(
+    ctx->entity_id,
+    sizeof(ctx->entity_id),
+    "%s",
+    def->entity_id);
+
+snprintf(
+    ctx->icon,
+    sizeof(ctx->icon),
+    "%s",
+    def->icon);
+
+ctx->card = card;
     ctx->title_label = title;
     ctx->state_label = state_label;
     ctx->action_switch = action_switch;
     ctx->action_icon = action_icon;
     ctx->accent_color = lv_color_hex(W_BUTTON_SWITCH_ACCENT_DEFAULT_HEX);
+    ctx->has_custom_accent = false;
+    ctx->has_state_off_color = false;
+    ctx->has_state_on_color = false;
     ctx->mode = button_mode_from_text(def->button_mode);
-    ctx->show_title = title_text[0] != '\0';
-    ctx->show_status = !is_media_player;
-    if (ctx->mode != W_BUTTON_MODE_AUTO && !is_media_player) {
+    ctx->use_icon_appearance =
+        strcmp(def->button_appearance, "icon") == 0 || is_lock;
+    ctx->show_title = def->show_title && title_text[0] != '\0';
+    if (ctx->mode == W_BUTTON_MODE_RUN && !is_runnable) {
+        /* run mode only makes sense for one-shot entities; fall back rather
+         * than silently toggling a switch/media_player as if it were one. */
         ctx->mode = W_BUTTON_MODE_AUTO;
+    } else if (ctx->mode != W_BUTTON_MODE_AUTO && ctx->mode != W_BUTTON_MODE_RUN && !is_media_player) {
+        ctx->mode = W_BUTTON_MODE_AUTO;
+    } else if (is_runnable && ctx->mode == W_BUTTON_MODE_AUTO) {
+        /* Layout validation requires run mode for script.* and scene.* entities.
+         * Default to it defensively in case a stored layout predates that
+         * rule so a one-shot entity is never driven via switch-toggle. */
+        ctx->mode = W_BUTTON_MODE_RUN;
     }
+    /* Keep the saved display flag authoritative for the physical widget.
+     * This source touch also forces a firmware build after generated MDI
+     * assets are committed by the font workflow. */
+    ctx->show_status =
+    def->show_state &&
+    !is_media_player &&
+    !is_ha_button &&
+    !(is_runnable &&
+      ctx->mode == W_BUTTON_MODE_RUN);
     ctx->suppress_event = false;
     ctx->is_on = false;
     ctx->unavailable = false;
@@ -726,20 +1115,30 @@ esp_err_t w_button_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widge
     lv_color_t parsed_color = lv_color_hex(0);
     if (button_parse_hex_color(def->button_accent_color, &parsed_color)) {
         ctx->accent_color = parsed_color;
+        ctx->has_custom_accent = true;
     }
+    ctx->has_state_off_color = state_icon_parse_color(def->state_icon_off_color, &ctx->state_off_color);
+    ctx->has_state_on_color = state_icon_parse_color(def->state_icon_on_color, &ctx->state_on_color);
 
     if (!ctx->show_title) {
         lv_obj_add_flag(title, LV_OBJ_FLAG_HIDDEN);
     }
     if (!ctx->show_status) {
-        lv_obj_add_flag(state_label, LV_OBJ_FLAG_HIDDEN);
+        /* A hidden state label has repeatedly resurfaced on hardware after
+         * later LVGL layout/style passes. Remove it entirely when the saved
+         * widget explicitly disables state display. Layout helpers already
+         * treat a NULL label as absent. */
+        lv_obj_del(state_label);
+        state_label = NULL;
+        ctx->state_label = NULL;
     }
 
     lv_obj_add_event_cb(card, w_button_card_event_cb, LV_EVENT_CLICKED, ctx);
     lv_obj_add_event_cb(card, w_button_card_event_cb, LV_EVENT_DELETE, ctx);
     lv_obj_add_event_cb(action_switch, w_button_switch_event_cb, LV_EVENT_VALUE_CHANGED, ctx);
 
-    button_apply_visual(card, ctx, false, false, (ctx->mode == W_BUTTON_MODE_AUTO) ? "OFF" : "paused");
+    button_apply_visual(card, ctx, false, false,
+        (ctx->mode == W_BUTTON_MODE_AUTO || ctx->mode == W_BUTTON_MODE_RUN) ? "OFF" : "paused");
     out_instance->obj = card;
     out_instance->ctx = ctx;
     return ESP_OK;
@@ -758,6 +1157,30 @@ void w_button_apply_state(ui_widget_instance_t *instance, const ha_state_t *stat
 
     const bool unavailable = state_is_unavailable(state->state);
     const bool is_on = state_is_on(state->state);
+    if (ctx->icon[0] == '\0') {
+        ctx->entity_icon[0] = '\0';
+
+        /* Prefer the entity registry: HA exposes the configured icon there
+         * even when compact state attributes intentionally omit it. */
+        ha_entity_info_t entities[1] = {0};
+        if (ha_model_list_entities(NULL, ctx->entity_id, entities, 1) == 1 &&
+            strncmp(entities[0].id, ctx->entity_id, sizeof(entities[0].id)) == 0 &&
+            entities[0].icon[0] != '\0') {
+            snprintf(ctx->entity_icon, sizeof(ctx->entity_icon), "%s", entities[0].icon);
+        }
+
+        /* Keep state attributes as a fallback for older/partial model data. */
+        if (ctx->entity_icon[0] == '\0' && state->attributes_json[0] != '\0') {
+            cJSON *attrs = cJSON_Parse(state->attributes_json);
+            if (attrs != NULL) {
+                const cJSON *icon = cJSON_GetObjectItemCaseSensitive(attrs, "icon");
+                if (cJSON_IsString(icon) && icon->valuestring != NULL) {
+                    snprintf(ctx->entity_icon, sizeof(ctx->entity_icon), "%s", icon->valuestring);
+                }
+                cJSON_Delete(attrs);
+            }
+        }
+    }
     const char *status_text = button_status_text_for_state(ctx, state, is_on, unavailable);
     button_apply_visual(instance->obj, ctx, is_on, unavailable, status_text);
 }

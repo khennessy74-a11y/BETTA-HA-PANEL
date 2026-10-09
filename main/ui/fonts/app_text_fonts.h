@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: LicenseRef-FNCL-1.1
  * Copyright (c) 2026 Cpt_Kirk
+ * Copyright (c) 2026 khennessy74-a11y
  */
 #pragma once
 
@@ -198,3 +199,23 @@ LV_FONT_DECLARE(poppins_regular_40);
 #else
 #define APP_FONT_DISPLAY_40 APP_FONT_DISPLAY_38
 #endif
+
+/* Geometry-aware text sizing for responsive widgets.  Use the tile's
+ * shortest dimension so portrait and landscape tiles scale consistently. */
+static inline const lv_font_t *app_font_text_for_min_dim(lv_coord_t min_dim)
+{
+    if (min_dim >= 300) return APP_FONT_TEXT_24;
+    if (min_dim >= 230) return APP_FONT_TEXT_22;
+    if (min_dim >= 170) return APP_FONT_TEXT_20;
+    if (min_dim >= 120) return APP_FONT_TEXT_18;
+    return APP_FONT_TEXT_16;
+}
+
+static inline const lv_font_t *app_font_display_for_min_dim(lv_coord_t min_dim)
+{
+    if (min_dim >= 300) return APP_FONT_DISPLAY_40;
+    if (min_dim >= 230) return APP_FONT_DISPLAY_38;
+    if (min_dim >= 170) return APP_FONT_DISPLAY_34;
+    if (min_dim >= 120) return APP_FONT_DISPLAY_28;
+    return APP_FONT_DISPLAY_24;
+}

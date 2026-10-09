@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: LicenseRef-FNCL-1.1
  * Copyright (c) 2026 Cpt_Kirk
+ * Copyright (c) 2026 khennessy74-a11y
  */
 #include "ui/ui_widget_factory.h"
 
@@ -14,6 +15,7 @@
 #include "cJSON.h"
 #include "esp_heap_caps.h"
 #include "esp_log.h"
+#include "nvs.h"
 #if !defined(CONFIG_APP_PANEL_VARIANT_S3_480) && defined(CONFIG_SPIRAM) && CONFIG_SPIRAM
 #include "esp_memory_utils.h"
 #endif
@@ -22,6 +24,8 @@
 #include "ui/fonts/mdi_font_registry.h"
 #include "ui/ui_i18n.h"
 #include "ui/theme/theme_default.h"
+#include "ui/widgets/widget_display_options.h"
+#include "ha/ha_weather_model.h"
 
 #ifndef APP_UI_WEATHER_ICON_DEBUG
 #define APP_UI_WEATHER_ICON_DEBUG 0
@@ -79,13 +83,15 @@
 /* Meta line below the big current temperature (condition + humidity).
  * One step up from the forecast-row font to keep the visual hierarchy
  * big temp -> meta -> forecast rows. */
-#define WEATHER_3DAY_SUBMETA_FONT APP_FONT_TEXT_22
-
 #if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
-#define WEATHER_3DAY_MAX_FORECAST 5
+/* The 480 px forecast header shares one row with the large temperature.
+ * Keep condition/humidity compact enough to stay inside its right column. */
+#define WEATHER_3DAY_SUBMETA_FONT APP_FONT_TEXT_20
 #else
-#define WEATHER_3DAY_MAX_FORECAST 5
+#define WEATHER_3DAY_SUBMETA_FONT APP_FONT_TEXT_22
 #endif
+
+#define WEATHER_3DAY_MAX_FORECAST (HA_WEATHER_MODEL_MAX_DAYS - 1)
 #define WEATHER_3DAY_ROWS (1 + WEATHER_3DAY_MAX_FORECAST)
 /* Fixed visual row metrics for the forecast list.  The visible row count
  * adapts to the tile height (see weather_3day_visible_rows), but the
@@ -164,6 +170,8 @@ typedef struct {
     char condition[32];
     bool today_has_high;
     bool today_has_low;
+    bool today_daily_has_high;
+    bool today_daily_has_low;
     float today_high_temp;
     float today_low_temp;
     char today_condition_key[32];
@@ -195,6 +203,7 @@ typedef struct {
 
 typedef struct {
     bool show_forecast;
+    bool show_state;
     lv_obj_t *condition_label;
     lv_obj_t *temp_label;
     lv_obj_t *meta_label;
@@ -211,6 +220,17 @@ typedef struct {
     const lv_font_t *last_icon_font;
     char last_condition_key[32];
     char last_condition_text[32];
+    uint32_t last_rendered_weather_revision;
+
+    /* Today's daily extrema are deliberately latched per local calendar day.
+     * Some HA weather providers stop returning a complete "today" daily row
+     * later in the day; keeping the first explicit dated daily values avoids
+     * the Today range changing or disappearing as that forecast window rolls. */
+    int today_cache_date_key;
+    bool today_cache_has_high;
+    bool today_cache_has_low;
+    float today_cache_high_temp;
+    float today_cache_low_temp;
 } w_weather_tile_ctx_t;
 
 #ifndef APP_UI_WEATHER_ICON_ALLOW_72
@@ -1033,9 +1053,10 @@ static uint32_t weather_icon_codepoint_for_key(const char *key)
     return 0U;
 }
 
+static bool weather_font_has_codepoint(const lv_font_t *font, uint32_t codepoint);
+
 static const lv_font_t *weather_find_icon_font_for_cp(uint32_t codepoint)
 {
-    (void)codepoint;
     const lv_font_t *font = mdi_font_weather();
     if (font != NULL) {
         return font;
@@ -1153,7 +1174,7 @@ static const lv_font_t *weather_pick_render_icon_font(
         min_dim = 240;
     }
 
-    const lv_font_t *candidates[4] = {0};
+    const lv_font_t *candidates[5] = {0};
     size_t count = 0;
 
     const lv_coord_t tier_72_min_dim = 261;
@@ -1166,12 +1187,16 @@ static const lv_font_t *weather_pick_render_icon_font(
         weather_append_unique_font_candidate(candidates, sizeof(candidates) / sizeof(candidates[0]), &count, font_56);
     }
 
+    /* Never trust the previously cached font before probing current candidates.
+     * On S3 the cached large font can survive a resize even when it does not
+     * contain this weather glyph, which LVGL renders as a tofu square. */
+    weather_append_unique_font_candidate(
+        candidates, sizeof(candidates) / sizeof(candidates[0]), &count, mdi_font_weather_20());
     if (preferred != NULL) {
         weather_append_unique_font_candidate(candidates, sizeof(candidates) / sizeof(candidates[0]), &count, preferred);
-    } else {
-        weather_append_unique_font_candidate(
-            candidates, sizeof(candidates) / sizeof(candidates[0]), &count, weather_find_icon_font_for_cp(codepoint));
     }
+    weather_append_unique_font_candidate(
+        candidates, sizeof(candidates) / sizeof(candidates[0]), &count, weather_find_icon_font_for_cp(codepoint));
 
 #if APP_UI_WEATHER_ICON_DEBUG
     lv_coord_t card_w = (card != NULL) ? lv_obj_get_width(card) : 0;
@@ -1346,6 +1371,23 @@ static bool weather_datetime_is_today(const char *datetime)
     return (year == (local_now.tm_year + 1900)) && (month == (local_now.tm_mon + 1)) && (day == local_now.tm_mday);
 }
 
+static int weather_local_date_key(void)
+{
+    time_t now = time(NULL);
+    struct tm local_now = {0};
+    localtime_r(&now, &local_now);
+
+    const int year = local_now.tm_year + 1900;
+    const int month = local_now.tm_mon + 1;
+    const int day = local_now.tm_mday;
+
+    /* Do not latch against an unsynchronised RTC date. */
+    if (year < 2020 || month < 1 || month > 12 || day < 1 || day > 31) {
+        return 0;
+    }
+    return year * 10000 + month * 100 + day;
+}
+
 static bool weather_datetime_is_before_today(const char *datetime)
 {
     int year = 0;
@@ -1379,6 +1421,69 @@ static void weather_values_default(weather_values_t *values)
         weather_copy_text(values->forecast[i].day, sizeof(values->forecast[i].day), "--");
         values->forecast[i].condition_key[0] = '\0';
         weather_copy_text(values->forecast[i].condition, sizeof(values->forecast[i].condition), "--");
+    }
+}
+
+static void weather_values_from_model(
+    const ha_weather_snapshot_t *snapshot,
+    weather_values_t *out)
+{
+    if (snapshot == NULL || out == NULL) {
+        return;
+    }
+
+    weather_values_default(out);
+    out->has_temp = snapshot->has_current_temp;
+    out->temp = snapshot->current_temp;
+    out->humidity = snapshot->humidity;
+    weather_copy_text(out->unit, sizeof(out->unit),
+        snapshot->unit[0] != '\0' ? snapshot->unit : "C");
+    weather_normalize_condition_key(snapshot->current_condition,
+        out->condition_key, sizeof(out->condition_key));
+    weather_humanize_condition(snapshot->current_condition,
+        out->condition, sizeof(out->condition));
+
+    const int today_key = weather_local_date_key();
+    size_t forecast_out = 0;
+
+    for (size_t i = 0;
+         i < snapshot->day_count && forecast_out < WEATHER_3DAY_MAX_FORECAST;
+         i++) {
+        const ha_weather_day_t *src = &snapshot->days[i];
+        if (!src->valid) {
+            continue;
+        }
+
+        if (src->date_key == today_key) {
+            out->today_has_low = src->has_low;
+            out->today_has_high = src->has_high;
+            out->today_daily_has_low = src->has_low;
+            out->today_daily_has_high = src->has_high;
+            out->today_low_temp = src->low_temp;
+            out->today_high_temp = src->high_temp;
+            weather_normalize_condition_key(src->condition,
+                out->today_condition_key, sizeof(out->today_condition_key));
+            continue;
+        }
+
+        weather_forecast_t *dst = &out->forecast[forecast_out++];
+        dst->valid = true;
+        dst->has_low = src->has_low;
+        dst->has_high = src->has_high;
+        dst->low_temp = src->low_temp;
+        dst->high_temp = src->high_temp;
+
+        int year = src->date_key / 10000;
+        int month = (src->date_key / 100) % 100;
+        int day = src->date_key % 100;
+        char date_text[16] = {0};
+        snprintf(date_text, sizeof(date_text), "%04d-%02d-%02d", year, month, day);
+        weather_day_from_datetime(date_text, dst->day, sizeof(dst->day));
+
+        weather_normalize_condition_key(src->condition,
+            dst->condition_key, sizeof(dst->condition_key));
+        weather_humanize_condition(src->condition,
+            dst->condition, sizeof(dst->condition));
     }
 }
 
@@ -1508,10 +1613,12 @@ static void weather_extract_values(const ha_state_t *state, bool want_forecast, 
                     if (has_high) {
                         out->today_high_temp = high_temp;
                         out->today_has_high = true;
+                        out->today_daily_has_high = true;
                     }
                     if (has_low) {
                         out->today_low_temp = low_temp;
                         out->today_has_low = true;
+                        out->today_daily_has_low = true;
                     }
                     if (condition_key[0] != '\0') {
                         weather_copy_text(out->today_condition_key, sizeof(out->today_condition_key), condition_key);
@@ -1539,6 +1646,52 @@ static void weather_extract_values(const ha_state_t *state, bool want_forecast, 
                     weather_copy_text(slot->condition, sizeof(slot->condition), condition_human);
                 }
                 out_idx++;
+            }
+        }
+
+        /* Some integrations begin daily at tomorrow. Use the separate hourly
+         * subscription only for missing Today extrema; daily remains the
+         * source for Tomorrow and later rows. */
+        if (!out->today_has_high || !out->today_has_low) {
+            cJSON *hourly = cJSON_GetObjectItemCaseSensitive(attrs, "forecast_hourly");
+            if (cJSON_IsArray(hourly)) {
+                bool have_hourly = false;
+                float hourly_min = 0.0f;
+                float hourly_max = 0.0f;
+                int hourly_count = cJSON_GetArraySize(hourly);
+                for (int i = 0; i < hourly_count; i++) {
+                    cJSON *item = cJSON_GetArrayItem(hourly, i);
+                    if (!cJSON_IsObject(item)) continue;
+                    cJSON *datetime = cJSON_GetObjectItemCaseSensitive(item, "datetime");
+                    cJSON *date = cJSON_GetObjectItemCaseSensitive(item, "date");
+                    const char *when = NULL;
+                    if (cJSON_IsString(datetime) && datetime->valuestring != NULL) {
+                        when = datetime->valuestring;
+                    } else if (cJSON_IsString(date) && date->valuestring != NULL) {
+                        when = date->valuestring;
+                    }
+                    if (when == NULL || !weather_datetime_is_today(when)) continue;
+
+                    float temp = 0.0f;
+                    cJSON *temp_item = cJSON_GetObjectItemCaseSensitive(item, "temperature");
+                    if (!weather_json_item_to_float(temp_item, &temp)) {
+                        temp_item = cJSON_GetObjectItemCaseSensitive(item, "native_temperature");
+                    }
+                    if (!weather_json_item_to_float(temp_item, &temp)) continue;
+                    if (!have_hourly || temp < hourly_min) hourly_min = temp;
+                    if (!have_hourly || temp > hourly_max) hourly_max = temp;
+                    have_hourly = true;
+                }
+                if (have_hourly) {
+                    if (!out->today_has_low) {
+                        out->today_low_temp = hourly_min;
+                        out->today_has_low = true;
+                    }
+                    if (!out->today_has_high) {
+                        out->today_high_temp = hourly_max;
+                        out->today_has_high = true;
+                    }
+                }
             }
         }
     }
@@ -1575,6 +1728,159 @@ static bool weather_unit_is_fahrenheit(const char *unit)
         }
     }
     return false;
+}
+
+#define WEATHER_TODAY_CACHE_NS "weather_day"
+
+static void weather_today_cache_load(w_weather_tile_ctx_t *ctx, int date_key)
+{
+    if (ctx == NULL || date_key == 0) {
+        return;
+    }
+
+    nvs_handle_t handle;
+    if (nvs_open(WEATHER_TODAY_CACHE_NS, NVS_READONLY, &handle) != ESP_OK) {
+        return;
+    }
+
+    int32_t stored_date = 0;
+    uint8_t has_high = 0;
+    uint8_t has_low = 0;
+    float high = 0.0f;
+    float low = 0.0f;
+    size_t value_size = sizeof(float);
+
+    bool valid = nvs_get_i32(handle, "date", &stored_date) == ESP_OK &&
+                 stored_date == date_key;
+
+    if (valid &&
+        nvs_get_u8(handle, "has_high", &has_high) == ESP_OK &&
+        has_high != 0) {
+        value_size = sizeof(float);
+        if (nvs_get_blob(handle, "high", &high, &value_size) == ESP_OK &&
+            value_size == sizeof(float)) {
+            ctx->today_cache_high_temp = high;
+            ctx->today_cache_has_high = true;
+        }
+    }
+
+    if (valid &&
+        nvs_get_u8(handle, "has_low", &has_low) == ESP_OK &&
+        has_low != 0) {
+        value_size = sizeof(float);
+        if (nvs_get_blob(handle, "low", &low, &value_size) == ESP_OK &&
+            value_size == sizeof(float)) {
+            ctx->today_cache_low_temp = low;
+            ctx->today_cache_has_low = true;
+        }
+    }
+
+    nvs_close(handle);
+}
+
+static void weather_today_cache_save(const w_weather_tile_ctx_t *ctx)
+{
+    if (ctx == NULL || ctx->today_cache_date_key == 0) {
+        return;
+    }
+
+    nvs_handle_t handle;
+    if (nvs_open(WEATHER_TODAY_CACHE_NS, NVS_READWRITE, &handle) != ESP_OK) {
+        return;
+    }
+
+    esp_err_t err = nvs_set_i32(handle, "date", ctx->today_cache_date_key);
+    if (err == ESP_OK) {
+        err = nvs_set_u8(handle, "has_high", ctx->today_cache_has_high ? 1 : 0);
+    }
+    if (err == ESP_OK) {
+        err = nvs_set_u8(handle, "has_low", ctx->today_cache_has_low ? 1 : 0);
+    }
+    if (err == ESP_OK && ctx->today_cache_has_high) {
+        err = nvs_set_blob(handle, "high", &ctx->today_cache_high_temp, sizeof(float));
+    }
+    if (err == ESP_OK && ctx->today_cache_has_low) {
+        err = nvs_set_blob(handle, "low", &ctx->today_cache_low_temp, sizeof(float));
+    }
+    if (err == ESP_OK) {
+        nvs_commit(handle);
+    }
+
+    nvs_close(handle);
+}
+
+static void weather_apply_today_extrema_cache(
+    w_weather_tile_ctx_t *ctx,
+    weather_values_t *values)
+{
+    if (ctx == NULL || values == NULL) {
+        return;
+    }
+
+    const int date_key = weather_local_date_key();
+    if (date_key == 0) {
+        return;
+    }
+
+    if (ctx->today_cache_date_key != date_key) {
+        ctx->today_cache_date_key = date_key;
+        ctx->today_cache_has_high = false;
+        ctx->today_cache_has_low = false;
+        ctx->today_cache_high_temp = 0.0f;
+        ctx->today_cache_low_temp = 0.0f;
+
+        /* Restore today's first-seen daily extrema after a reboot/flash.
+         * The previous RAM-only cache was lost on restart, which meant the
+         * Today row disappeared once the provider had rolled Today out of
+         * its daily payload. */
+        weather_today_cache_load(ctx, date_key);
+    }
+
+    bool cache_changed = false;
+
+    /* Only explicit daily entries dated today are allowed to seed the
+     * all-day cache. Hourly fallback is intentionally not latched because
+     * its remaining-day window naturally shrinks as the day progresses. */
+    if (!ctx->today_cache_has_high && values->today_daily_has_high) {
+        ctx->today_cache_high_temp = values->today_high_temp;
+        ctx->today_cache_has_high = true;
+        cache_changed = true;
+    }
+    if (!ctx->today_cache_has_low && values->today_daily_has_low) {
+        ctx->today_cache_low_temp = values->today_low_temp;
+        ctx->today_cache_has_low = true;
+        cache_changed = true;
+    }
+
+    /* Combine the forecast range with temperatures actually observed today.
+     * A live reading may extend a known forecast endpoint (for example an
+     * observed 3.6 C below a forecast low of 5 C), but it must not invent a
+     * missing daily low/high when the provider did not supply that endpoint. */
+    if (values->has_temp) {
+        if (ctx->today_cache_has_low && values->temp < ctx->today_cache_low_temp) {
+            ctx->today_cache_low_temp = values->temp;
+            cache_changed = true;
+        }
+        if (ctx->today_cache_has_high && values->temp > ctx->today_cache_high_temp) {
+            ctx->today_cache_high_temp = values->temp;
+            cache_changed = true;
+        }
+    }
+
+    if (cache_changed) {
+        weather_today_cache_save(ctx);
+    }
+
+    /* Once captured for this calendar day, keep displaying those extrema
+     * even if later HA forecast payloads omit or alter the Today row. */
+    if (ctx->today_cache_has_high) {
+        values->today_high_temp = ctx->today_cache_high_temp;
+        values->today_has_high = true;
+    }
+    if (ctx->today_cache_has_low) {
+        values->today_low_temp = ctx->today_cache_low_temp;
+        values->today_has_low = true;
+    }
 }
 
 static float weather_temp_from_celsius(float celsius, const char *unit)
@@ -1718,23 +2024,11 @@ static void weather_build_3day_rows(const weather_values_t *values, weather_3day
         current->high_temp = values->today_high_temp;
     }
 
-    if (!current->has_low && values->has_temp) {
-        current->has_low = true;
-        current->low_temp = values->temp;
-    }
-    if (!current->has_high && values->has_temp) {
-        current->has_high = true;
-        current->high_temp = values->temp;
-    }
-
-    if (current->has_low && !current->has_high) {
-        current->has_high = true;
-        current->high_temp = current->low_temp;
-    } else if (!current->has_low && current->has_high) {
-        current->has_low = true;
-        current->low_temp = current->high_temp;
-    }
-
+    /* A provider may legitimately omit today's daily forecast or one of
+     * its endpoints.  Never manufacture a daily low/high from the live
+     * temperature (or mirror the one endpoint into the other): that turns
+     * "unknown" into misleading values such as 18 / 18.  The live
+     * temperature is represented independently by the point marker. */
     if (values->has_temp) {
         current->has_point = true;
         current->point_temp = values->temp;
@@ -1756,13 +2050,8 @@ static void weather_build_3day_rows(const weather_values_t *values, weather_3day
         weather_copy_text(dst->condition_key, sizeof(dst->condition_key),
             src->condition_key[0] != '\0' ? src->condition_key : values->condition_key);
 
-        if (dst->has_low && !dst->has_high) {
-            dst->has_high = true;
-            dst->high_temp = dst->low_temp;
-        } else if (!dst->has_low && dst->has_high) {
-            dst->has_low = true;
-            dst->low_temp = dst->high_temp;
-        }
+        /* Preserve missing endpoints as unknown.  HA weather providers are
+         * not required to supply both daily high and low values. */
     }
 }
 
@@ -1868,7 +2157,10 @@ static void weather_set_3day_rows_layout(lv_obj_t *card, w_weather_tile_ctx_t *c
     lv_coord_t card_h = lv_obj_get_height(card);
 #if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
     lv_coord_t left = (card_w < 320) ? 12 : 14;
-    lv_coord_t right = left;
+    /* Give the forecast high-temperature column breathing room from the
+     * card edge.  The wide 480 px tile previously left only 14 px, making
+     * values such as 18°C appear clipped against the right border. */
+    lv_coord_t right = (card_w < 320) ? 14 : 26;
 #else
     lv_coord_t left = 16;
     lv_coord_t right = 16;
@@ -1972,6 +2264,11 @@ static void weather_set_3day_rows_layout(lv_obj_t *card, w_weather_tile_ctx_t *c
 
         lv_obj_set_pos(row->high_label, x, 0);
         lv_obj_set_size(row->high_label, high_w, row_h);
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+        /* Centre highs in their fixed column.  This keeps 8°C/16°C/18°C
+         * visually balanced instead of using edge padding as alignment. */
+        lv_obj_set_style_text_align(row->high_label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+#endif
     }
 }
 
@@ -2080,6 +2377,10 @@ static void weather_set_3day_row_values(weather_3day_row_widgets_t *widgets, con
         lv_coord_t marker_y = (track_h - marker_size) / 2;
         lv_obj_set_pos(widgets->bar_marker, marker_x, marker_y);
         lv_obj_set_size(widgets->bar_marker, marker_size, marker_size);
+        /* Today's live-temperature marker must remain above the range fill.
+         * Reassert foreground order on every render because the row can be
+         * relaid out repeatedly as forecast/state updates arrive. */
+        lv_obj_move_foreground(widgets->bar_marker);
         lv_obj_clear_flag(widgets->bar_marker, LV_OBJ_FLAG_HIDDEN);
     } else {
         lv_obj_add_flag(widgets->bar_marker, LV_OBJ_FLAG_HIDDEN);
@@ -2267,6 +2568,7 @@ static lv_coord_t weather_pick_lottie_size_main_adaptive(
 
 static void weather_render_3day(lv_obj_t *card, w_weather_tile_ctx_t *ctx, const weather_values_t *values, bool available)
 {
+    /* Build marker: weather glyph assets regenerated at a14e0a9. */
     if (card == NULL || ctx == NULL) {
         return;
     }
@@ -2285,35 +2587,17 @@ static void weather_render_3day(lv_obj_t *card, w_weather_tile_ctx_t *ctx, const
     const lv_coord_t rows_gap_from_header = compact_header ? 8 : 10;
     icon_x = side_pad;
     icon_y = compact_header ? 14 : 18;
+    /* Keep the three S3 forecast-header zones independent.  The previous
+     * centred temperature label could extend underneath the right-aligned
+     * condition/humidity label (e.g. "16.1 C" + "Partly cloudy").
+     * Give temperature and metadata explicit, non-overlapping columns. */
     const lv_coord_t temp_left_bound = icon_x + icon_box_w + head_gap;
-    lv_coord_t meta_w = compact_header ? 92 : 116;
-    lv_coord_t meta_x = header_right - meta_w;
-    lv_coord_t temp_available_w = meta_x - temp_left_bound - head_gap;
-    lv_coord_t temp_w = compact_header ? 144 : 170;
-    if (temp_w > temp_available_w) {
-        temp_w = temp_available_w;
-    }
-    if (temp_w < (compact_header ? 112 : 132)) {
-        temp_w = compact_header ? 112 : 132;
-        meta_x = temp_left_bound + temp_w + head_gap;
-        meta_w = header_right - meta_x;
-        temp_available_w = meta_x - temp_left_bound - head_gap;
-        if (temp_w > temp_available_w) {
-            temp_w = temp_available_w;
-        }
-    }
-    if (meta_w < 72) {
-        meta_w = 72;
-    }
-    lv_coord_t temp_x = (card_w - temp_w) / 2;
-    if (temp_x < temp_left_bound) {
-        temp_x = temp_left_bound;
-    }
-    if ((temp_x + temp_w) > (meta_x - head_gap)) {
-        temp_x = meta_x - head_gap - temp_w;
-    }
-    if (temp_x < temp_left_bound) {
-        temp_x = temp_left_bound;
+    const lv_coord_t meta_w = compact_header ? 108 : 132;
+    const lv_coord_t meta_x = header_right - meta_w;
+    lv_coord_t temp_x = temp_left_bound;
+    lv_coord_t temp_w = meta_x - head_gap - temp_x;
+    if (temp_w < 1) {
+        temp_w = 1;
     }
 #endif
 
@@ -2425,6 +2709,22 @@ static void weather_render_3day(lv_obj_t *card, w_weather_tile_ctx_t *ctx, const
     bool icon_mode = false;
     if (icon_cp != 0U) {
         icon_font = weather_pick_render_icon_font(card, ctx, icon_cp, ctx->last_icon_font);
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+        /* The dedicated weather font is only 20 px.  mdi_font_weather() can
+         * fall back to it when a weather glyph is absent from the large
+         * top-icons font, which made the 3-day header icon tiny.  For this
+         * fixed header slot accept only a genuinely large font. */
+        const lv_font_t *header_fonts[] = {mdi_font_icon_72(), mdi_font_icon_56(), mdi_font_icon_42()};
+        for (size_t i = 0; i < sizeof(header_fonts) / sizeof(header_fonts[0]); i++) {
+            const lv_font_t *header_font = header_fonts[i];
+            if (header_font != NULL && header_font->line_height >= 42 &&
+                weather_font_has_codepoint(header_font, icon_cp) &&
+                weather_font_has_render_headroom(header_font, icon_cp)) {
+                icon_font = header_font;
+                break;
+            }
+        }
+#endif
     }
     if (icon_cp != 0U && icon_font != NULL) {
         char icon_utf8[5] = {0};
@@ -2439,6 +2739,16 @@ static void weather_render_3day(lv_obj_t *card, w_weather_tile_ctx_t *ctx, const
             lv_obj_set_style_text_align(ctx->condition_label, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
 #endif
             lv_obj_set_style_text_font(ctx->condition_label, icon_font, LV_PART_MAIN);
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+            /* MDI weather glyph artwork does not fill the nominal font em box.
+             * Scale the forecast-header label to the slot instead of relying
+             * on font point size alone.  288 = 1.125x and keeps the 72 px
+             * glyph visually near the 68 px header box without changing the
+             * normal weather-tile path. */
+            lv_obj_set_style_transform_zoom(ctx->condition_label, compact_header ? 272 : 288, LV_PART_MAIN);
+#else
+            lv_obj_set_style_transform_zoom(ctx->condition_label, 256, LV_PART_MAIN);
+#endif
             lv_obj_set_style_text_color(ctx->condition_label, lv_color_hex(APP_UI_COLOR_WEATHER_ICON), LV_PART_MAIN);
             lv_obj_set_style_text_opa(ctx->condition_label, LV_OPA_COVER, LV_PART_MAIN);
             lv_obj_align(ctx->condition_label, LV_ALIGN_TOP_LEFT, icon_x, icon_y);
@@ -2545,6 +2855,8 @@ static void weather_render(lv_obj_t *card, w_weather_tile_ctx_t *ctx, const weat
 
     if (ctx->show_forecast) {
         weather_render_3day(card, ctx, values, available);
+        widget_display_set_visible(ctx->temp_label, ctx->show_state);
+        widget_display_set_visible(ctx->meta_label, ctx->show_state);
         return;
     }
 
@@ -2723,6 +3035,8 @@ static void weather_render(lv_obj_t *card, w_weather_tile_ctx_t *ctx, const weat
             weather_hide_lottie(ctx);
         }
     }
+    widget_display_set_visible(ctx->temp_label, ctx->show_state);
+    widget_display_set_visible(ctx->meta_label, ctx->show_state);
 
 }
 
@@ -2804,6 +3118,11 @@ esp_err_t w_weather_tile_create(const ui_widget_def_t *def, lv_obj_t *parent, ui
     lv_obj_align(meta, LV_ALIGN_TOP_MID, 0, 124);
 #endif
 
+    widget_display_set_visible(title, def->show_title);
+    widget_display_set_visible(condition, def->show_state);
+    widget_display_set_visible(temp, def->show_state);
+    widget_display_set_visible(meta, def->show_state);
+
     w_weather_tile_ctx_t *ctx = weather_calloc(1, sizeof(w_weather_tile_ctx_t));
     if (ctx == NULL) {
         lv_obj_del(card);
@@ -2811,6 +3130,7 @@ esp_err_t w_weather_tile_create(const ui_widget_def_t *def, lv_obj_t *parent, ui
     }
 
     ctx->show_forecast = (strcmp(def->type, "weather_3day") == 0);
+    ctx->show_state = def->show_state;
     ctx->condition_label = condition;
     ctx->temp_label = temp;
     ctx->meta_label = meta;
@@ -2825,6 +3145,7 @@ esp_err_t w_weather_tile_create(const ui_widget_def_t *def, lv_obj_t *parent, ui
     ctx->last_icon_font = NULL;
     ctx->last_condition_key[0] = '\0';
     ctx->last_condition_text[0] = '\0';
+    ctx->last_rendered_weather_revision = UINT32_MAX;
 
     if (ctx->show_forecast) {
         for (int i = 0; i < WEATHER_3DAY_ROWS; i++) {
@@ -2906,10 +3227,22 @@ void w_weather_tile_apply_state(ui_widget_instance_t *instance, const ha_state_t
         return;
     }
 
-    /* Deterministic icon behavior:
-     * As soon as a weather condition maps to an icon, keep showing that icon
-     * until a new valid weather condition arrives. */
-    weather_update_icon_cache_from_state(ctx, state->state);
+    ha_weather_snapshot_t snapshot = {0};
+    if (!ha_weather_model_get_snapshot(instance->entity_id, &snapshot)) {
+        weather_render(instance->obj, ctx, NULL, false);
+        return;
+    }
+
+    /* No semantic weather change = no LVGL work. This is the final
+     * anti-twitch gate: duplicate HA state events may still arrive, but the
+     * normalized model revision only changes when visible weather data does. */
+    if (ctx->last_rendered_weather_revision == snapshot.revision) {
+        return;
+    }
+
+    /* Deterministic icon behavior now follows the normalized current
+     * condition instead of reparsing the legacy HA attributes payload. */
+    weather_update_icon_cache_from_state(ctx, snapshot.current_condition);
 
     weather_values_t *values = weather_calloc(1, sizeof(*values));
     if (values == NULL) {
@@ -2917,11 +3250,12 @@ void w_weather_tile_apply_state(ui_widget_instance_t *instance, const ha_state_t
         return;
     }
 
-    weather_extract_values(state, ctx->show_forecast, values);
+    weather_values_from_model(&snapshot, values);
     if (ctx->last_condition_text[0] == '\0' && weather_has_alpha(values->condition)) {
         weather_copy_text(ctx->last_condition_text, sizeof(ctx->last_condition_text), values->condition);
     }
     weather_render(instance->obj, ctx, values, true);
+    ctx->last_rendered_weather_revision = snapshot.revision;
     free(values);
 }
 

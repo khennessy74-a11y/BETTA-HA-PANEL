@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: LicenseRef-FNCL-1.1
  * Copyright (c) 2026 Cpt_Kirk
+ * Copyright (c) 2026 khennessy74-a11y
  */
 #pragma once
 
@@ -20,6 +21,16 @@ typedef struct {
     char ntp_server[APP_NTP_SERVER_MAX_LEN];
     char time_tz[APP_TIME_TZ_MAX_LEN];
     char ui_language[APP_UI_LANGUAGE_MAX_LEN];
+    int display_brightness_percent;
+    int display_night_brightness_percent;
+    bool display_night_mode_auto;
+    int display_night_mode; /* 0=day, 1=night, 2=auto */
+    int display_night_start_hour;
+    int display_night_start_minute;
+    int display_day_start_hour;
+    int display_day_start_minute;
+    int display_idle_timeout_seconds;
+    int display_idle_brightness_percent;
 } runtime_settings_t;
 
 void runtime_settings_set_defaults(runtime_settings_t *out);

@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: LicenseRef-FNCL-1.1
  * Copyright (c) 2026 Cpt_Kirk
+ * Copyright (c) 2026 khennessy74-a11y
  */
 #include <stdio.h>
 #include <string.h>
@@ -11,7 +12,7 @@
 #include "esp_littlefs.h"
 #include "esp_netif.h"
 #include "nvs_flash.h"
-#include "soc/soc_caps.h"
+#include "soc/soc_caps.h"\n#include "freertos/FreeRTOS.h"\n#include "freertos/task.h"
 
 #include "api/http_server.h"
 #include "app_config.h"
@@ -143,16 +144,46 @@ void app_main(void)
     ESP_ERROR_CHECK(app_events_init());
     ESP_ERROR_CHECK(ha_model_init());
     ESP_ERROR_CHECK(ha_energy_model_init());
-    ESP_ERROR_CHECK(runtime_settings_init());
-
-    esp_err_t settings_err = runtime_settings_load(&s_runtime_settings);
+    /* Load persisted settings without mutating storage on a read failure.
+     * runtime_settings_init() historically wrote defaults whenever a boot-time
+     * LittleFS/NVS read failed, which could turn a transient storage error into
+     * a false "HA credentials missing" setup boot.  Retry reads first and only
+     * fall back in memory; the editor/save path remains responsible for writes. */
+    esp_err_t settings_err = ESP_FAIL;
+    for (int attempt = 1; attempt <= 3; attempt++) {
+        settings_err = runtime_settings_load(&s_runtime_settings);
+        if (settings_err == ESP_OK) {
+            if (attempt > 1) {
+                ESP_LOGI(TAG_APP, "Runtime settings loaded on retry %d", attempt);
+            }
+            break;
+        }
+        ESP_LOGW(TAG_APP, "Runtime settings load attempt %d/3 failed: %s",
+            attempt, esp_err_to_name(settings_err));
+        if (attempt < 3) {
+            vTaskDelay(pdMS_TO_TICKS(150));
+        }
+    }
     if (settings_err != ESP_OK) {
-        ESP_LOGW(TAG_APP, "Failed to load runtime settings (%s), continuing with defaults", esp_err_to_name(settings_err));
+        ESP_LOGE(TAG_APP,
+            "Runtime settings unavailable after retries (%s); using defaults in memory without overwriting persisted settings",
+            esp_err_to_name(settings_err));
         runtime_settings_set_defaults(&s_runtime_settings);
     }
     (void)ui_i18n_init(s_runtime_settings.ui_language);
     (void)time_sync_set_timezone(s_runtime_settings.time_tz);
     ESP_ERROR_CHECK(display_init());
+    display_configure_night_mode(
+        s_runtime_settings.display_brightness_percent,
+        s_runtime_settings.display_night_brightness_percent,
+        s_runtime_settings.display_night_mode,
+        s_runtime_settings.display_night_start_hour,
+        s_runtime_settings.display_night_start_minute,
+        s_runtime_settings.display_day_start_hour,
+        s_runtime_settings.display_day_start_minute);
+    display_configure_idle(
+        s_runtime_settings.display_idle_timeout_seconds,
+        s_runtime_settings.display_idle_brightness_percent);
     (void)ui_boot_splash_show();
 
     ui_boot_splash_set_status(ui_i18n_get("boot.initializing_wifi", "Initializing Wi-Fi"));
@@ -180,6 +211,14 @@ void app_main(void)
             wifi_ready = true;
             time_sync_start(s_runtime_settings.ntp_server);
             time_sync_wait_for_sync(8000);
+            display_configure_night_mode(
+                s_runtime_settings.display_brightness_percent,
+                s_runtime_settings.display_night_brightness_percent,
+                s_runtime_settings.display_night_mode,
+                s_runtime_settings.display_night_start_hour,
+                s_runtime_settings.display_night_start_minute,
+                s_runtime_settings.display_day_start_hour,
+                s_runtime_settings.display_day_start_minute);
             ui_boot_splash_set_status(ui_i18n_get("boot.wifi_connected", "Wi-Fi connected"));
         }
     } else {
@@ -215,11 +254,21 @@ void app_main(void)
     ui_boot_splash_set_status("No Wi-Fi backend");
 #endif
 
+    /* Provisioning is a configuration state, not a connectivity state.
+     * After a site-wide power failure the panel can boot before the router/AP
+     * (and Home Assistant) is ready.  A temporary Wi-Fi failure must never
+     * send an already-configured panel back to first-boot setup.  Persisted
+     * credentials are authoritative: configured panels load the dashboard and
+     * the normal network/HA recovery paths can reconnect in the background. */
+    const bool has_ha_credentials = runtime_settings_has_ha(&s_runtime_settings);
     boot_screen_mode_t boot_screen_mode = BOOT_SCREEN_DASHBOARD;
-    if (!wifi_ready) {
+    if (!has_wifi_credentials) {
         boot_screen_mode = BOOT_SCREEN_WIFI_SETUP;
-    } else if (!runtime_settings_has_ha(&s_runtime_settings)) {
+    } else if (!has_ha_credentials) {
         boot_screen_mode = BOOT_SCREEN_HA_SETUP;
+    } else if (!wifi_ready) {
+        ESP_LOGW(TAG_WIFI,
+            "Configured panel booted before Wi-Fi became ready; loading dashboard and retaining persisted configuration");
     }
 
     ESP_ERROR_CHECK(layout_store_init());

@@ -1,7 +1,117 @@
 /* SPDX-License-Identifier: LicenseRef-FNCL-1.1
  * Copyright (c) 2026 Cpt_Kirk
+ * Copyright (c) 2026 khennessy74-a11y
  */
 #include "ui/fonts/mdi_font_registry.h"
+
+#include <string.h>
+
+
+static const mdi_icon_entry_t s_mdi_icons[] = {
+    { "mdi:vector-square", "Vector square", 0xF0001U },
+    { "mdi:access-point-network", "Access point network", 0xF0002U },
+    { "mdi:account-switch", "Account switch", 0xF0019U },
+    { "mdi:airballoon", "Air balloon", 0xF001CU },
+    { "mdi:alert-circle", "Alert circle", 0xF0028U },
+    { "mdi:alert-octagon", "Alert octagon", 0xF0029U },
+    { "mdi:arrow-all", "Arrow all", 0xF0041U },
+    { "mdi:arrow-right-drop-circle", "Arrow right", 0xF0059U },
+    { "mdi:arrow-up", "Arrow up", 0xF005DU },
+    { "mdi:assistant", "Assistant", 0xF0064U },
+    { "mdi:battery-90", "Battery 90%", 0xF0082U },
+    { "mdi:camera-front", "Camera", 0xF0102U },
+    { "mdi:chart-histogram", "Chart", 0xF0129U },
+    { "mdi:chevron-double-left", "Double left", 0xF013DU },
+    { "mdi:clock-outline", "Clock", 0xF0150U },
+    { "mdi:code-not-equal-variant", "Code not equal", 0xF0171U },
+    { "mdi:domain", "Building", 0xF01D7U },
+    { "mdi:drag", "Drag", 0xF01DBU },
+    { "mdi:eye-off", "Eye off", 0xF0209U },
+    { "mdi:fan", "Fan", 0xF0210U },
+    { "mdi:file-check", "File check", 0xF0216U },
+    { "mdi:file-music", "Music file", 0xF0223U },
+    { "mdi:file-outline", "File", 0xF0224U },
+    { "mdi:file-code", "Code file", 0xF022EU },
+    { "mdi:gate", "Gate", 0xF0299U },
+    { "mdi:gauge", "Gauge", 0xF029AU },
+    { "mdi:hololens", "Hololens", 0xF02DBU },
+    { "mdi:contactless-payment-circle", "Contactless payment", 0xF0321U },
+    { "mdi:laptop", "Laptop", 0xF0322U },
+    { "mdi:link-off", "Link off", 0xF0338U },
+    { "mdi:menu", "Menu", 0xF035CU },
+    { "mdi:menu-down", "Menu down", 0xF035DU },
+    { "mdi:menu-left", "Menu left", 0xF035EU },
+    { "mdi:numeric-5-box", "Number 5", 0xF03B1U },
+    { "mdi:playlist-play", "Playlist play", 0xF0411U },
+    { "mdi:plus", "Plus", 0xF0415U },
+    { "mdi:projector", "Projector", 0xF042EU },
+    { "mdi:reddit", "Reddit", 0xF044DU },
+    { "mdi:cog", "Settings", 0xF0493U },
+    { "mdi:swap-vertical", "Swap vertical", 0xF04E2U },
+    { "mdi:home-assistant", "Home Assistant", 0xF06E8U },
+    { "mdi:lightbulb", "Lightbulb", 0xF0335U },
+    { "mdi:power", "Power", 0xF0425U },
+    { "mdi:thermometer", "Thermometer", 0xF050FU },
+    { "mdi:robot-vacuum", "Robot vacuum", 0xF070DU },
+    { "mdi:home-automation", "Home automation", 0xF07D1U },
+    { "mdi:script-text", "Script text", 0xF0BC1U },
+    { "mdi:window-shutter", "Window shutter", 0xF111CU },
+    { "mdi:vacuum", "Vacuum", 0xF19A1U },
+    { "mdi:lock", "Lock", 0xF033EU },
+    { "mdi:lock-open", "Lock open", 0xF033FU },
+    { "mdi:garage", "Garage", 0xF06D9U },
+    { "mdi:garage-open", "Garage open", 0xF06DAU },
+    { "mdi:door", "Door", 0xF081AU },
+    { "mdi:door-open", "Door open", 0xF081CU },
+    { "mdi:blinds", "Blinds", 0xF00ACU },
+    { "mdi:blinds-open", "Blinds open", 0xF1011U },
+    { "mdi:radiator", "Radiator", 0xF0438U },
+    { "mdi:motion-sensor", "Motion sensor", 0xF0D91U },
+    { "mdi:battery", "Battery", 0xF0079U },
+    { "mdi:battery-charging", "Battery charging", 0xF0084U },
+    { "mdi:solar-power", "Solar power", 0xF0A72U },
+    { "mdi:transmission-tower", "Transmission tower", 0xF0D3EU },
+
+    { "mdi:window-maximize", "Window maximize", 0xF05AFU },
+    { "mdi:window-minimize", "Window minimize", 0xF05B0U },
+    { "mdi:window-open", "Window open", 0xF05B1U },
+    { "mdi:window-restore", "Window restore", 0xF05B2U },
+    { "mdi:windows", "Windows", 0xF05B3U },
+    { "mdi:wordpress", "WordPress", 0xF05B4U },
+
+    { "mdi:weather-cloudy", "Weather cloudy", 0xF0590U },
+    { "mdi:weather-fog", "Weather fog", 0xF0591U },
+    { "mdi:weather-hail", "Weather hail", 0xF0592U },
+    { "mdi:weather-lightning", "Weather lightning", 0xF0593U },
+    { "mdi:weather-night", "Weather night", 0xF0594U },
+    { "mdi:weather-partly-cloudy", "Weather partly cloudy", 0xF0595U },
+    { "mdi:weather-pouring", "Weather pouring", 0xF0596U },
+    { "mdi:weather-rainy", "Weather rainy", 0xF0597U },
+    { "mdi:weather-snowy", "Weather snowy", 0xF0598U },
+    { "mdi:weather-sunny", "Weather sunny", 0xF0599U },
+    { "mdi:weather-sunset", "Weather sunset", 0xF059AU },
+    { "mdi:weather-sunset-down", "Weather sunset down", 0xF059BU },
+    { "mdi:weather-sunset-up", "Weather sunset up", 0xF059CU },
+    { "mdi:weather-windy", "Weather windy", 0xF059DU },
+    { "mdi:weather-windy-variant", "Weather windy variant", 0xF059EU },
+
+    { "mdi:weather-lightning-rainy", "Weather lightning rainy", 0xF067EU },
+    { "mdi:weather-snowy-rainy", "Weather snowy rainy", 0xF067FU },
+    { "mdi:weather-hurricane", "Weather hurricane", 0xF0898U },
+    { "mdi:weather-cloudy-arrow-right", "Weather cloudy arrow", 0xF0E6EU },
+    { "mdi:weather-cloudy-alert", "Weather cloudy alert", 0xF0F2FU },
+    { "mdi:weather-hazy", "Weather hazy", 0xF0F30U },
+    { "mdi:weather-night-partly-cloudy", "Weather night partly cloudy", 0xF0F31U },
+    { "mdi:weather-partly-lightning", "Weather partly lightning", 0xF0F32U },
+    { "mdi:weather-partly-rainy", "Weather partly rainy", 0xF0F33U },
+    { "mdi:weather-partly-snowy", "Weather partly snowy", 0xF0F34U },
+    { "mdi:weather-partly-snowy-rainy", "Weather partly snowy rainy", 0xF0F35U },
+    { "mdi:weather-snowy-heavy", "Weather heavy snow", 0xF0F36U },
+    { "mdi:weather-sunny-alert", "Weather sunny alert", 0xF0F37U },
+    { "mdi:weather-tornado", "Weather tornado", 0xF0F38U },
+    { "mdi:weather-sunny-off", "Weather sunny off", 0xF14E4U },
+};
+
 
 #ifndef APP_HAVE_MDI_ICON_FONT
 #define APP_HAVE_MDI_ICON_FONT 0
@@ -35,151 +145,371 @@
 #define APP_HAVE_MDI_WEATHER_FONT_20 0
 #endif
 
+
 #if APP_HAVE_MDI_ICON_FONT
-/* Generated by LVGL Font Converter (name must match the converter setting). */
+
+/* Generated by LVGL Font Converter.
+ * The declared names must match the converter output.
+ */
+
 #if APP_HAVE_MDI_TOP50_FONT
+
 #if APP_HAVE_MDI_TOP50_FONT_56
 LV_FONT_DECLARE(mditop50icons56);
 #endif
+
 #if APP_HAVE_MDI_TOP50_FONT_42
 LV_FONT_DECLARE(mditop50icons42);
 #endif
+
 #if APP_HAVE_MDI_TOP50_FONT_72
 LV_FONT_DECLARE(mditop50icons72);
 #endif
+
 #if APP_HAVE_MDI_TOP50_FONT_LEGACY
 LV_FONT_DECLARE(mditop50icons);
 #endif
+
 #elif APP_HAVE_MDI_STANDARD_FONT
+
 LV_FONT_DECLARE(mdi_standard_icons_56);
+
 #endif
+
 #endif
+
 
 #if APP_HAVE_MDI_WEATHER_FONT_20
 LV_FONT_DECLARE(mdiweatherIcons20);
 #endif
 
+
 const lv_font_t *mdi_font_icon_42(void)
 {
-#if APP_HAVE_MDI_ICON_FONT && APP_HAVE_MDI_TOP50_FONT && APP_HAVE_MDI_TOP50_FONT_42
+#if APP_HAVE_MDI_ICON_FONT && \
+    APP_HAVE_MDI_TOP50_FONT && \
+    APP_HAVE_MDI_TOP50_FONT_42
+
     return &mditop50icons42;
+
 #else
+
     return NULL;
+
 #endif
 }
+
 
 bool mdi_font_icon_42_available(void)
 {
     return mdi_font_icon_42() != NULL;
 }
 
+
 const lv_font_t *mdi_font_icon_56(void)
 {
-#if APP_HAVE_MDI_ICON_FONT && APP_HAVE_MDI_TOP50_FONT && APP_HAVE_MDI_TOP50_FONT_56
+#if APP_HAVE_MDI_ICON_FONT && \
+    APP_HAVE_MDI_TOP50_FONT && \
+    APP_HAVE_MDI_TOP50_FONT_56
+
     return &mditop50icons56;
+
 #elif APP_HAVE_MDI_STANDARD_FONT
+
     return &mdi_standard_icons_56;
+
 #else
+
     return NULL;
+
 #endif
 }
+
 
 bool mdi_font_icon_56_available(void)
 {
     return mdi_font_icon_56() != NULL;
 }
 
+
 const lv_font_t *mdi_font_icon_72(void)
 {
-#if APP_HAVE_MDI_ICON_FONT && APP_HAVE_MDI_TOP50_FONT && APP_HAVE_MDI_TOP50_FONT_72
+#if APP_HAVE_MDI_ICON_FONT && \
+    APP_HAVE_MDI_TOP50_FONT && \
+    APP_HAVE_MDI_TOP50_FONT_72
+
     return &mditop50icons72;
+
 #else
+
     return NULL;
+
 #endif
 }
+
 
 bool mdi_font_icon_72_available(void)
 {
     return mdi_font_icon_72() != NULL;
 }
 
+
 const lv_font_t *mdi_font_large(void)
 {
 #if APP_HAVE_MDI_ICON_FONT
+
 #if APP_HAVE_MDI_TOP50_FONT
-#if APP_HAVE_MDI_TOP50_FONT_56 || APP_HAVE_MDI_STANDARD_FONT
+
+#if APP_HAVE_MDI_TOP50_FONT_56 || \
+    APP_HAVE_MDI_STANDARD_FONT
+
     return mdi_font_icon_56();
+
 #elif APP_HAVE_MDI_TOP50_FONT_72
+
     return mdi_font_icon_72();
+
 #elif APP_HAVE_MDI_TOP50_FONT_LEGACY
+
     return &mditop50icons;
+
 #else
+
     return NULL;
+
 #endif
+
 #elif APP_HAVE_MDI_STANDARD_FONT
+
     return mdi_font_icon_56();
+
 #else
+
     return NULL;
+
 #endif
+
 #else
+
     return NULL;
+
 #endif
 }
+
 
 bool mdi_font_large_available(void)
 {
     return mdi_font_large() != NULL;
 }
 
+
 const lv_font_t *mdi_font_weather_20(void)
 {
 #if APP_HAVE_MDI_WEATHER_FONT_20
+
     return &mdiweatherIcons20;
+
 #else
+
     return NULL;
+
 #endif
 }
+
 
 bool mdi_font_weather_20_available(void)
 {
     return mdi_font_weather_20() != NULL;
 }
 
+
 const lv_font_t *mdi_font_weather_small(void)
 {
 #if APP_HAVE_MDI_WEATHER_FONT_20
+
     return &mdiweatherIcons20;
+
 #endif
-#if APP_HAVE_MDI_ICON_FONT && APP_HAVE_MDI_TOP50_FONT
+
+
+#if APP_HAVE_MDI_ICON_FONT && \
+    APP_HAVE_MDI_TOP50_FONT
+
 #if APP_HAVE_MDI_TOP50_FONT_42
+
     return mdi_font_icon_42();
+
 #elif APP_HAVE_MDI_TOP50_FONT_56
+
     return mdi_font_icon_56();
+
 #elif APP_HAVE_MDI_TOP50_FONT_72
+
     return mdi_font_icon_72();
+
 #else
+
     return mdi_font_large();
+
 #endif
+
 #else
+
     return mdi_font_large();
+
 #endif
 }
+
 
 bool mdi_font_weather_small_available(void)
 {
     return mdi_font_weather_small() != NULL;
 }
 
+
 const lv_font_t *mdi_font_weather(void)
 {
-#if APP_HAVE_MDI_ICON_FONT && APP_HAVE_MDI_TOP50_FONT && APP_HAVE_MDI_TOP50_FONT_72
+#if APP_HAVE_MDI_ICON_FONT && \
+    APP_HAVE_MDI_TOP50_FONT && \
+    APP_HAVE_MDI_TOP50_FONT_72
+
     return mdi_font_icon_72();
+
 #else
+
     return mdi_font_large();
+
 #endif
 }
+
 
 bool mdi_font_weather_available(void)
 {
     return mdi_font_weather() != NULL;
+}
+
+
+const mdi_icon_entry_t *mdi_icon_registry(
+    size_t *out_count)
+{
+    if (out_count != NULL) {
+        *out_count =
+            sizeof(s_mdi_icons) /
+            sizeof(s_mdi_icons[0]);
+    }
+
+    return s_mdi_icons;
+}
+
+
+bool mdi_icon_lookup(
+    const char *name,
+    uint32_t *out_codepoint)
+{
+    if (name == NULL ||
+        out_codepoint == NULL ||
+        name[0] == '\0') {
+        return false;
+    }
+
+    const size_t count =
+        sizeof(s_mdi_icons) /
+        sizeof(s_mdi_icons[0]);
+
+    for (size_t i = 0; i < count; ++i) {
+        if (strcmp(
+                name,
+                s_mdi_icons[i].name) == 0) {
+
+            *out_codepoint =
+                s_mdi_icons[i].codepoint;
+
+            return true;
+        }
+    }
+
+    return false;
+}
+
+
+bool mdi_icon_codepoint_to_utf8(
+    uint32_t codepoint,
+    char out_utf8[5])
+{
+    if (out_utf8 == NULL ||
+        codepoint > 0x10FFFFU ||
+        (codepoint >= 0xD800U &&
+         codepoint <= 0xDFFFU)) {
+        return false;
+    }
+
+    if (codepoint <= 0x7FU) {
+        out_utf8[0] =
+            (char)codepoint;
+
+        out_utf8[1] = '\0';
+
+        return true;
+    }
+
+    if (codepoint <= 0x7FFU) {
+        out_utf8[0] =
+            (char)(
+                0xC0U |
+                ((codepoint >> 6) & 0x1FU));
+
+        out_utf8[1] =
+            (char)(
+                0x80U |
+                (codepoint & 0x3FU));
+
+        out_utf8[2] = '\0';
+
+        return true;
+    }
+
+    if (codepoint <= 0xFFFFU) {
+        out_utf8[0] =
+            (char)(
+                0xE0U |
+                ((codepoint >> 12) & 0x0FU));
+
+        out_utf8[1] =
+            (char)(
+                0x80U |
+                ((codepoint >> 6) & 0x3FU));
+
+        out_utf8[2] =
+            (char)(
+                0x80U |
+                (codepoint & 0x3FU));
+
+        out_utf8[3] = '\0';
+
+        return true;
+    }
+
+    out_utf8[0] =
+        (char)(
+            0xF0U |
+            ((codepoint >> 18) & 0x07U));
+
+    out_utf8[1] =
+        (char)(
+            0x80U |
+            ((codepoint >> 12) & 0x3FU));
+
+    out_utf8[2] =
+        (char)(
+            0x80U |
+            ((codepoint >> 6) & 0x3FU));
+
+    out_utf8[3] =
+        (char)(
+            0x80U |
+            (codepoint & 0x3FU));
+
+    out_utf8[4] = '\0';
+
+    return true;
 }

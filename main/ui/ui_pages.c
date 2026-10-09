@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: LicenseRef-FNCL-1.1
  * Copyright (c) 2026 Cpt_Kirk
+ * Copyright (c) 2026 khennessy74-a11y
  */
 #include "ui/ui_pages.h"
 
@@ -9,6 +10,16 @@
 #include <time.h>
 
 #include "app_config.h"
+#include "esp_app_desc.h"
+#include "esp_system.h"
+#include "esp_timer.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "ha/ha_client.h"
+#include "drivers/display_init.h"
+#include "drivers/touch_init.h"
+#include "settings/runtime_settings.h"
+#include "net/wifi_mgr.h"
 #include "ui/fonts/app_text_fonts.h"
 #include "ui/ui_i18n.h"
 #include "ui/theme/theme_default.h"
@@ -36,12 +47,75 @@ static lv_obj_t *s_date_label = NULL;
 static lv_obj_t *s_time_label = NULL;
 static lv_obj_t *s_wifi_icon = NULL;
 static lv_obj_t *s_api_icon = NULL;
+static lv_obj_t *s_system_overlay = NULL;
+static lv_obj_t *s_system_details = NULL;
+static lv_obj_t *s_system_ha_details = NULL;
+static lv_obj_t *s_system_wifi_details = NULL;
+static lv_obj_t *s_system_log = NULL;
+static lv_obj_t *s_restart_confirm = NULL;
+static lv_obj_t *s_restart_dim = NULL;
+static lv_obj_t *s_brightness_slider = NULL;
+static lv_obj_t *s_brightness_value = NULL;
+static lv_obj_t *s_night_mode_dropdown = NULL;
+static lv_obj_t *s_idle_timeout_dropdown = NULL;
+static lv_obj_t *s_night_brightness_slider = NULL;
+static lv_obj_t *s_night_brightness_value = NULL;
+static lv_obj_t *s_night_start_hour = NULL;
+static lv_obj_t *s_night_start_minute = NULL;
+static lv_obj_t *s_day_start_hour = NULL;
+static lv_obj_t *s_day_start_minute = NULL;
+static lv_obj_t *s_idle_brightness_slider = NULL;
+static lv_obj_t *s_idle_brightness_value = NULL;
+static lv_timer_t *s_global_home_timer = NULL;
+static uint32_t s_last_ui_activity_ms = 0U;
+static lv_timer_t *s_system_timeout_timer = NULL;
+#define UI_SYSTEM_TIMEOUT_MS 60000U
+
+static uint32_t ui_pages_monotonic_ms(void)
+{
+    return (uint32_t)(esp_timer_get_time() / 1000ULL);
+}
+static bool s_status_gesture_armed = false;
+static uint32_t s_status_gesture_started_ms = 0U;
+#define UI_SYSTEM_HOLD_MS 3000U
 static lv_obj_t *s_nav_bar = NULL;
 static lv_obj_t *s_nav_home_button = NULL;
 static lv_obj_t *s_nav_home_label = NULL;
 static lv_obj_t *s_nav_extra_buttons[APP_MAX_PAGES - 1] = {0};
 static lv_obj_t *s_nav_extra_labels[APP_MAX_PAGES - 1] = {0};
 static uint16_t s_nav_extra_page_index[APP_MAX_PAGES - 1] = {0};
+static ui_pages_geometry_t s_geometry = {
+    .screen_w = APP_SCREEN_WIDTH,
+    .screen_h = APP_SCREEN_HEIGHT,
+    .content_x = APP_CONTENT_BOX_X,
+    .content_y = APP_CONTENT_BOX_Y,
+    .content_w = APP_CONTENT_BOX_WIDTH,
+    .content_h = APP_CONTENT_BOX_HEIGHT,
+    .nav_h = 60,
+};
+
+const ui_pages_geometry_t *ui_pages_geometry(void)
+{
+    return &s_geometry;
+}
+
+static void ui_pages_refresh_geometry(lv_obj_t *screen)
+{
+    lv_coord_t screen_w = screen != NULL ? lv_obj_get_width(screen) : 0;
+    lv_coord_t screen_h = screen != NULL ? lv_obj_get_height(screen) : 0;
+    if (screen_w <= 0) screen_w = APP_SCREEN_WIDTH;
+    if (screen_h <= 0) screen_h = APP_SCREEN_HEIGHT;
+
+    s_geometry.screen_w = screen_w;
+    s_geometry.screen_h = screen_h;
+    s_geometry.content_x = APP_CONTENT_BOX_X;
+    s_geometry.content_y = APP_CONTENT_BOX_Y;
+    s_geometry.nav_h = 60;
+    s_geometry.content_w = screen_w - s_geometry.content_x;
+    s_geometry.content_h = screen_h - s_geometry.content_y - s_geometry.nav_h;
+    if (s_geometry.content_w < 0) s_geometry.content_w = 0;
+    if (s_geometry.content_h < 0) s_geometry.content_h = 0;
+}
 
 /* ---- Easter egg: 7 taps on the home nav button reveal a swimming Betta. */
 #if LV_USE_LOTTIE && APP_UI_BETTA_LOTTIE_ASSET
@@ -124,7 +198,7 @@ static void ui_pages_apply_tab_style(uint16_t selected_index)
     const lv_coord_t nav_home_gap = 12;
     const lv_coord_t nav_side_gap = 8;
     const lv_coord_t nav_min_side_btn_w = 64;
-    const lv_coord_t nav_home_x = (APP_SCREEN_WIDTH - nav_home_w) / 2;
+    const lv_coord_t nav_home_x = (s_geometry.screen_w - nav_home_w) / 2;
 
     lv_obj_set_size(s_nav_home_button, nav_home_w, nav_btn_h);
     lv_obj_set_pos(s_nav_home_button, nav_home_x, nav_btn_y);
@@ -138,7 +212,7 @@ static void ui_pages_apply_tab_style(uint16_t selected_index)
     lv_coord_t left_start = nav_outer_margin;
     lv_coord_t left_end = nav_home_x - nav_home_gap;
     lv_coord_t right_start = nav_home_x + nav_home_w + nav_home_gap;
-    lv_coord_t right_end = APP_SCREEN_WIDTH - nav_outer_margin;
+    lv_coord_t right_end = s_geometry.screen_w - nav_outer_margin;
 
     lv_coord_t left_region_w = (left_end > left_start) ? (left_end - left_start) : 0;
     lv_coord_t right_region_w = (right_end > right_start) ? (right_end - right_start) : 0;
@@ -335,13 +409,788 @@ static void ui_nav_extra_button_event_cb(lv_event_t *event)
     ui_pages_show_index(page_index);
 }
 
+static void ui_system_timeout_delete(void)
+{
+    if (s_system_timeout_timer != NULL) {
+        lv_timer_del(s_system_timeout_timer);
+        s_system_timeout_timer = NULL;
+    }
+}
+
+static void ui_system_overlay_close(void)
+{
+    ui_system_timeout_delete();
+    if (s_system_overlay != NULL) {
+        lv_obj_del(s_system_overlay);
+        s_system_overlay = NULL;
+        s_system_details = NULL;
+        s_system_ha_details = NULL;
+        s_system_wifi_details = NULL;
+        s_system_log = NULL;
+        s_restart_confirm = NULL;
+        s_brightness_slider = NULL;
+        s_brightness_value = NULL;
+        s_night_mode_dropdown = NULL;
+        s_idle_timeout_dropdown = NULL;
+        s_night_brightness_slider = NULL;
+        s_night_brightness_value = NULL;
+        s_night_start_hour = NULL;
+        s_night_start_minute = NULL;
+        s_day_start_hour = NULL;
+        s_day_start_minute = NULL;
+        s_idle_brightness_slider = NULL;
+        s_idle_brightness_value = NULL;
+    }
+}
+
+static void ui_system_overlay_show(void);
+static void ui_system_display_show(void);
+static void ui_system_display_brightness_show(void);
+static void ui_system_display_night_show(void);
+static void ui_system_display_dim_show(void);
+static void ui_display_settings_save_cb(lv_event_t *event);
+
+static void ui_system_overlay_close_cb(lv_event_t *event)
+{
+    LV_UNUSED(event);
+    ui_system_overlay_close();
+}
+
+static void ui_system_display_open_cb(lv_event_t *event)
+{
+    LV_UNUSED(event);
+    ui_system_overlay_close();
+    ui_system_display_show();
+}
+
+static void ui_system_diagnostics_open_cb(lv_event_t *event)
+{
+    LV_UNUSED(event);
+    ui_system_overlay_close();
+    ui_system_overlay_show();
+}
+
+static void ui_system_display_menu_cb(lv_event_t *event)
+{
+    LV_UNUSED(event);
+    ui_system_overlay_close();
+    ui_system_display_show();
+}
+
+static void ui_system_display_brightness_cb(lv_event_t *event)
+{
+    LV_UNUSED(event);
+    ui_system_overlay_close();
+    ui_system_display_brightness_show();
+}
+
+static void ui_system_display_night_cb(lv_event_t *event)
+{
+    LV_UNUSED(event);
+    ui_system_overlay_close();
+    ui_system_display_night_show();
+}
+
+static void ui_system_display_dim_cb(lv_event_t *event)
+{
+    LV_UNUSED(event);
+    ui_system_overlay_close();
+    ui_system_display_dim_show();
+}
+
+static void ui_system_timeout_cb(lv_timer_t *timer)
+{
+    LV_UNUSED(timer);
+    ui_system_overlay_close();
+    if (s_page_count > 0U) {
+        (void)ui_pages_show_index(0);
+    }
+}
+
+static void ui_system_activity_cb(lv_event_t *event)
+{
+    LV_UNUSED(event);
+    s_last_ui_activity_ms = ui_pages_monotonic_ms();
+    if (s_system_timeout_timer != NULL) {
+        lv_timer_reset(s_system_timeout_timer);
+    }
+}
+
+static void ui_global_activity_cb(lv_event_t *event)
+{
+    LV_UNUSED(event);
+    /* Capture any press on the active screen, including child controls.
+     * Keeping our own timestamp avoids relying on LVGL's display inactivity
+     * counter, which proved unreliable with this touch/input integration. */
+    s_last_ui_activity_ms = ui_pages_monotonic_ms();
+    if (s_system_timeout_timer != NULL) {
+        lv_timer_reset(s_system_timeout_timer);
+    }
+}
+
+static void ui_global_home_timeout_cb(lv_timer_t *timer)
+{
+    LV_UNUSED(timer);
+    uint32_t now = ui_pages_monotonic_ms();
+    uint32_t touch_ms = touch_last_activity_ms();
+    if (touch_ms != 0U && (int32_t)(touch_ms - s_last_ui_activity_ms) > 0) {
+        s_last_ui_activity_ms = touch_ms;
+    }
+    if ((uint32_t)(now - s_last_ui_activity_ms) < UI_SYSTEM_TIMEOUT_MS) {
+        return;
+    }
+
+    if (s_system_overlay != NULL) {
+        ui_system_overlay_close();
+    }
+    if (s_page_count > 0U && s_current_index != 0) {
+        (void)ui_pages_show_index(0);
+    }
+    /* Do not repeatedly fire while already home. */
+    s_last_ui_activity_ms = now;
+}
+
+static void ui_system_overlay_refresh(void)
+{
+    if (s_system_details == NULL || s_system_ha_details == NULL ||
+        s_system_wifi_details == NULL || s_system_log == NULL) {
+        return;
+    }
+
+    const esp_app_desc_t *desc = esp_app_get_description();
+    char ip[48] = "Unavailable";
+    if (wifi_mgr_get_sta_ip(ip, sizeof(ip)) != ESP_OK) {
+        snprintf(ip, sizeof(ip), "%s", "Unavailable");
+    }
+
+    wifi_mgr_sta_ap_info_t ap_info = {0};
+    bool have_ap = (wifi_mgr_get_sta_ap_info(&ap_info) == ESP_OK);
+
+    ha_client_diagnostics_t diag = {0};
+    ha_client_get_diagnostics(&diag);
+
+    char system_text[384];
+    snprintf(system_text, sizeof(system_text),
+        "SYSTEM\nFirmware: %s\nProject: %s",
+        (desc != NULL && desc->version[0] != '\\0') ? desc->version : "unknown",
+        (desc != NULL && desc->project_name[0] != '\\0') ? desc->project_name : APP_NAME);
+    lv_label_set_text(s_system_details, system_text);
+
+    char ha_text[256];
+    snprintf(ha_text, sizeof(ha_text),
+        "HOME ASSISTANT\nStatus: %s\nSync: %s",
+        ha_client_is_connected() ? "Connected" : "Disconnected",
+        ha_client_is_initial_sync_done() ? "Complete" : "Waiting");
+    lv_label_set_text(s_system_ha_details, ha_text);
+
+    char wifi_text[512];
+    snprintf(wifi_text, sizeof(wifi_text),
+        "WI-FI\n%s  |  %s\nSSID: %s  |  Signal: %s%d%s",
+        wifi_mgr_is_connected() ? "Connected" : "Disconnected",
+        ip,
+        have_ap ? ap_info.ssid : "-",
+        have_ap ? "" : "-",
+        have_ap ? (int)ap_info.rssi : 0,
+        have_ap ? " dBm" : "");
+    lv_label_set_text(s_system_wifi_details, wifi_text);
+
+    char log_text[3072] = {0};
+    size_t used = 0U;
+    uint16_t start = diag.connection_log_count > 12U ? (uint16_t)(diag.connection_log_count - 12U) : 0U;
+    if (diag.connection_log_count == 0U) {
+        snprintf(log_text, sizeof(log_text), "No connection events recorded yet.");
+    } else {
+        for (uint16_t i = start; i < diag.connection_log_count && used < sizeof(log_text) - 1U; i++) {
+            int written = snprintf(log_text + used, sizeof(log_text) - used,
+                "%lld ms  %s\n",
+                (long long)diag.connection_log[i].elapsed_ms,
+                diag.connection_log[i].message);
+            if (written <= 0) break;
+            used += ((size_t)written < sizeof(log_text) - used)
+                ? (size_t)written : sizeof(log_text) - used - 1U;
+        }
+    }
+    lv_label_set_text(s_system_log, log_text);
+}
+
+static void ui_restart_cancel_cb(lv_event_t *event)
+{
+    LV_UNUSED(event);
+    if (s_restart_dim != NULL) {
+        lv_obj_del(s_restart_dim);
+        s_restart_dim = NULL;
+        s_restart_confirm = NULL;
+    } else if (s_restart_confirm != NULL) {
+        lv_obj_del(s_restart_confirm);
+        s_restart_confirm = NULL;
+    }
+}
+
+static void ui_restart_now_cb(lv_event_t *event)
+{
+    LV_UNUSED(event);
+    ha_client_stop();
+#if defined(CONFIG_APP_PANEL_VARIANT_S3_480)
+    if (wifi_mgr_force_transport_recover() != ESP_OK) {
+        (void)wifi_mgr_force_reconnect();
+    }
+#endif
+    vTaskDelay(pdMS_TO_TICKS(250));
+    esp_restart();
+}
+
+static void ui_restart_request_cb(lv_event_t *event)
+{
+    LV_UNUSED(event);
+    if (s_system_overlay == NULL || s_restart_confirm != NULL) {
+        return;
+    }
+
+    /* Full-screen modal scrim both dims and blocks the diagnostics UI. */
+    s_restart_dim = lv_obj_create(s_system_overlay);
+    lv_obj_remove_style_all(s_restart_dim);
+    lv_obj_set_size(s_restart_dim, LV_PCT(100), LV_PCT(100));
+    lv_obj_center(s_restart_dim);
+    lv_obj_add_flag(s_restart_dim, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_clear_flag(s_restart_dim, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_style_bg_color(s_restart_dim, lv_color_hex(0x000000), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(s_restart_dim, LV_OPA_60, LV_PART_MAIN);
+
+    s_restart_confirm = lv_obj_create(s_restart_dim);
+    lv_obj_set_size(s_restart_confirm, LV_PCT(70), 300);
+    lv_obj_center(s_restart_confirm);
+    lv_obj_set_style_bg_color(s_restart_confirm, lv_color_hex(APP_UI_COLOR_TOPBAR_BG), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(s_restart_confirm, LV_OPA_COVER, LV_PART_MAIN);
+    lv_obj_set_style_radius(s_restart_confirm, 16, LV_PART_MAIN);
+    lv_obj_clear_flag(s_restart_confirm, LV_OBJ_FLAG_SCROLLABLE);
+
+    lv_obj_t *message = lv_label_create(s_restart_confirm);
+    lv_label_set_text(message, "Restart the BETTA panel?\nSaved settings will be retained.");
+    lv_obj_set_width(message, LV_PCT(90));
+    lv_obj_set_style_text_color(message, lv_color_hex(APP_UI_COLOR_TOPBAR_TEXT), LV_PART_MAIN);
+    lv_obj_set_style_text_align(message, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+    lv_obj_align(message, LV_ALIGN_TOP_MID, 0, 22);
+
+    lv_obj_t *cancel = lv_obj_create(s_restart_confirm);
+    lv_obj_remove_style_all(cancel);
+    lv_obj_set_size(cancel, 130, 50);
+    lv_obj_align(cancel, LV_ALIGN_CENTER, 0, 28);
+    lv_obj_add_flag(cancel, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_clear_flag(cancel, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_ext_click_area(cancel, 8);
+    lv_obj_add_event_cb(cancel, ui_restart_cancel_cb, LV_EVENT_CLICKED, NULL);
+    lv_obj_t *cancel_label = lv_label_create(cancel);
+    lv_label_set_text(cancel_label, "Cancel");
+    lv_obj_set_style_text_font(cancel_label, NAV_TEXT_FONT, LV_PART_MAIN);
+    lv_obj_set_width(cancel_label, 118);
+    lv_obj_set_style_text_align(cancel_label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+    lv_obj_center(cancel_label);
+    ui_pages_style_nav_button(cancel, cancel_label, false, false);
+
+    lv_obj_t *restart = lv_obj_create(s_restart_confirm);
+    lv_obj_remove_style_all(restart);
+    lv_obj_set_size(restart, 150, 50);
+    lv_obj_align(restart, LV_ALIGN_CENTER, 0, 104);
+    lv_obj_add_flag(restart, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_clear_flag(restart, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_ext_click_area(restart, 8);
+    lv_obj_add_event_cb(restart, ui_restart_now_cb, LV_EVENT_CLICKED, NULL);
+    lv_obj_t *restart_label = lv_label_create(restart);
+    lv_label_set_text(restart_label, "Restart");
+    lv_obj_set_style_text_font(restart_label, NAV_TEXT_FONT, LV_PART_MAIN);
+    lv_obj_set_width(restart_label, 138);
+    lv_obj_set_style_text_align(restart_label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+    lv_obj_center(restart_label);
+    ui_pages_style_nav_button(restart, restart_label, true, false);
+
+    lv_obj_move_foreground(s_restart_dim);
+}
+
+static void ui_brightness_changed_cb(lv_event_t *event)
+{
+    lv_obj_t *slider = lv_event_get_target(event);
+    int value = (int)lv_slider_get_value(slider);
+    (void)display_set_brightness_percent(value);
+
+    if (s_brightness_value != NULL) {
+        char label[16];
+        snprintf(label, sizeof(label), "%d%%", value);
+        lv_label_set_text(s_brightness_value, label);
+    }
+
+    if (lv_event_get_code(event) == LV_EVENT_RELEASED) {
+        runtime_settings_t settings = {0};
+        if (runtime_settings_load(&settings) == ESP_OK) {
+            settings.display_brightness_percent = value;
+            (void)runtime_settings_save(&settings);
+            display_configure_night_mode(
+                settings.display_brightness_percent,
+                settings.display_night_brightness_percent,
+                settings.display_night_mode,
+                settings.display_night_start_hour,
+                settings.display_night_start_minute,
+                settings.display_day_start_hour,
+                settings.display_day_start_minute);
+        }
+    }
+}
+
+static void ui_display_settings_save_cb(lv_event_t *event)
+{
+    LV_UNUSED(event);
+    runtime_settings_t settings = {0};
+    if (runtime_settings_load(&settings) != ESP_OK) {
+        runtime_settings_set_defaults(&settings);
+    }
+
+    if (s_night_mode_dropdown != NULL) {
+        settings.display_night_mode = (int)lv_dropdown_get_selected(s_night_mode_dropdown);
+        settings.display_night_mode_auto = settings.display_night_mode == 2;
+    }
+    if (s_night_brightness_slider != NULL)
+        settings.display_night_brightness_percent = (int)lv_slider_get_value(s_night_brightness_slider);
+    if (s_night_start_hour != NULL)
+        settings.display_night_start_hour = (int)lv_roller_get_selected(s_night_start_hour);
+    if (s_night_start_minute != NULL)
+        settings.display_night_start_minute = (int)lv_roller_get_selected(s_night_start_minute) * 5;
+    if (s_day_start_hour != NULL)
+        settings.display_day_start_hour = (int)lv_roller_get_selected(s_day_start_hour);
+    if (s_day_start_minute != NULL)
+        settings.display_day_start_minute = (int)lv_roller_get_selected(s_day_start_minute) * 5;
+    if (s_idle_timeout_dropdown != NULL) {
+        static const int seconds[] = {0, 30, 60, 120, 300, 600};
+        uint32_t index = lv_dropdown_get_selected(s_idle_timeout_dropdown);
+        if (index < sizeof(seconds) / sizeof(seconds[0]))
+            settings.display_idle_timeout_seconds = seconds[index];
+    }
+    if (s_idle_brightness_slider != NULL)
+        settings.display_idle_brightness_percent = (int)lv_slider_get_value(s_idle_brightness_slider);
+
+    (void)runtime_settings_save(&settings);
+    display_configure_night_mode(
+        settings.display_brightness_percent, settings.display_night_brightness_percent,
+        settings.display_night_mode, settings.display_night_start_hour,
+        settings.display_night_start_minute, settings.display_day_start_hour,
+        settings.display_day_start_minute);
+    display_configure_idle(settings.display_idle_timeout_seconds, settings.display_idle_brightness_percent);
+
+    /* Save is explicit and also returns to the Display menu. Back/Home/timeout
+     * never persist edits made on these configuration pages. */
+    ui_system_overlay_close();
+    ui_system_display_show();
+}
+
+static void ui_secondary_brightness_changed_cb(lv_event_t *event)
+{
+    lv_obj_t *slider = lv_event_get_target(event);
+    int value = (int)lv_slider_get_value(slider);
+    lv_obj_t *value_label = slider == s_night_brightness_slider
+        ? s_night_brightness_value : s_idle_brightness_value;
+    if (value_label != NULL) {
+        char text[16];
+        snprintf(text, sizeof(text), "%d%%", value);
+        lv_label_set_text(value_label, text);
+    }
+}
+
+static lv_obj_t *ui_system_header_button(
+    lv_obj_t *parent, const char *text, lv_coord_t x, lv_coord_t width, lv_event_cb_t cb)
+{
+    lv_obj_t *button = lv_obj_create(parent);
+    lv_obj_remove_style_all(button);
+    lv_obj_set_size(button, width, 42);
+    lv_obj_set_pos(button, x, 9);
+    lv_obj_add_flag(button, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_clear_flag(button, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_ext_click_area(button, 8);
+    lv_obj_add_event_cb(button, cb, LV_EVENT_CLICKED, NULL);
+
+    lv_obj_t *label = lv_label_create(button);
+    lv_label_set_text(label, text);
+    lv_obj_set_style_text_font(label, NAV_TEXT_FONT, LV_PART_MAIN);
+    lv_obj_set_width(label, width - 12);
+    lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+    lv_obj_center(label);
+    ui_pages_style_nav_button(button, label, false, false);
+    return button;
+}
+
+static lv_obj_t *ui_system_create_shell(const char *title)
+{
+    lv_obj_t *screen = lv_scr_act();
+    if (screen == NULL) {
+        return NULL;
+    }
+
+    const lv_coord_t header_h = s_geometry.content_y > 64 ? s_geometry.content_y : 64;
+    const lv_coord_t footer_h = s_geometry.nav_h > 0 ? s_geometry.nav_h : 60;
+
+    s_system_overlay = lv_obj_create(screen);
+    lv_obj_remove_style_all(s_system_overlay);
+    lv_obj_add_flag(s_system_overlay, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(s_system_overlay, ui_system_activity_cb, LV_EVENT_PRESSED, NULL);
+    lv_obj_set_size(s_system_overlay, LV_PCT(100), LV_PCT(100));
+    lv_obj_set_style_bg_color(s_system_overlay, lv_color_hex(APP_UI_COLOR_SCREEN_BG), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(s_system_overlay, LV_OPA_COVER, LV_PART_MAIN);
+    lv_obj_clear_flag(s_system_overlay, LV_OBJ_FLAG_SCROLLABLE);
+
+    lv_obj_t *header = lv_obj_create(s_system_overlay);
+    lv_obj_remove_style_all(header);
+    lv_obj_set_size(header, s_geometry.screen_w, header_h);
+    lv_obj_set_pos(header, 0, 0);
+    lv_obj_set_style_bg_color(header, lv_color_hex(APP_UI_COLOR_TOPBAR_BG), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(header, LV_OPA_COVER, LV_PART_MAIN);
+    lv_obj_set_style_border_width(header, 1, LV_PART_MAIN);
+    lv_obj_set_style_border_side(header, LV_BORDER_SIDE_BOTTOM, LV_PART_MAIN);
+    lv_obj_set_style_border_color(header, lv_color_hex(APP_UI_COLOR_TOPBAR_BORDER), LV_PART_MAIN);
+    lv_obj_clear_flag(header, LV_OBJ_FLAG_SCROLLABLE);
+
+    LV_UNUSED(title);
+
+    lv_obj_t *footer = lv_obj_create(s_system_overlay);
+    lv_obj_remove_style_all(footer);
+    lv_obj_set_size(footer, s_geometry.screen_w, footer_h);
+    lv_obj_align(footer, LV_ALIGN_BOTTOM_MID, 0, 0);
+    lv_obj_set_style_bg_color(footer, lv_color_hex(APP_UI_COLOR_TOPBAR_BG), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(footer, LV_OPA_COVER, LV_PART_MAIN);
+    lv_obj_set_style_border_width(footer, 1, LV_PART_MAIN);
+    lv_obj_set_style_border_side(footer, LV_BORDER_SIDE_TOP, LV_PART_MAIN);
+    lv_obj_set_style_border_color(footer, lv_color_hex(APP_UI_COLOR_TOPBAR_BORDER), LV_PART_MAIN);
+    lv_obj_clear_flag(footer, LV_OBJ_FLAG_SCROLLABLE);
+
+    lv_obj_t *home = lv_obj_create(footer);
+    lv_obj_remove_style_all(home);
+    lv_obj_set_size(home, 92, 42);
+    lv_obj_center(home);
+    lv_obj_add_flag(home, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_clear_flag(home, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_event_cb(home, ui_system_overlay_close_cb, LV_EVENT_CLICKED, NULL);
+    lv_obj_t *home_label = lv_label_create(home);
+    lv_label_set_text(home_label, LV_SYMBOL_HOME);
+    lv_obj_set_style_text_font(home_label, TOPBAR_ICON_FONT, LV_PART_MAIN);
+    lv_obj_center(home_label);
+    ui_pages_style_nav_button(home, home_label, true, true);
+
+    lv_obj_t *content = lv_obj_create(s_system_overlay);
+    lv_obj_remove_style_all(content);
+    lv_obj_set_pos(content, 0, header_h);
+    lv_obj_set_size(content, s_geometry.screen_w, s_geometry.screen_h - header_h - footer_h);
+    lv_obj_set_style_bg_color(content, lv_color_hex(APP_UI_COLOR_CONTENT_BG), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(content, LV_OPA_COVER, LV_PART_MAIN);
+    lv_obj_clear_flag(content, LV_OBJ_FLAG_SCROLLABLE);
+
+    /* The global inactivity watchdog owns the 60-second return-home policy.
+     * Avoid a second LVGL one-shot here: on panels where the LVGL tick source
+     * runs at a different rate, a nominal 60 s LVGL timer can expire early. */
+    ui_system_timeout_delete();
+
+    return content;
+}
+
+static void ui_system_overlay_show(void)
+{
+    if (s_system_overlay != NULL) return;
+    lv_obj_t *content = ui_system_create_shell("System / Diagnostics");
+    if (content == NULL) return;
+
+    const lv_coord_t w = s_geometry.screen_w;
+    const lv_coord_t margin = w <= 520 ? 14 : 24;
+    const lv_coord_t gap = 10;
+    const lv_coord_t back_w = w <= 520 ? 92 : 110;
+    const lv_coord_t display_w = w <= 520 ? 110 : 130;
+    const lv_coord_t restart_w = w <= 520 ? 110 : 130;
+    ui_system_header_button(s_system_overlay, "Back", margin, back_w, ui_system_overlay_close_cb);
+    ui_system_header_button(s_system_overlay, "Display",
+        w - margin - restart_w - gap - display_w, display_w, ui_system_display_open_cb);
+    ui_system_header_button(s_system_overlay, "Restart",
+        w - margin - restart_w, restart_w, ui_restart_request_cb);
+
+    lv_obj_t *title = lv_label_create(content);
+    lv_label_set_text(title, "System / Diagnostics");
+    lv_obj_set_style_text_font(title, w <= 520 ? APP_FONT_TEXT_22 : APP_FONT_TEXT_34, LV_PART_MAIN);
+    lv_obj_set_style_text_color(title, lv_color_hex(APP_UI_COLOR_TOPBAR_TEXT), LV_PART_MAIN);
+    lv_obj_set_pos(title, margin, 8);
+
+    const lv_coord_t col_y = w <= 520 ? 44 : 58;
+    const lv_coord_t col_gap = 12;
+    const lv_coord_t col_w = (w - margin * 2 - col_gap) / 2;
+
+    s_system_details = lv_label_create(content);
+    lv_obj_set_pos(s_system_details, margin, col_y);
+    lv_obj_set_width(s_system_details, col_w);
+    lv_label_set_long_mode(s_system_details, LV_LABEL_LONG_WRAP);
+
+    s_system_ha_details = lv_label_create(content);
+    lv_obj_set_pos(s_system_ha_details, margin + col_w + col_gap, col_y);
+    lv_obj_set_width(s_system_ha_details, col_w);
+    lv_label_set_long_mode(s_system_ha_details, LV_LABEL_LONG_WRAP);
+
+    s_system_wifi_details = lv_label_create(content);
+    lv_obj_set_pos(s_system_wifi_details, margin, col_y + (w <= 520 ? 68 : 84));
+    lv_obj_set_width(s_system_wifi_details, w - margin * 2);
+    lv_label_set_long_mode(s_system_wifi_details, LV_LABEL_LONG_WRAP);
+
+    lv_obj_t *labels[] = {s_system_details, s_system_ha_details, s_system_wifi_details};
+    for (size_t i = 0; i < 3; i++) {
+        lv_obj_set_style_text_font(labels[i], w <= 520 ? APP_FONT_TEXT_14 : APP_FONT_TEXT_16, LV_PART_MAIN);
+        lv_obj_set_style_text_color(labels[i], lv_color_hex(APP_UI_COLOR_TOPBAR_TEXT), LV_PART_MAIN);
+        lv_obj_set_style_text_opa(labels[i], LV_OPA_COVER, LV_PART_MAIN);
+    }
+
+    s_system_log = lv_label_create(content);
+    lv_label_set_long_mode(s_system_log, LV_LABEL_LONG_WRAP);
+    lv_obj_set_style_text_font(s_system_log, w <= 520 ? APP_FONT_TEXT_14 : APP_FONT_TEXT_16, LV_PART_MAIN);
+    lv_obj_set_style_text_color(s_system_log, lv_color_hex(APP_UI_COLOR_TOPBAR_TEXT), LV_PART_MAIN);
+    lv_obj_set_style_text_opa(s_system_log, LV_OPA_COVER, LV_PART_MAIN);
+
+    ui_system_overlay_refresh();
+
+    const lv_coord_t log_y = col_y + (w <= 520 ? 128 : 154);
+    const lv_coord_t header_h = s_geometry.content_y > 64 ? s_geometry.content_y : 64;
+    const lv_coord_t footer_h = s_geometry.nav_h > 0 ? s_geometry.nav_h : 60;
+    const lv_coord_t content_h = s_geometry.screen_h - header_h - footer_h;
+
+    lv_obj_t *log_title = lv_label_create(content);
+    lv_label_set_text(log_title, "RECENT HA CONNECTION LOG");
+    lv_obj_set_style_text_font(log_title, APP_FONT_TEXT_16, LV_PART_MAIN);
+    lv_obj_set_style_text_color(log_title, lv_color_hex(APP_UI_COLOR_TOPBAR_MUTED), LV_PART_MAIN);
+    lv_obj_set_pos(log_title, margin, log_y);
+
+    lv_obj_t *log_box = lv_obj_create(content);
+    lv_obj_set_pos(log_box, margin, log_y + 24);
+    lv_obj_set_size(log_box, w - margin * 2, content_h - log_y - 30);
+    lv_obj_set_style_bg_color(log_box, lv_color_hex(APP_UI_COLOR_TOPBAR_BG), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(log_box, LV_OPA_50, LV_PART_MAIN);
+    lv_obj_set_style_border_width(log_box, 1, LV_PART_MAIN);
+    lv_obj_set_style_border_color(log_box, lv_color_hex(APP_UI_COLOR_TOPBAR_BORDER), LV_PART_MAIN);
+    lv_obj_set_style_radius(log_box, 10, LV_PART_MAIN);
+    lv_obj_set_style_pad_all(log_box, 8, LV_PART_MAIN);
+    lv_obj_add_flag(log_box, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_scroll_dir(log_box, LV_DIR_VER);
+    lv_obj_set_scrollbar_mode(log_box, LV_SCROLLBAR_MODE_AUTO);
+    lv_obj_set_parent(s_system_log, log_box);
+    lv_obj_set_pos(s_system_log, 0, 0);
+    lv_obj_set_width(s_system_log, LV_PCT(100));
+
+    lv_obj_move_foreground(s_system_overlay);
+}
+
+static lv_obj_t *ui_system_display_page(const char *title)
+{
+    lv_obj_t *content = ui_system_create_shell(title);
+    if (content == NULL) return NULL;
+    const lv_coord_t margin = s_geometry.screen_w <= 520 ? 18 : 28;
+    ui_system_header_button(s_system_overlay, "Back", margin,
+        s_geometry.screen_w <= 520 ? 92 : 110, ui_system_display_menu_cb);
+    lv_obj_t *heading = lv_label_create(content);
+    lv_label_set_text(heading, title);
+    lv_obj_set_style_text_font(heading, s_geometry.screen_w <= 520 ? APP_FONT_TEXT_22 : APP_FONT_TEXT_34, LV_PART_MAIN);
+    lv_obj_set_style_text_color(heading, lv_color_hex(APP_UI_COLOR_TOPBAR_TEXT), LV_PART_MAIN);
+    lv_obj_set_pos(heading, margin, 12);
+    return content;
+}
+
+static lv_obj_t *ui_system_menu_row(lv_obj_t *parent, const char *title, const char *value,
+    lv_coord_t y, lv_event_cb_t cb)
+{
+    const lv_coord_t margin = s_geometry.screen_w <= 520 ? 18 : 28;
+    lv_obj_t *row = lv_obj_create(parent);
+    lv_obj_remove_style_all(row);
+    lv_obj_set_pos(row, margin, y);
+    lv_obj_set_size(row, s_geometry.screen_w - margin * 2, 62);
+    lv_obj_add_flag(row, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(row, cb, LV_EVENT_CLICKED, NULL);
+    lv_obj_t *label = lv_label_create(row);
+    lv_label_set_text(label, title);
+    lv_obj_set_style_text_font(label, APP_FONT_TEXT_16, LV_PART_MAIN);
+    lv_obj_align(label, LV_ALIGN_LEFT_MID, 14, 0);
+    lv_obj_t *val = lv_label_create(row);
+    lv_label_set_text(val, value);
+    lv_obj_set_style_text_font(val, APP_FONT_TEXT_16, LV_PART_MAIN);
+    lv_obj_align(val, LV_ALIGN_RIGHT_MID, -28, 0);
+    lv_obj_t *arrow = lv_label_create(row);
+    lv_label_set_text(arrow, LV_SYMBOL_RIGHT);
+    lv_obj_align(arrow, LV_ALIGN_RIGHT_MID, -8, 0);
+    ui_pages_style_nav_button(row, label, false, false);
+    lv_obj_set_style_text_color(val, lv_color_hex(APP_UI_COLOR_TOPBAR_MUTED), LV_PART_MAIN);
+    lv_obj_set_style_text_color(arrow, lv_color_hex(APP_UI_COLOR_TOPBAR_MUTED), LV_PART_MAIN);
+    return row;
+}
+
+static void ui_system_display_show(void)
+{
+    if (s_system_overlay != NULL) return;
+    lv_obj_t *content = ui_system_create_shell("Display Settings");
+    if (content == NULL) return;
+    const lv_coord_t margin = s_geometry.screen_w <= 520 ? 18 : 28;
+    ui_system_header_button(s_system_overlay, "Back", margin,
+        s_geometry.screen_w <= 520 ? 92 : 110, ui_system_diagnostics_open_cb);
+
+    lv_obj_t *heading = lv_label_create(content);
+    lv_label_set_text(heading, "Display Settings");
+    lv_obj_set_style_text_font(heading, s_geometry.screen_w <= 520 ? APP_FONT_TEXT_22 : APP_FONT_TEXT_34, LV_PART_MAIN);
+    lv_obj_set_style_text_color(heading, lv_color_hex(APP_UI_COLOR_TOPBAR_TEXT), LV_PART_MAIN);
+    lv_obj_set_pos(heading, margin, 12);
+
+    runtime_settings_t s = {0};
+    runtime_settings_set_defaults(&s);
+    (void)runtime_settings_load(&s);
+    char brightness[16], night[24], dim[24];
+    snprintf(brightness, sizeof(brightness), "%d%%", s.display_brightness_percent);
+    snprintf(night, sizeof(night), "%s", s.display_night_mode == 2 ? "Auto" : (s.display_night_mode == 1 ? "Night" : "Day"));
+    snprintf(dim, sizeof(dim), "%s", s.display_idle_timeout_seconds == 0 ? "Off" :
+        (s.display_idle_timeout_seconds == 30 ? "30 sec" :
+        (s.display_idle_timeout_seconds == 60 ? "1 min" :
+        (s.display_idle_timeout_seconds == 120 ? "2 min" :
+        (s.display_idle_timeout_seconds == 300 ? "5 min" : "10 min")))));
+    ui_system_menu_row(content, "Brightness", brightness, 58, ui_system_display_brightness_cb);
+    ui_system_menu_row(content, "Night mode", night, 130, ui_system_display_night_cb);
+    ui_system_menu_row(content, "Auto dim", dim, 202, ui_system_display_dim_cb);
+    lv_obj_move_foreground(s_system_overlay);
+}
+
+static void ui_system_display_brightness_show(void)
+{
+    if (s_system_overlay != NULL) return;
+    lv_obj_t *content = ui_system_display_page("Brightness");
+    if (content == NULL) return;
+    runtime_settings_t s = {0}; runtime_settings_set_defaults(&s); (void)runtime_settings_load(&s);
+    const lv_coord_t margin = s_geometry.screen_w <= 520 ? 18 : 28;
+    s_brightness_value = lv_label_create(content);
+    char value[16]; snprintf(value, sizeof(value), "%d%%", s.display_brightness_percent);
+    lv_label_set_text(s_brightness_value, value);
+    lv_obj_set_style_text_font(s_brightness_value, APP_FONT_TEXT_22, LV_PART_MAIN);
+    lv_obj_set_style_text_color(s_brightness_value, lv_color_hex(APP_UI_COLOR_TOPBAR_TEXT), LV_PART_MAIN);
+    lv_obj_set_pos(s_brightness_value, margin, 70);
+    s_brightness_slider = lv_slider_create(content);
+    lv_slider_set_range(s_brightness_slider, 1, 100);
+    lv_slider_set_value(s_brightness_slider, s.display_brightness_percent, LV_ANIM_OFF);
+    lv_obj_set_pos(s_brightness_slider, margin, 120);
+    lv_obj_set_size(s_brightness_slider, s_geometry.screen_w - margin * 2, 24);
+    lv_obj_add_event_cb(s_brightness_slider, ui_brightness_changed_cb, LV_EVENT_VALUE_CHANGED, NULL);
+    lv_obj_add_event_cb(s_brightness_slider, ui_brightness_changed_cb, LV_EVENT_RELEASED, NULL);
+}
+
+static void ui_system_display_night_show(void)
+{
+    if (s_system_overlay != NULL) return;
+    lv_obj_t *content = ui_system_display_page("Night Mode");
+    if (content == NULL) return;
+    runtime_settings_t s = {0}; runtime_settings_set_defaults(&s); (void)runtime_settings_load(&s);
+    const lv_coord_t m = s_geometry.screen_w <= 520 ? 18 : 28;
+    const lv_coord_t save_w = s_geometry.screen_w <= 520 ? 92 : 110;
+    ui_system_header_button(s_system_overlay, "Save",
+        s_geometry.screen_w - m - save_w, save_w, ui_display_settings_save_cb);
+
+    lv_obj_t *mode = lv_label_create(content); lv_label_set_text(mode, "Mode");
+    lv_obj_set_style_text_color(mode, lv_color_hex(APP_UI_COLOR_TOPBAR_TEXT), LV_PART_MAIN); lv_obj_set_pos(mode,m,62);
+    s_night_mode_dropdown = lv_dropdown_create(content);
+    lv_dropdown_set_options(s_night_mode_dropdown, "Day\nNight\nAuto");
+    lv_dropdown_set_selected(s_night_mode_dropdown,(uint32_t)s.display_night_mode);
+    lv_obj_set_size(s_night_mode_dropdown,150,42); lv_obj_set_pos(s_night_mode_dropdown,s_geometry.screen_w-m-150,52);
+
+    lv_obj_t *bright = lv_label_create(content); lv_label_set_text(bright,"Night brightness");
+    lv_obj_set_style_text_color(bright,lv_color_hex(APP_UI_COLOR_TOPBAR_TEXT),LV_PART_MAIN); lv_obj_set_pos(bright,m,108);
+    s_night_brightness_value=lv_label_create(content); char bv[12]; snprintf(bv,sizeof(bv),"%d%%",s.display_night_brightness_percent);
+    lv_label_set_text(s_night_brightness_value,bv); lv_obj_set_style_text_color(s_night_brightness_value,lv_color_hex(APP_UI_COLOR_TOPBAR_TEXT),LV_PART_MAIN);
+    lv_obj_align(s_night_brightness_value,LV_ALIGN_TOP_RIGHT,-m,108);
+    s_night_brightness_slider=lv_slider_create(content); lv_slider_set_range(s_night_brightness_slider,0,100);
+    lv_slider_set_value(s_night_brightness_slider,s.display_night_brightness_percent,LV_ANIM_OFF);
+    lv_obj_set_pos(s_night_brightness_slider,m,138); lv_obj_set_size(s_night_brightness_slider,s_geometry.screen_w-m*2,18);
+    lv_obj_add_event_cb(s_night_brightness_slider,ui_secondary_brightness_changed_cb,LV_EVENT_VALUE_CHANGED,NULL);
+
+    lv_obj_t *start=lv_label_create(content); lv_label_set_text(start,"Night starts");
+    lv_obj_set_style_text_color(start,lv_color_hex(APP_UI_COLOR_TOPBAR_TEXT),LV_PART_MAIN); lv_obj_set_pos(start,m,177);
+    s_night_start_hour=lv_roller_create(content); s_night_start_minute=lv_roller_create(content);
+    lv_roller_set_options(s_night_start_hour,"00\n01\n02\n03\n04\n05\n06\n07\n08\n09\n10\n11\n12\n13\n14\n15\n16\n17\n18\n19\n20\n21\n22\n23",LV_ROLLER_MODE_NORMAL);
+    lv_roller_set_options(s_night_start_minute,"00\n05\n10\n15\n20\n25\n30\n35\n40\n45\n50\n55",LV_ROLLER_MODE_NORMAL);
+    lv_roller_set_selected(s_night_start_hour,s.display_night_start_hour,LV_ANIM_OFF);
+    lv_roller_set_selected(s_night_start_minute,(uint32_t)(s.display_night_start_minute/5),LV_ANIM_OFF);
+    lv_obj_set_size(s_night_start_hour,62,44); lv_obj_set_size(s_night_start_minute,62,44);
+    lv_obj_set_pos(s_night_start_hour,s_geometry.screen_w-m-134,166); lv_obj_set_pos(s_night_start_minute,s_geometry.screen_w-m-66,166);
+
+    lv_obj_t *day=lv_label_create(content); lv_label_set_text(day,"Day starts");
+    lv_obj_set_style_text_color(day,lv_color_hex(APP_UI_COLOR_TOPBAR_TEXT),LV_PART_MAIN); lv_obj_set_pos(day,m,231);
+    s_day_start_hour=lv_roller_create(content); s_day_start_minute=lv_roller_create(content);
+    lv_roller_set_options(s_day_start_hour,"00\n01\n02\n03\n04\n05\n06\n07\n08\n09\n10\n11\n12\n13\n14\n15\n16\n17\n18\n19\n20\n21\n22\n23",LV_ROLLER_MODE_NORMAL);
+    lv_roller_set_options(s_day_start_minute,"00\n05\n10\n15\n20\n25\n30\n35\n40\n45\n50\n55",LV_ROLLER_MODE_NORMAL);
+    lv_roller_set_selected(s_day_start_hour,s.display_day_start_hour,LV_ANIM_OFF);
+    lv_roller_set_selected(s_day_start_minute,(uint32_t)(s.display_day_start_minute/5),LV_ANIM_OFF);
+    lv_obj_set_size(s_day_start_hour,62,44); lv_obj_set_size(s_day_start_minute,62,44);
+    lv_obj_set_pos(s_day_start_hour,s_geometry.screen_w-m-134,220); lv_obj_set_pos(s_day_start_minute,s_geometry.screen_w-m-66,220);
+}
+
+static void ui_system_display_dim_show(void)
+{
+    if (s_system_overlay != NULL) return;
+    lv_obj_t *content = ui_system_display_page("Auto Dim");
+    if (content == NULL) return;
+    runtime_settings_t s = {0}; runtime_settings_set_defaults(&s); (void)runtime_settings_load(&s);
+    const lv_coord_t m = s_geometry.screen_w <= 520 ? 18 : 28;
+    const lv_coord_t save_w = s_geometry.screen_w <= 520 ? 92 : 110;
+    ui_system_header_button(s_system_overlay, "Save",
+        s_geometry.screen_w - m - save_w, save_w, ui_display_settings_save_cb);
+
+    lv_obj_t *timeout=lv_label_create(content); lv_label_set_text(timeout,"Timeout");
+    lv_obj_set_style_text_color(timeout,lv_color_hex(APP_UI_COLOR_TOPBAR_TEXT),LV_PART_MAIN); lv_obj_set_pos(timeout,m,70);
+    s_idle_timeout_dropdown=lv_dropdown_create(content);
+    lv_dropdown_set_options(s_idle_timeout_dropdown,"Off\n30 sec\n1 min\n2 min\n5 min\n10 min");
+    const int vals[]={0,30,60,120,300,600}; uint32_t sel=0;
+    for(uint32_t i=0;i<6;i++) if(s.display_idle_timeout_seconds==vals[i]) sel=i;
+    lv_dropdown_set_selected(s_idle_timeout_dropdown,sel);
+    lv_obj_set_size(s_idle_timeout_dropdown,150,44); lv_obj_set_pos(s_idle_timeout_dropdown,s_geometry.screen_w-m-150,58);
+
+    lv_obj_t *bright=lv_label_create(content); lv_label_set_text(bright,"Dim brightness");
+    lv_obj_set_style_text_color(bright,lv_color_hex(APP_UI_COLOR_TOPBAR_TEXT),LV_PART_MAIN); lv_obj_set_pos(bright,m,132);
+    s_idle_brightness_value=lv_label_create(content); char bv[12]; snprintf(bv,sizeof(bv),"%d%%",s.display_idle_brightness_percent);
+    lv_label_set_text(s_idle_brightness_value,bv); lv_obj_set_style_text_color(s_idle_brightness_value,lv_color_hex(APP_UI_COLOR_TOPBAR_TEXT),LV_PART_MAIN);
+    lv_obj_align(s_idle_brightness_value,LV_ALIGN_TOP_RIGHT,-m,132);
+    s_idle_brightness_slider=lv_slider_create(content); lv_slider_set_range(s_idle_brightness_slider,0,100);
+    lv_slider_set_value(s_idle_brightness_slider,s.display_idle_brightness_percent,LV_ANIM_OFF);
+    lv_obj_set_pos(s_idle_brightness_slider,m,168); lv_obj_set_size(s_idle_brightness_slider,s_geometry.screen_w-m*2,20);
+    lv_obj_add_event_cb(s_idle_brightness_slider,ui_secondary_brightness_changed_cb,LV_EVENT_VALUE_CHANGED,NULL);
+}
+
+static void ui_status_gesture_cb(lv_event_t *event)
+{
+    lv_event_code_t code = lv_event_get_code(event);
+
+    if (code == LV_EVENT_PRESSED) {
+        /* Treat the adjacent HA/Wi-Fi chips as one protected status area.
+         * Use our own timer so entry always requires a deliberate 3-second
+         * hold rather than LVGL's shorter platform long-press threshold. */
+        s_status_gesture_armed = true;
+        s_status_gesture_started_ms = lv_tick_get();
+    } else if (code == LV_EVENT_PRESSING && s_status_gesture_armed) {
+        uint32_t now = lv_tick_get();
+        if ((uint32_t)(now - s_status_gesture_started_ms) >= UI_SYSTEM_HOLD_MS) {
+            s_status_gesture_armed = false;
+            s_status_gesture_started_ms = 0U;
+
+            /* The finger that completed the 3-second status hold is still
+             * physically down while the diagnostics overlay is created.
+             * Reset that indev before exposing controls under the old touch
+             * coordinate so the opening gesture cannot click Restart. */
+            lv_indev_t *indev = lv_event_get_indev(event);
+            if (indev != NULL) {
+                lv_indev_reset(indev, NULL);
+            }
+            lv_event_stop_processing(event);
+            ui_system_overlay_show();
+        }
+    } else if (code == LV_EVENT_RELEASED || code == LV_EVENT_PRESS_LOST) {
+        s_status_gesture_armed = false;
+        s_status_gesture_started_ms = 0U;
+    }
+}
+
 static void ui_pages_create_topbar(lv_obj_t *screen)
 {
-    const lv_coord_t topbar_h = APP_CONTENT_BOX_Y;
+    const lv_coord_t topbar_h = s_geometry.content_y;
 
     s_topbar = lv_obj_create(screen);
     lv_obj_remove_style_all(s_topbar);
-    lv_obj_set_size(s_topbar, APP_SCREEN_WIDTH, topbar_h);
+    lv_obj_set_size(s_topbar, s_geometry.screen_w, topbar_h);
     lv_obj_set_pos(s_topbar, 0, 0);
     lv_obj_clear_flag(s_topbar, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_style_radius(s_topbar, 0, LV_PART_MAIN);
@@ -371,25 +1220,31 @@ static void ui_pages_create_topbar(lv_obj_t *screen)
 
     s_api_icon = lv_label_create(s_topbar);
     lv_obj_set_width(s_api_icon, 86);
-    lv_obj_align(s_api_icon, LV_ALIGN_RIGHT_MID, -114, 0);
+    lv_obj_align(s_api_icon, LV_ALIGN_RIGHT_MID, -72, 0);
     ui_pages_style_topbar_chip(s_api_icon);
-    char api_text[32] = {0};
+        char api_text[32] = {0};
     snprintf(api_text, sizeof(api_text), "%s %s", ui_i18n_get("topbar.ha", "HA"), LV_SYMBOL_CLOSE);
     lv_label_set_text(s_api_icon, api_text);
+    lv_obj_add_flag(s_api_icon, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_set_ext_click_area(s_api_icon, 16);
+    lv_obj_add_event_cb(s_api_icon, ui_status_gesture_cb, LV_EVENT_ALL, NULL);
 
-    s_wifi_icon = lv_label_create(s_topbar);
-    lv_obj_set_width(s_wifi_icon, 96);
+        s_wifi_icon = lv_label_create(s_topbar);
+    lv_obj_set_width(s_wifi_icon, 48);
     lv_obj_align(s_wifi_icon, LV_ALIGN_RIGHT_MID, -12, 0);
     ui_pages_style_topbar_chip(s_wifi_icon);
     lv_label_set_text(s_wifi_icon, LV_SYMBOL_CLOSE);
-}
+    lv_obj_add_flag(s_wifi_icon, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_set_ext_click_area(s_wifi_icon, 16);
+    lv_obj_add_event_cb(s_wifi_icon, ui_status_gesture_cb, LV_EVENT_ALL, NULL);
+    }
 
 static void ui_pages_create_nav(lv_obj_t *screen)
 {
     s_nav_bar = lv_obj_create(screen);
     lv_obj_remove_style_all(s_nav_bar);
-    lv_obj_set_size(s_nav_bar, APP_SCREEN_WIDTH, 60);
-    lv_obj_set_pos(s_nav_bar, 0, APP_SCREEN_HEIGHT - 60);
+    lv_obj_set_size(s_nav_bar, s_geometry.screen_w, s_geometry.nav_h);
+    lv_obj_set_pos(s_nav_bar, 0, s_geometry.screen_h - s_geometry.nav_h);
     lv_obj_clear_flag(s_nav_bar, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_style_radius(s_nav_bar, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_color(s_nav_bar, lv_color_hex(APP_UI_COLOR_TOPBAR_BG), LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -447,6 +1302,29 @@ void ui_pages_init(void)
     s_time_label = NULL;
     s_wifi_icon = NULL;
     s_api_icon = NULL;
+    s_system_overlay = NULL;
+    s_system_details = NULL;
+    s_system_log = NULL;
+    s_restart_confirm = NULL;
+    s_brightness_slider = NULL;
+    s_brightness_value = NULL;
+    s_night_mode_dropdown = NULL;
+    s_idle_timeout_dropdown = NULL;
+    s_night_brightness_slider = NULL;
+    s_night_brightness_value = NULL;
+    s_night_start_hour = NULL;
+    s_night_start_minute = NULL;
+    s_day_start_hour = NULL;
+    s_day_start_minute = NULL;
+    s_idle_brightness_slider = NULL;
+    s_idle_brightness_value = NULL;
+    ui_system_timeout_delete();
+    if (s_global_home_timer != NULL) {
+        lv_timer_del(s_global_home_timer);
+        s_global_home_timer = NULL;
+    }
+    s_status_gesture_armed = false;
+    s_status_gesture_started_ms = 0U;
     s_nav_bar = NULL;
     s_nav_home_button = NULL;
     s_nav_home_label = NULL;
@@ -468,6 +1346,7 @@ void ui_pages_init(void)
 #endif
 
     lv_obj_t *screen = lv_scr_act();
+    ui_pages_refresh_geometry(screen);
     lv_obj_clean(screen);
     lv_obj_clear_flag(screen, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_style_bg_color(screen, lv_color_hex(APP_UI_COLOR_SCREEN_BG), LV_PART_MAIN);
@@ -475,9 +1354,15 @@ void ui_pages_init(void)
     lv_obj_set_style_border_width(screen, 0, LV_PART_MAIN);
     lv_obj_set_style_pad_all(screen, 0, LV_PART_MAIN);
 
+    /* Track real touch activity at the screen root so touches on any nested
+     * dashboard, diagnostics or settings control restart the same 60s clock. */
+    s_last_ui_activity_ms = ui_pages_monotonic_ms();
+    lv_obj_add_event_cb(screen, ui_global_activity_cb, LV_EVENT_PRESSED, NULL);
+    s_global_home_timer = lv_timer_create(ui_global_home_timeout_cb, 1000U, NULL);
+
     s_background = lv_obj_create(screen);
     lv_obj_remove_style_all(s_background);
-    lv_obj_set_size(s_background, APP_SCREEN_WIDTH, APP_SCREEN_HEIGHT);
+    lv_obj_set_size(s_background, s_geometry.screen_w, s_geometry.screen_h);
     lv_obj_set_pos(s_background, 0, 0);
     lv_obj_clear_flag(s_background, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_style_radius(s_background, 0, LV_PART_MAIN);
@@ -487,8 +1372,8 @@ void ui_pages_init(void)
 
     s_content_box = lv_obj_create(screen);
     lv_obj_remove_style_all(s_content_box);
-    lv_obj_set_size(s_content_box, APP_CONTENT_BOX_WIDTH, APP_CONTENT_BOX_HEIGHT);
-    lv_obj_set_pos(s_content_box, APP_CONTENT_BOX_X, APP_CONTENT_BOX_Y);
+    lv_obj_set_size(s_content_box, s_geometry.content_w, s_geometry.content_h);
+    lv_obj_set_pos(s_content_box, s_geometry.content_x, s_geometry.content_y);
     lv_obj_clear_flag(s_content_box, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_style_radius(s_content_box, 0, LV_PART_MAIN);
     lv_obj_set_style_bg_color(s_content_box, lv_color_hex(APP_UI_COLOR_CONTENT_BG), LV_PART_MAIN);
@@ -562,6 +1447,12 @@ bool ui_pages_show_index(uint16_t index)
         }
     }
     s_current_index = (int16_t)index;
+
+    /* Showing a page is itself confirmed UI activity.  Reset the global
+     * inactivity epoch here so the 60-second home timeout is measured from
+     * the navigation that opened the page, not from boot/UI construction. */
+    s_last_ui_activity_ms = ui_pages_monotonic_ms();
+
     ui_pages_apply_tab_style(index);
     if (s_show_cb != NULL) {
         s_show_cb(s_pages[index].id, index);

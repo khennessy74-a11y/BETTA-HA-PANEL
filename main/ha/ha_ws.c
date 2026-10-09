@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: LicenseRef-FNCL-1.1
  * Copyright (c) 2026 Cpt_Kirk
+ * Copyright (c) 2026 khennessy74-a11y
  */
 #include "ha/ha_ws.h"
 
@@ -26,6 +27,7 @@ static void *s_ws_client = NULL;
 #endif
 static ha_ws_config_t s_cfg = {0};
 static volatile bool s_connected = false;
+static ha_ws_send_diag_t s_last_send_diag = {0};
 static char *s_uri_owned = NULL;
 static char s_uri_runtime[320] = {0};
 static char s_tls_common_name[128] = {0};
@@ -189,7 +191,7 @@ static const char *build_runtime_uri(const char *uri)
 
 static void ws_dispatch_event(
     ha_ws_event_type_t type, const char *data, int len, bool fin, uint8_t op_code, int payload_len, int payload_offset,
-    esp_err_t tls_esp_err, int tls_stack_err, int tls_cert_flags, int ws_handshake_status_code, int sock_errno)
+    int error_type, esp_err_t tls_esp_err, int tls_stack_err, int tls_cert_flags, int ws_handshake_status_code, int sock_errno)
 {
     if (s_cfg.event_cb == NULL) {
         return;
@@ -202,6 +204,7 @@ static void ws_dispatch_event(
         .op_code = op_code,
         .payload_len = payload_len,
         .payload_offset = payload_offset,
+        .error_type = error_type,
         .tls_esp_err = tls_esp_err,
         .tls_stack_err = tls_stack_err,
         .tls_cert_flags = tls_cert_flags,
@@ -222,12 +225,12 @@ static void ws_event_handler(void *arg, esp_event_base_t event_base, int32_t eve
     case WEBSOCKET_EVENT_CONNECTED:
         s_connected = true;
         ESP_LOGI(TAG_HA_WS, "Connected");
-        ws_dispatch_event(HA_WS_EVENT_CONNECTED, NULL, 0, true, 0, 0, 0, ESP_OK, 0, 0, 0, 0);
+        ws_dispatch_event(HA_WS_EVENT_CONNECTED, NULL, 0, true, 0, 0, 0, 0, ESP_OK, 0, 0, 0, 0);
         break;
     case WEBSOCKET_EVENT_DISCONNECTED:
         s_connected = false;
         ESP_LOGW(TAG_HA_WS, "Disconnected");
-        ws_dispatch_event(HA_WS_EVENT_DISCONNECTED, NULL, 0, true, 0, 0, 0, ESP_OK, 0, 0, 0, 0);
+        ws_dispatch_event(HA_WS_EVENT_DISCONNECTED, NULL, 0, true, 0, 0, 0, 0, ESP_OK, 0, 0, 0, 0);
         break;
     case WEBSOCKET_EVENT_DATA:
         if (data != NULL && data->op_code == WS_TRANSPORT_OPCODES_PING) {
@@ -239,25 +242,34 @@ static void ws_event_handler(void *arg, esp_event_base_t event_base, int32_t eve
         if (data != NULL &&
             (data->op_code == WS_TRANSPORT_OPCODES_TEXT || data->op_code == WS_TRANSPORT_OPCODES_CONT)) {
             ws_dispatch_event(HA_WS_EVENT_TEXT, (const char *)data->data_ptr, data->data_len, data->fin,
-                data->op_code, data->payload_len, data->payload_offset, ESP_OK, 0, 0, 0, 0);
+                data->op_code, data->payload_len, data->payload_offset, 0, ESP_OK, 0, 0, 0, 0);
         }
         break;
     case WEBSOCKET_EVENT_ERROR:
+        int error_type = 0;
         esp_err_t tls_esp_err = ESP_OK;
         int tls_stack_err = 0;
         int tls_cert_flags = 0;
         int ws_handshake_status_code = 0;
         int sock_errno = 0;
         if (data != NULL) {
-            tls_esp_err = data->error_handle.esp_tls_last_esp_err;
-            tls_stack_err = data->error_handle.esp_tls_stack_err;
-            tls_cert_flags = data->error_handle.esp_tls_cert_verify_flags;
+            error_type = (int)data->error_handle.error_type;
             ws_handshake_status_code = data->error_handle.esp_ws_handshake_status_code;
-            sock_errno = data->error_handle.esp_transport_sock_errno;
+
+            /* TLS/socket fields are only meaningful for transport/TLS errors.
+             * Keep them zero for other error classes instead of logging stale
+             * union/struct contents as if they were valid diagnostics. */
+            if (data->error_handle.error_type == WEBSOCKET_ERROR_TYPE_TCP_TRANSPORT) {
+                tls_esp_err = data->error_handle.esp_tls_last_esp_err;
+                tls_stack_err = data->error_handle.esp_tls_stack_err;
+                tls_cert_flags = data->error_handle.esp_tls_cert_verify_flags;
+                sock_errno = data->error_handle.esp_transport_sock_errno;
+            }
         }
-        ESP_LOGE(TAG_HA_WS, "WebSocket error");
+        ESP_LOGE(TAG_HA_WS, "WebSocket error type=%d handshake=%d",
+            error_type, ws_handshake_status_code);
         ws_dispatch_event(HA_WS_EVENT_ERROR, NULL, 0, true, 0, 0, 0,
-            tls_esp_err, tls_stack_err, tls_cert_flags, ws_handshake_status_code, sock_errno);
+            error_type, tls_esp_err, tls_stack_err, tls_cert_flags, ws_handshake_status_code, sock_errno);
         break;
     default:
         break;
@@ -385,7 +397,15 @@ void ha_ws_stop(void)
 
 bool ha_ws_is_connected(void)
 {
+#if HA_WS_HAS_ESP_WS_CLIENT
+    /* The ESP websocket client's native state is authoritative.  The event
+     * callback flag can briefly remain true after the transport has already
+     * left CONNECTED, which otherwise creates a zombie session that accepts
+     * RX history but rejects every TX with -1. */
+    return s_ws_client != NULL && esp_websocket_client_is_connected(s_ws_client);
+#else
     return s_connected;
+#endif
 }
 
 bool ha_ws_is_running(void)
@@ -411,7 +431,7 @@ bool ha_ws_get_cached_resolved_ipv4(char *host_out, size_t host_out_sz, char *ip
     return true;
 }
 
-esp_err_t ha_ws_send_text(const char *text)
+esp_err_t ha_ws_send_text_wait(const char *text, uint32_t timeout_ms)
 {
 #if HA_WS_HAS_ESP_WS_CLIENT
     if (text == NULL || s_ws_client == NULL) {
@@ -420,16 +440,40 @@ esp_err_t ha_ws_send_text(const char *text)
     if (!ha_ws_is_connected()) {
         return ESP_ERR_INVALID_STATE;
     }
-    int written = esp_websocket_client_send_text(s_ws_client, text, strlen(text), pdMS_TO_TICKS(150));
+    s_last_send_diag.client_connected_before = esp_websocket_client_is_connected(s_ws_client);
+    s_last_send_diag.free_heap = esp_get_free_heap_size();
+    s_last_send_diag.largest_free_block = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
+    int written = esp_websocket_client_send_text(
+        s_ws_client, text, strlen(text), pdMS_TO_TICKS(timeout_ms));
+    s_last_send_diag.written = written;
+    s_last_send_diag.client_connected_after = esp_websocket_client_is_connected(s_ws_client);
     if (written > 0) {
         return ESP_OK;
     }
-
-    /* Mark as disconnected on send failure so upper layers can recover. */
-    s_connected = false;
-    return ESP_FAIL;
+    ESP_LOGW(TAG_HA_WS, "Text send failed: written=%d timeout_ms=%" PRIu32 " connected=%d",
+        written, timeout_ms, esp_websocket_client_is_connected(s_ws_client) ? 1 : 0);
+    /* Preserve the raw websocket-client result for diagnostics.  ESP-IDF
+     * returns -1 for a rejected/failed send; map that distinct condition to
+     * ESP_ERR_INVALID_RESPONSE so the existing HA trace exposes it without
+     * requiring a serial console. */
+    return (written < 0) ? ESP_ERR_INVALID_RESPONSE : ESP_FAIL;
 #else
     (void)text;
+    (void)timeout_ms;
     return ESP_ERR_NOT_SUPPORTED;
 #endif
+}
+
+esp_err_t ha_ws_send_text(const char *text)
+{
+    return ha_ws_send_text_wait(text, 150);
+}
+
+bool ha_ws_get_last_send_diag(ha_ws_send_diag_t *out)
+{
+    if (out == NULL) {
+        return false;
+    }
+    *out = s_last_send_diag;
+    return true;
 }

@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: LicenseRef-FNCL-1.1
  * Copyright (c) 2026 Cpt_Kirk
+ * Copyright (c) 2026 khennessy74-a11y
  */
 #include "drivers/touch_init.h"
 
@@ -12,6 +13,7 @@
 #include "esp_lcd_panel_io.h"
 #include "esp_lcd_touch_gt911.h"
 #include "esp_log.h"
+#include "esp_timer.h"
 #include "esp_lvgl_port.h"
 #include "lvgl.h"
 
@@ -19,6 +21,7 @@
 #include "util/log_tags.h"
 
 static bool s_touch_ready = false;
+static uint32_t s_last_touch_activity_ms = 0U;
 static lv_indev_t *s_touch_indev = NULL;
 static esp_lcd_touch_handle_t s_touch_handle = NULL;
 static esp_lcd_panel_io_handle_t s_touch_io_handle = NULL;
@@ -29,6 +32,7 @@ static const int TOUCH_GT911_POST_RESET_MS = 140;
 
 static void touch_activity_event_cb(lv_event_t *event)
 {
+    s_last_touch_activity_ms = (uint32_t)(esp_timer_get_time() / 1000ULL);
     (void)event;
     display_note_activity();
 }
@@ -207,4 +211,9 @@ esp_err_t touch_init(void)
 bool touch_is_ready(void)
 {
     return s_touch_ready;
+}
+
+uint32_t touch_last_activity_ms(void)
+{
+    return s_last_touch_activity_ms;
 }

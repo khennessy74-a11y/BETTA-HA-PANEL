@@ -1,11 +1,38 @@
 /* SPDX-License-Identifier: LicenseRef-FNCL-1.1
  * Copyright (c) 2026 Cpt_Kirk
+ * Copyright (c) 2026 khennessy74-a11y
  */
 #pragma once
 
 #include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
 
 #include "lvgl.h"
+
+/*
+ * A named Material Design Icon that is compiled into
+ * BETTA's shared icon font.
+ *
+ * name:
+ *     Home Assistant / MDI notation, for example:
+ *         mdi:power
+ *         mdi:timer-outline
+ *
+ * label:
+ *     Friendly text suitable for displaying in the
+ *     BETTA Web UI icon picker.
+ */
+typedef struct {
+    const char *name;
+    const char *label;
+    uint32_t codepoint;
+} mdi_icon_entry_t;
+
+
+/*
+ * Shared MDI fonts
+ */
 
 const lv_font_t *mdi_font_large(void);
 bool mdi_font_large_available(void);
@@ -27,3 +54,34 @@ bool mdi_font_weather_20_available(void);
 
 const lv_font_t *mdi_font_weather_small(void);
 bool mdi_font_weather_small_available(void);
+
+
+/*
+ * Named icon registry
+ *
+ * mdi_icon_lookup() returns true when the requested
+ * icon is known and writes its Unicode codepoint to
+ * out_codepoint.
+ */
+bool mdi_icon_lookup(
+    const char *name,
+    uint32_t *out_codepoint);
+
+
+/*
+ * Returns the complete supported icon registry.
+ *
+ * The returned table is static and must not be freed.
+ */
+const mdi_icon_entry_t *mdi_icon_registry(
+    size_t *out_count);
+
+
+/*
+ * Convert a Unicode codepoint to UTF-8.
+ *
+ * out_utf8 must provide at least 5 bytes.
+ */
+bool mdi_icon_codepoint_to_utf8(
+    uint32_t codepoint,
+    char out_utf8[5]);

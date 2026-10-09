@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: LicenseRef-FNCL-1.1
 # Copyright (c) 2026 Cpt_Kirk
+# Copyright (c) 2026 khennessy74-a11y
 
 # ---- Panel-variant-specific driver sources --------------------------------
 # The 4" (smart86) and 10.1" (nano) panels use different BSPs and different
@@ -45,6 +46,7 @@ idf_component_register(
         "ha/ha_client.c"
         "ha/ha_ws.c"
         "ha/ha_model.c"
+        "ha/ha_weather_model.c"
         "ha/ha_energy_model.c"
         "ha/ha_light_capabilities.c"
         "ha/ha_cover_fetcher.c"
@@ -65,14 +67,24 @@ idf_component_register(
         "ui/widgets/w_sensor.c"
         "ui/widgets/w_button.c"
         "ui/widgets/w_slider.c"
+        "ui/widgets/w_input_number.c"
+        "ui/widgets/w_select.c"
+        "ui/widgets/w_input_text.c"
+        "ui/widgets/w_input_datetime.c"
+        "ui/widgets/w_alarm_control.c"
+        "ui/widgets/w_update.c"
+        "ui/widgets/w_calendar.c"
+        "ui/widgets/w_image.c"
         "ui/widgets/w_graph.c"
         "ui/widgets/w_empty_tile.c"
         "ui/widgets/w_light_tile.c"
+        "ui/widgets/w_fan_tile.c"
         "ui/widgets/w_heating_tile.c"
         "ui/widgets/w_weather_tile.c"
         "ui/widgets/w_todo.c"
         "ui/widgets/w_media_player.c"
         "ui/widgets/w_roborock.c"
+        "ui/widgets/w_timer.c"
         "ui/fonts/mdi_font_registry.c"
         "ui/theme/theme_default.c"
         "ui/theme/theme_palette.c"
