@@ -7745,19 +7745,81 @@ async function saveLayout() {
   setStatus(t("layout.status.saved"));
 }
 
+function syncEntityIdIsValid(value) {
+  return typeof value === "string" &&
+    /^[a-z0-9_]+\.[a-z0-9_]+$/.test(value.trim());
+}
+
+function validateSyncEntityPair(source, target, lineNumber = null) {
+  const src = String(source || "").trim();
+  const dst = String(target || "").trim();
+  const prefix = lineNumber !== null ? `Line ${lineNumber}: ` : "";
+
+  if (!syncEntityIdIsValid(src)) {
+    throw new Error(`${prefix}invalid source entity "${src}"`);
+  }
+  if (!syncEntityIdIsValid(dst)) {
+    throw new Error(`${prefix}invalid destination entity "${dst}"`);
+  }
+
+  const sourceDomain = src.slice(0, src.indexOf("."));
+  const targetDomain = dst.slice(0, dst.indexOf("."));
+  if (sourceDomain !== targetDomain) {
+    throw new Error(
+      `${prefix}domain mismatch ${src} -> ${dst}; Fleet Sync remaps must keep the same entity domain`
+    );
+  }
+
+  return [src, dst];
+}
+
+function normalizeSyncEntityMapObject(entityMap) {
+  if (entityMap == null) return {};
+  if (typeof entityMap !== "object" || Array.isArray(entityMap)) {
+    throw new Error("Fleet Sync entity_map must be an object");
+  }
+
+  const result = {};
+  for (const [source, target] of Object.entries(entityMap)) {
+    const [src, dst] = validateSyncEntityPair(source, target);
+    if (Object.prototype.hasOwnProperty.call(result, src) && result[src] !== dst) {
+      throw new Error(`Duplicate Fleet Sync source mapping for ${src}`);
+    }
+    result[src] = dst;
+  }
+  return result;
+}
+
 function parseSyncEntityMap(text) {
   const result = {};
-  for (const rawLine of String(text || "").split(/\r?\n/)) {
+  const lines = String(text || "").split(/\r?\n/);
+
+  lines.forEach((rawLine, index) => {
     const line = rawLine.trim();
-    if (!line || line.startsWith("#")) continue;
-    const eq = line.indexOf("=");
-    if (eq <= 0) continue;
-    const source = line.slice(0, eq).trim();
-    const target = line.slice(eq + 1).trim();
-    if (source.includes(".") && target.includes(".")) {
-      result[source] = target;
+    if (!line || line.startsWith("#")) return;
+
+    const firstEq = line.indexOf("=");
+    const lastEq = line.lastIndexOf("=");
+    if (firstEq <= 0 || firstEq !== lastEq || firstEq === line.length - 1) {
+      throw new Error(`Line ${index + 1}: expected source.entity=target.entity`);
     }
-  }
+
+    const [source, target] = validateSyncEntityPair(
+      line.slice(0, firstEq),
+      line.slice(firstEq + 1),
+      index + 1
+    );
+
+    if (Object.prototype.hasOwnProperty.call(result, source)) {
+      if (result[source] !== target) {
+        throw new Error(`Line ${index + 1}: conflicting mapping for ${source}`);
+      }
+      return;
+    }
+
+    result[source] = target;
+  });
+
   return result;
 }
 
@@ -7785,17 +7847,23 @@ function loadSyncEntityMapEditor() {
 
 function saveSyncEntityMapEditor() {
   if (!el.syncEntityMapText) return;
-  const normalized = formatSyncEntityMap(currentSyncEntityMap());
-  el.syncEntityMapText.value = normalized;
   try {
-    localStorage.setItem(SYNC_ENTITY_MAP_STORAGE_KEY, normalized);
-  } catch (_) {}
-  const count = Object.keys(parseSyncEntityMap(normalized)).length;
-  setStatus(`Saved ${count} Fleet Sync mapping${count === 1 ? "" : "s"}`);
+    const entityMap = currentSyncEntityMap();
+    const normalized = formatSyncEntityMap(entityMap);
+    el.syncEntityMapText.value = normalized;
+    try {
+      localStorage.setItem(SYNC_ENTITY_MAP_STORAGE_KEY, normalized);
+    } catch (_) {}
+    const count = Object.keys(entityMap).length;
+    setStatus(`Saved ${count} Fleet Sync mapping${count === 1 ? "" : "s"}`);
+  } catch (err) {
+    setStatus(`Fleet Sync mapping error: ${err.message}`, true);
+  }
 }
 
 function buildSyncBundle() {
   normalizeLayoutWidgets(editor.layout);
+  const entityMap = currentSyncEntityMap();
   return {
     schema: SYNC_BUNDLE_SCHEMA,
     version: SYNC_BUNDLE_VERSION,
@@ -7810,19 +7878,21 @@ function buildSyncBundle() {
     },
     layout: JSON.parse(JSON.stringify(editor.layout)),
     overrides: {
-      entity_map: currentSyncEntityMap(),
+      entity_map: entityMap,
     },
   };
 }
 
 function applySyncEntityMap(layout, entityMap) {
-  if (!layout || !Array.isArray(layout.pages) || !entityMap || typeof entityMap !== "object") {
+  if (!layout || !Array.isArray(layout.pages)) {
     return;
   }
 
+  const checkedMap = normalizeSyncEntityMapObject(entityMap);
+
   const remap = (value) => {
     if (typeof value !== "string" || !value) return value;
-    const mapped = entityMap[value];
+    const mapped = checkedMap[value];
     return typeof mapped === "string" && mapped.trim() ? mapped.trim() : value;
   };
 
@@ -7848,7 +7918,14 @@ function exportLayout() {
   if (isEnergyPage(selectedPage())) {
     applyEnergyPageConfig({ render: false });
   }
-  const bundle = buildSyncBundle();
+
+  let bundle;
+  try {
+    bundle = buildSyncBundle();
+  } catch (err) {
+    setStatus(`Fleet Sync mapping error: ${err.message}`, true);
+    return;
+  }
   const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -7867,9 +7944,9 @@ function importLayoutFromText(text) {
   }
 
   if (isSyncBundle) {
-    const bundleMap = parsed?.overrides?.entity_map;
+    const bundleMap = normalizeSyncEntityMapObject(parsed?.overrides?.entity_map);
     applySyncEntityMap(layout, bundleMap);
-    if (el.syncEntityMapText && bundleMap && typeof bundleMap === "object") {
+    if (el.syncEntityMapText && Object.keys(bundleMap).length > 0) {
       el.syncEntityMapText.value = formatSyncEntityMap(bundleMap);
       try {
         localStorage.setItem(SYNC_ENTITY_MAP_STORAGE_KEY, el.syncEntityMapText.value);
