@@ -2164,6 +2164,16 @@ function normalizeLayoutWidgets(layout) {
       delete layout.profile_defaults[profile];
     }
   }
+
+  for (const profile of ["day", "night", "guest", "away"]) {
+    const targetId = layout.profile_defaults[profile];
+    if (!targetId) continue;
+    const targetPage = layout.pages.find((page) => page?.id === targetId);
+    const targetProfile = DASHBOARD_PROFILES.has(targetPage?.profile) ? targetPage.profile : "all";
+    if (!targetPage || (targetProfile !== "all" && targetProfile !== profile)) {
+      delete layout.profile_defaults[profile];
+    }
+  }
   for (const page of layout.pages) {
     if (page && typeof page === "object") {
       page.profile = DASHBOARD_PROFILES.has(page.profile) ? page.profile : "all";
@@ -6872,7 +6882,15 @@ function deletePage() {
   if (!page) return;
   const name = page.title || page.id;
   if (!window.confirm(t("layout.pages.confirm_delete", { name }))) return;
-  editor.layout.pages = editor.layout.pages.filter((p) => p.id !== editor.selectedPageId);
+  const deletedPageId = editor.selectedPageId;
+  editor.layout.pages = editor.layout.pages.filter((p) => p.id !== deletedPageId);
+  if (editor.layout.profile_defaults && typeof editor.layout.profile_defaults === "object") {
+    for (const profile of ["day", "night", "guest", "away"]) {
+      if (editor.layout.profile_defaults[profile] === deletedPageId) {
+        delete editor.layout.profile_defaults[profile];
+      }
+    }
+  }
   editor.selectedPageId = editor.layout.pages[0].id;
   editor.selectedWidgetId = null;
   renderAll();
@@ -6895,6 +6913,15 @@ function applyPageAppearance(options = {}) {
   page.profile = DASHBOARD_PROFILES.has(el.pageProfileSelect?.value)
     ? el.pageProfileSelect.value
     : "all";
+
+  if (editor.layout.profile_defaults && typeof editor.layout.profile_defaults === "object") {
+    for (const profile of ["day", "night", "guest", "away"]) {
+      if (editor.layout.profile_defaults[profile] !== page.id) continue;
+      if (page.profile !== "all" && page.profile !== profile) {
+        delete editor.layout.profile_defaults[profile];
+      }
+    }
+  }
   const mode = ["solid", "gradient"].includes(el.pageBackgroundMode?.value) ? el.pageBackgroundMode.value : "theme";
   if (mode === "theme") { delete page.background_mode; delete page.background_color; delete page.background_color2; }
   else { page.background_mode = mode; page.background_color = normalizeHexColor(el.pageBackgroundColor?.value, "#101820");

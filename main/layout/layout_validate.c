@@ -2296,6 +2296,88 @@ bool layout_validate_json(
         }
     }
 
+    if (cJSON_IsObject(profile_defaults)) {
+        static const char *profiles[] = {
+            "day",
+            "night",
+            "guest",
+            "away",
+        };
+
+        for (size_t p = 0U; p < sizeof(profiles) / sizeof(profiles[0]); p++) {
+            const char *profile = profiles[p];
+            cJSON *target =
+                cJSON_GetObjectItemCaseSensitive(profile_defaults, profile);
+
+            if (target == NULL) {
+                continue;
+            }
+
+            if (!cJSON_IsString(target) ||
+                target->valuestring == NULL ||
+                target->valuestring[0] == '\0') {
+                char msg[96];
+                snprintf(
+                    msg,
+                    sizeof(msg),
+                    "profile %s: invalid default page",
+                    profile);
+                layout_validation_add(result, msg);
+                continue;
+            }
+
+            cJSON *matched_page = NULL;
+
+            for (int i = 0; i < page_count; i++) {
+                cJSON *page = cJSON_GetArrayItem(pages, i);
+                if (!cJSON_IsObject(page)) {
+                    continue;
+                }
+
+                cJSON *page_id =
+                    cJSON_GetObjectItemCaseSensitive(page, "id");
+
+                if (cJSON_IsString(page_id) &&
+                    page_id->valuestring != NULL &&
+                    strcmp(page_id->valuestring, target->valuestring) == 0) {
+                    matched_page = page;
+                    break;
+                }
+            }
+
+            if (matched_page == NULL) {
+                char msg[96];
+                snprintf(
+                    msg,
+                    sizeof(msg),
+                    "profile %s: unknown default page",
+                    profile);
+                layout_validation_add(result, msg);
+                continue;
+            }
+
+            cJSON *page_profile =
+                cJSON_GetObjectItemCaseSensitive(matched_page, "profile");
+
+            const char *page_profile_value =
+                (cJSON_IsString(page_profile) &&
+                 page_profile->valuestring != NULL)
+                    ? page_profile->valuestring
+                    : "all";
+
+            if (strcmp(page_profile_value, "all") != 0 &&
+                strcmp(page_profile_value, profile) != 0) {
+                char msg[96];
+                snprintf(
+                    msg,
+                    sizeof(msg),
+                    "profile %s: default page not eligible",
+                    profile);
+                layout_validation_add(result, msg);
+            }
+        }
+    }
+
     /* Validate page-navigation targets only after the first pass has
      * collected every valid page id. This allows a widget on an earlier
      * page to navigate to a page that appears later in the layout. */
