@@ -129,6 +129,8 @@ Reference style:
 v0.10 groundwork:
 
 - Versioned `betta-panel-sync.json` export/import format.
+- Fleet Sync v2 adds explicit project/screen compatibility metadata and warns before cross-project or cross-screen imports.
+- Import keeps backwards compatibility with v1 bundles while rejecting unsupported future bundle versions.
 - Source firmware and screen metadata travel with the layout.
 - Sync bundles reserve `overrides.entity_map` for per-panel entity remapping.
 - Entity remapping applies to primary, secondary, conditional-visibility, and energy dashboard entities.

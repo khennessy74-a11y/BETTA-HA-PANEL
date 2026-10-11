@@ -63,7 +63,8 @@ const WIDGET_CLIPBOARD_STORAGE_KEY = "betta.widgetClipboard.v1";
 const WIDGET_PRESETS_STORAGE_KEY = "betta.widgetPresets.v1";
 const SYNC_ENTITY_MAP_STORAGE_KEY = "betta.syncEntityMap.v1";
 const SYNC_BUNDLE_SCHEMA = "betta-panel-sync";
-const SYNC_BUNDLE_VERSION = 1;
+const SYNC_BUNDLE_VERSION = 2;
+const SYNC_BUNDLE_MIN_SUPPORTED_VERSION = 1;
 const DASHBOARD_PROFILES = new Set(["all", "day", "night", "guest", "away"]);
 const TAP_ACTION_WIDGET_TYPES = new Set([
   "sensor", "binary_sensor", "person", "device_tracker",
@@ -7881,18 +7882,31 @@ function buildSyncBundle(scope = "layout") {
     exportedLayout = JSON.parse(JSON.stringify(editor.layout));
   }
 
+  const sourceWidth = Number(editor.appScreenW || CANVAS_WIDTH);
+  const sourceHeight = Number(editor.appScreenH || CANVAS_HEIGHT);
+  const sourceProject = editor.appProject || "BETTA-HA-PANEL";
+
   return {
     schema: SYNC_BUNDLE_SCHEMA,
     version: SYNC_BUNDLE_VERSION,
     scope: checkedScope,
     exported_at: new Date().toISOString(),
     source: {
-      project: editor.appProject || "BETTA-HA-PANEL",
+      project: sourceProject,
       firmware: editor.appVersion || "",
       screen: {
-        width: Number(editor.appScreenW || CANVAS_WIDTH),
-        height: Number(editor.appScreenH || CANVAS_HEIGHT),
+        width: sourceWidth,
+        height: sourceHeight,
       },
+    },
+    compatibility: {
+      project: sourceProject,
+      screen_class: `${sourceWidth}x${sourceHeight}`,
+      screen: {
+        width: sourceWidth,
+        height: sourceHeight,
+      },
+      import_policy: "confirm-screen-mismatch",
     },
     layout: exportedLayout,
     overrides: {
@@ -8018,9 +8032,72 @@ function mergeSyncPage(layout) {
   setStatus(`Imported page "${importedPage.title || importedPage.id}"`);
 }
 
+function validateSyncBundleForImport(bundle) {
+  const version = Number(bundle?.version || 1);
+  if (!Number.isInteger(version) ||
+      version < SYNC_BUNDLE_MIN_SUPPORTED_VERSION ||
+      version > SYNC_BUNDLE_VERSION) {
+    throw new Error(
+      `Unsupported Fleet Sync version ${bundle?.version ?? "unknown"}; this editor supports ${SYNC_BUNDLE_MIN_SUPPORTED_VERSION}-${SYNC_BUNDLE_VERSION}`
+    );
+  }
+
+  const targetProject = String(editor.appProject || "BETTA-HA-PANEL");
+  const sourceProject = String(
+    bundle?.compatibility?.project ||
+    bundle?.source?.project ||
+    ""
+  ).trim();
+
+  const targetWidth = Number(editor.appScreenW || CANVAS_WIDTH);
+  const targetHeight = Number(editor.appScreenH || CANVAS_HEIGHT);
+  const sourceWidth = Number(
+    bundle?.compatibility?.screen?.width ??
+    bundle?.source?.screen?.width
+  );
+  const sourceHeight = Number(
+    bundle?.compatibility?.screen?.height ??
+    bundle?.source?.screen?.height
+  );
+
+  const warnings = [];
+
+  if (sourceProject && sourceProject !== targetProject) {
+    warnings.push(
+      `project differs: source ${sourceProject}, target ${targetProject}`
+    );
+  }
+
+  if (Number.isFinite(sourceWidth) &&
+      Number.isFinite(sourceHeight) &&
+      sourceWidth > 0 &&
+      sourceHeight > 0 &&
+      (sourceWidth !== targetWidth || sourceHeight !== targetHeight)) {
+    warnings.push(
+      `screen differs: source ${sourceWidth}x${sourceHeight}, target ${targetWidth}x${targetHeight}`
+    );
+  }
+
+  if (warnings.length > 0) {
+    const message =
+      "Fleet Sync compatibility warning:\n\n" +
+      warnings.map((warning) => `• ${warning}`).join("\n") +
+      "\n\nThe editor will clamp imported geometry to this panel. Continue?";
+
+    if (!window.confirm(message)) {
+      throw new Error("Fleet Sync import cancelled after compatibility warning");
+    }
+  }
+
+  return version;
+}
+
 function importLayoutFromText(text) {
   const parsed = JSON.parse(text);
   const isSyncBundle = parsed?.schema === SYNC_BUNDLE_SCHEMA;
+  if (isSyncBundle) {
+    validateSyncBundleForImport(parsed);
+  }
   const layout = isSyncBundle ? parsed.layout : parsed;
   if (!layout || !Array.isArray(layout.pages)) {
     throw new Error(t("layout.status.invalid_json"));
