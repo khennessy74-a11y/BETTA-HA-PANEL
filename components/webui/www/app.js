@@ -69,6 +69,7 @@ const DASHBOARD_PROFILES = new Set(["all", "day", "night", "guest", "away"]);
 const TAP_ACTION_WIDGET_TYPES = new Set([
   "sensor", "binary_sensor", "person", "device_tracker",
   "graph", "status_banner", "empty_tile", "weather_tile", "weather_3day",
+  "light_tile", "heating_tile", "media_player",
 ]);
 
 const ENTITY_PICKER_CONFIGS = {
