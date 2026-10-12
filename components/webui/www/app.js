@@ -1775,6 +1775,8 @@ const el = {
   pageBackgroundColor: document.getElementById("pageBackgroundColor"),
   pageBackgroundColor2Wrap: document.getElementById("pageBackgroundColor2Wrap"),
   pageBackgroundColor2: document.getElementById("pageBackgroundColor2"),
+  pageBackgroundEntityWrap: document.getElementById("pageBackgroundEntityWrap"),
+  pageBackgroundEntity: document.getElementById("pageBackgroundEntity"),
   energyPageOptions: document.getElementById("energyPageOptions"),
   energySource: document.getElementById("energySource"),
   energySourceHint: document.getElementById("energySourceHint"),
@@ -2184,14 +2186,21 @@ function normalizeLayoutWidgets(layout) {
   for (const page of layout.pages) {
     if (page && typeof page === "object") {
       page.profile = DASHBOARD_PROFILES.has(page.profile) ? page.profile : "all";
-      const mode = ["solid", "gradient"].includes(page.background_mode) ? page.background_mode : "theme";
+      const mode = ["solid", "gradient", "image"].includes(page.background_mode) ? page.background_mode : "theme";
       if (mode === "theme") {
-        delete page.background_mode; delete page.background_color; delete page.background_color2;
+        delete page.background_mode; delete page.background_color; delete page.background_color2; delete page.background_entity_id;
+      } else if (mode === "image") {
+        page.background_mode = "image";
+        delete page.background_color; delete page.background_color2;
+        const entity = typeof page.background_entity_id === "string" ? page.background_entity_id.trim() : "";
+        if (/^(image|camera)\.[a-z0-9_]+$/.test(entity)) page.background_entity_id = entity;
+        else delete page.background_entity_id;
       } else {
         page.background_mode = mode;
         page.background_color = normalizeHexColor(page.background_color, "#101820");
         if (mode === "gradient") page.background_color2 = normalizeHexColor(page.background_color2, "#182a38");
         else delete page.background_color2;
+        delete page.background_entity_id;
       }
     }
     if (isEnergyPage(page)) {
@@ -5766,12 +5775,14 @@ function renderPageEditor() {
   if (el.pageProfileSelect) {
     el.pageProfileSelect.value = DASHBOARD_PROFILES.has(page.profile) ? page.profile : "all";
   }
-  const backgroundMode = ["solid", "gradient"].includes(page.background_mode) ? page.background_mode : "theme";
+  const backgroundMode = ["solid", "gradient", "image"].includes(page.background_mode) ? page.background_mode : "theme";
   if (el.pageBackgroundMode) el.pageBackgroundMode.value = backgroundMode;
   if (el.pageBackgroundColor) el.pageBackgroundColor.value = normalizeHexColor(page.background_color, "#101820");
   if (el.pageBackgroundColor2) el.pageBackgroundColor2.value = normalizeHexColor(page.background_color2, "#182a38");
-  if (el.pageBackgroundColorOptions) el.pageBackgroundColorOptions.classList.toggle("hidden", backgroundMode === "theme");
+  if (el.pageBackgroundEntity) el.pageBackgroundEntity.value = page.background_entity_id || "";
+  if (el.pageBackgroundColorOptions) el.pageBackgroundColorOptions.classList.toggle("hidden", !["solid", "gradient"].includes(backgroundMode));
   if (el.pageBackgroundColor2Wrap) el.pageBackgroundColor2Wrap.classList.toggle("hidden", backgroundMode !== "gradient");
+  if (el.pageBackgroundEntityWrap) el.pageBackgroundEntityWrap.classList.toggle("hidden", backgroundMode !== "image");
 
   const energyPage = isEnergyPage(page);
   if (el.energyPageOptions) {
@@ -7013,12 +7024,31 @@ function applyPageAppearance(options = {}) {
       }
     }
   }
-  const mode = ["solid", "gradient"].includes(el.pageBackgroundMode?.value) ? el.pageBackgroundMode.value : "theme";
-  if (mode === "theme") { delete page.background_mode; delete page.background_color; delete page.background_color2; }
-  else { page.background_mode = mode; page.background_color = normalizeHexColor(el.pageBackgroundColor?.value, "#101820");
-    if (mode === "gradient") page.background_color2 = normalizeHexColor(el.pageBackgroundColor2?.value, "#182a38"); else delete page.background_color2; }
-  if (el.pageBackgroundColorOptions) el.pageBackgroundColorOptions.classList.toggle("hidden", mode === "theme");
+  const mode = ["solid", "gradient", "image"].includes(el.pageBackgroundMode?.value) ? el.pageBackgroundMode.value : "theme";
+  if (mode === "theme") {
+    delete page.background_mode; delete page.background_color; delete page.background_color2; delete page.background_entity_id;
+  } else if (mode === "image") {
+    const entity = el.pageBackgroundEntity?.value?.trim() || "";
+    page.background_mode = "image";
+    delete page.background_color; delete page.background_color2;
+    if (/^(image|camera)\.[a-z0-9_]+$/.test(entity)) {
+      page.background_entity_id = entity;
+    } else {
+      delete page.background_entity_id;
+      if (entity && options.softEntityValidation !== true) {
+        setStatus("Page background must use an image.* or camera.* entity", true);
+        return false;
+      }
+    }
+  } else {
+    page.background_mode = mode;
+    page.background_color = normalizeHexColor(el.pageBackgroundColor?.value, "#101820");
+    if (mode === "gradient") page.background_color2 = normalizeHexColor(el.pageBackgroundColor2?.value, "#182a38"); else delete page.background_color2;
+    delete page.background_entity_id;
+  }
+  if (el.pageBackgroundColorOptions) el.pageBackgroundColorOptions.classList.toggle("hidden", !["solid", "gradient"].includes(mode));
   if (el.pageBackgroundColor2Wrap) el.pageBackgroundColor2Wrap.classList.toggle("hidden", mode !== "gradient");
+  if (el.pageBackgroundEntityWrap) el.pageBackgroundEntityWrap.classList.toggle("hidden", mode !== "image");
   if (options.render !== false) renderAll(); return true;
 }
 
@@ -8281,6 +8311,10 @@ function bindUi() {
   if (el.pageBackgroundMode) el.pageBackgroundMode.onchange = () => applyPageAppearance();
   if (el.pageBackgroundColor) el.pageBackgroundColor.onchange = () => applyPageAppearance();
   if (el.pageBackgroundColor2) el.pageBackgroundColor2.onchange = () => applyPageAppearance();
+  if (el.pageBackgroundEntity) {
+    el.pageBackgroundEntity.onchange = () => applyPageAppearance();
+    el.pageBackgroundEntity.onblur = () => applyPageAppearance();
+  }
   initSimpleUiMenus();
   if (el.applyEnergyPageBtn) {
     el.applyEnergyPageBtn.onclick = () => applyEnergyPageConfig();
