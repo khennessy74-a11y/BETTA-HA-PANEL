@@ -74,6 +74,7 @@ typedef struct {
     lv_obj_t *popup_volume_slider;
     lv_obj_t *popup_play_label;
     lv_obj_t *popup_volume_label;
+    char tap_action[APP_MAX_UI_OPTION_LEN];
 } w_mp_ctx_t;
 
 static int clampi(int v, int lo, int hi)
@@ -651,7 +652,12 @@ static void mp_card_event_cb(lv_event_t *event)
 {
     w_mp_ctx_t *ctx = (w_mp_ctx_t *)lv_event_get_user_data(event);
     if (ctx == NULL) return;
-    if (lv_event_get_code(event) == LV_EVENT_LONG_PRESSED) mp_open_popup(ctx);
+    lv_event_code_t code = lv_event_get_code(event);
+    if (code == LV_EVENT_LONG_PRESSED) {
+        mp_open_popup(ctx);
+    } else if (code == LV_EVENT_CLICKED && strcmp(ctx->tap_action, "detail") == 0) {
+        mp_open_popup(ctx);
+    }
 }
 
 static void mp_prev_clicked(lv_event_t *event)
@@ -1088,7 +1094,9 @@ esp_err_t w_media_player_create(const ui_widget_def_t *def, lv_obj_t *parent, ui
     lv_obj_set_pos(vol_slider, col_x + 28, vol_y + 7);
     lv_obj_set_size(vol_slider, col_w > 44 ? col_w - 28 : 16, 12);
 
+    snprintf(ctx->tap_action, sizeof(ctx->tap_action), "%s", def->tap_action);
     lv_obj_add_event_cb(card, mp_card_event_cb, LV_EVENT_LONG_PRESSED, ctx);
+    lv_obj_add_event_cb(card, mp_card_event_cb, LV_EVENT_CLICKED, ctx);
 
     ctx->tick_timer = lv_timer_create(mp_tick_cb, 1000, ctx);
     if (ctx->tick_timer) {
