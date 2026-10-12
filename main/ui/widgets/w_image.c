@@ -91,6 +91,11 @@ esp_err_t w_image_create(const ui_widget_def_t *d, lv_obj_t *p, ui_widget_instan
     lv_obj_t *card = lv_obj_create(p);
     lv_obj_set_pos(card, d->x, d->y); lv_obj_set_size(card, d->w, d->h);
     lv_obj_clear_flag(card, LV_OBJ_FLAG_SCROLLABLE); lv_obj_set_style_pad_all(card, 0, LV_PART_MAIN);
+    if (strcmp(d->style_variant, "page_background") == 0) {
+        lv_obj_set_style_radius(card, 0, LV_PART_MAIN);
+        lv_obj_set_style_border_width(card, 0, LV_PART_MAIN);
+        lv_obj_set_style_bg_opa(card, LV_OPA_COVER, LV_PART_MAIN);
+    }
     w_image_ctx_t *c = ui_calloc_prefer_psram(1, sizeof(*c));
     if (c == NULL) { lv_obj_delete(card); return ESP_ERR_NO_MEM; }
     c->card = card; snprintf(c->entity_id, sizeof(c->entity_id), "%s", d->entity_id);
