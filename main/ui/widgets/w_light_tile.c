@@ -67,6 +67,7 @@ typedef struct {
     bool has_state_off_color;
     bool has_state_on_color;
     bool suppress_next_click;
+    char tap_action[APP_MAX_UI_OPTION_LEN];
 } w_light_tile_ctx_t;
 
 #define ICON_CP_MDI_LIGHTBULB_ON 0xF06E8U
@@ -1455,6 +1456,13 @@ static void w_light_tile_card_event_cb(lv_event_t *event)
             ctx->suppress_next_click = false;
             return;
         }
+        if (strcmp(ctx->tap_action, "detail") == 0) {
+            w_light_tile_open_color_popup(ctx);
+            return;
+        }
+        if (strcmp(ctx->tap_action, "navigate") == 0) {
+            return;
+        }
         if (ctx->unavailable) {
             return;
         }
@@ -1659,6 +1667,7 @@ esp_err_t w_light_tile_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_w
     ctx->show_icon = def->show_icon;
     ctx->show_state = def->show_state;
     snprintf(ctx->custom_icon, sizeof(ctx->custom_icon), "%s", def->icon);
+    snprintf(ctx->tap_action, sizeof(ctx->tap_action), "%s", def->tap_action);
 
     lv_obj_add_event_cb(card, w_light_tile_card_event_cb, LV_EVENT_CLICKED, ctx);
     lv_obj_add_event_cb(card, w_light_tile_card_event_cb, LV_EVENT_LONG_PRESSED, ctx);
