@@ -62,6 +62,7 @@ typedef struct {
     lv_obj_t *popup_current_label;
     lv_obj_t *popup_power_label;
     bool suppress_next_click;
+    char tap_action[APP_MAX_UI_OPTION_LEN];
 } w_heating_tile_ctx_t;
 
 typedef struct {
@@ -675,6 +676,13 @@ static void w_heating_tile_card_event_cb(lv_event_t *event)
             ctx->suppress_next_click = false;
             return;
         }
+        if (strcmp(ctx->tap_action, "detail") == 0) {
+            heating_open_popup(ctx);
+            return;
+        }
+        if (strcmp(ctx->tap_action, "navigate") == 0) {
+            return;
+        }
         lv_obj_t *card = lv_event_get_target(event);
         bool prev_is_on = ctx->is_on;
         char prev_status[sizeof(ctx->status_text)] = {0};
@@ -828,6 +836,7 @@ lv_obj_align(title, LV_ALIGN_TOP_MID, 0, app_tile_state_top_y(false));
     ctx->current_temp = 20.0f;
     ctx->has_current_temp = false;
     ctx->show_state = def->show_state;
+    snprintf(ctx->tap_action, sizeof(ctx->tap_action), "%s", def->tap_action);
     ctx->has_state_off_color = state_icon_parse_color(def->state_icon_off_color, &ctx->state_off_color);
     ctx->has_state_on_color = state_icon_parse_color(def->state_icon_on_color, &ctx->state_on_color);
     snprintf(ctx->status_text, sizeof(ctx->status_text), "OFF");
