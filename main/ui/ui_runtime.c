@@ -1509,6 +1509,7 @@ esp_err_t ui_runtime_load_layout(const char *layout_json)
         cJSON *background_mode = cJSON_GetObjectItemCaseSensitive(page, "background_mode");
         cJSON *background_color = cJSON_GetObjectItemCaseSensitive(page, "background_color");
         cJSON *background_color2 = cJSON_GetObjectItemCaseSensitive(page, "background_color2");
+        cJSON *background_entity_id = cJSON_GetObjectItemCaseSensitive(page, "background_entity_id");
 
         if (!cJSON_IsString(page_id)) {
             continue;
@@ -1544,6 +1545,45 @@ esp_err_t ui_runtime_load_layout(const char *layout_json)
                         lv_obj_set_style_bg_grad_dir(page_container, LV_GRAD_DIR_VER, LV_PART_MAIN);
                     }
                 }
+            }
+        }
+
+        if (cJSON_IsString(background_mode) &&
+            background_mode->valuestring != NULL &&
+            strcmp(background_mode->valuestring, "image") == 0 &&
+            cJSON_IsString(background_entity_id) &&
+            background_entity_id->valuestring != NULL &&
+            background_entity_id->valuestring[0] != '\0' &&
+            s_widget_count < APP_MAX_WIDGETS_TOTAL) {
+
+            const ui_pages_geometry_t *geometry = ui_pages_geometry();
+            ui_widget_def_t background_def = {0};
+            snprintf(background_def.id, sizeof(background_def.id), "__page_background_%s", page_id->valuestring);
+            snprintf(background_def.type, sizeof(background_def.type), "%s", "image");
+            snprintf(background_def.entity_id, sizeof(background_def.entity_id), "%s", background_entity_id->valuestring);
+            snprintf(background_def.style_variant, sizeof(background_def.style_variant), "%s", "page_background");
+            background_def.x = 0;
+            background_def.y = 0;
+            background_def.w = geometry != NULL ? geometry->content_w : APP_CONTENT_BOX_WIDTH;
+            background_def.h = geometry != NULL ? geometry->content_h : APP_CONTENT_BOX_HEIGHT;
+            background_def.show_title = false;
+            background_def.show_icon = false;
+            background_def.show_state = false;
+
+            esp_err_t background_err =
+                ui_widget_factory_create(
+                    &background_def,
+                    page_container,
+                    &s_widgets[s_widget_count]);
+
+            if (background_err == ESP_OK) {
+                snprintf(
+                    s_widgets[s_widget_count].page_id,
+                    sizeof(s_widgets[s_widget_count].page_id),
+                    "%s",
+                    page_id->valuestring);
+                lv_obj_move_background(s_widgets[s_widget_count].obj);
+                s_widget_count++;
             }
         }
 
