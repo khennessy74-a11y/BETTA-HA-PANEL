@@ -8495,6 +8495,34 @@ if (el.addAutomationBtn) {
   if (el.duplicateWidgetBtn) el.duplicateWidgetBtn.onclick = duplicateWidget;
   if (el.copyWidgetBtn) el.copyWidgetBtn.onclick = copyWidget;
   if (el.pasteWidgetBtn) el.pasteWidgetBtn.onclick = pasteWidget;
+
+  document.addEventListener("keydown", (event) => {
+    const target = event.target;
+    const editingText = target instanceof HTMLInputElement ||
+      target instanceof HTMLTextAreaElement ||
+      target instanceof HTMLSelectElement ||
+      target?.isContentEditable;
+    if (editingText || event.altKey) return;
+
+    const command = event.ctrlKey || event.metaKey;
+    if (!command) return;
+
+    const key = String(event.key || "").toLowerCase();
+    if (key === "c" && selectedWidget()) {
+      event.preventDefault();
+      copyWidget();
+    } else if (key === "v" && readCopiedWidget() && !isEnergyPage(selectedPage())) {
+      event.preventDefault();
+      pasteWidget();
+    } else if (key === "d" && selectedWidget() && !isEnergyPage(selectedPage())) {
+      event.preventDefault();
+      duplicateWidget();
+    }
+  });
+
+  if (el.duplicateWidgetBtn) el.duplicateWidgetBtn.title = "Duplicate widget (Ctrl/Cmd+D)";
+  if (el.copyWidgetBtn) el.copyWidgetBtn.title = "Copy widget (Ctrl/Cmd+C)";
+  if (el.pasteWidgetBtn) el.pasteWidgetBtn.title = "Paste widget (Ctrl/Cmd+V)";
   if (el.widgetPresetSelect) el.widgetPresetSelect.onchange = renderWidgetPresets;
   if (el.saveWidgetPresetBtn) el.saveWidgetPresetBtn.onclick = saveSelectedWidgetAsPreset;
   if (el.addWidgetPresetBtn) el.addWidgetPresetBtn.onclick = addSelectedWidgetPreset;
