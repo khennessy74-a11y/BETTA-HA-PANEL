@@ -1198,14 +1198,33 @@ ctx->card = card;
     lv_obj_add_event_cb(card, w_button_card_event_cb, LV_EVENT_DELETE, ctx);
     lv_obj_add_event_cb(action_switch, w_button_switch_event_cb, LV_EVENT_VALUE_CHANGED, ctx);
 
+    const char *profile =
+        button_profile_for_mode(ctx->mode);
+
     const char *initial_status =
-        button_profile_for_mode(ctx->mode) != NULL
+        profile != NULL
             ? ""
             : ((ctx->mode == W_BUTTON_MODE_AUTO || ctx->mode == W_BUTTON_MODE_RUN)
                 ? "OFF"
                 : "paused");
 
-    button_apply_visual(card, ctx, false, false, initial_status);
+    bool profile_active = false;
+    if (profile != NULL) {
+        char active_profile[16] = {0};
+        if (layout_store_get_active_profile(
+                active_profile,
+                sizeof(active_profile)) == ESP_OK) {
+            profile_active =
+                strcmp(active_profile, profile) == 0;
+        }
+    }
+
+    button_apply_visual(
+        card,
+        ctx,
+        profile_active,
+        false,
+        initial_status);
     out_instance->obj = card;
     out_instance->ctx = ctx;
     return ESP_OK;

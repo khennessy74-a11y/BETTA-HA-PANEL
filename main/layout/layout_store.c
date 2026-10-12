@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: LicenseRef-FNCL-1.1
  * Copyright (c) 2026 Cpt_Kirk
+ * Copyright (c) 2026 khennessy74-a11y
  */
 #include "layout/layout_store.h"
 
@@ -134,6 +135,48 @@ esp_err_t layout_store_set_active_profile(const char *profile)
     err = layout_store_save(updated);
     cJSON_free(updated);
     return err;
+}
+
+esp_err_t layout_store_get_active_profile(
+    char *profile_out,
+    size_t profile_out_size)
+{
+    if (profile_out == NULL || profile_out_size == 0U) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    profile_out[0] = '\0';
+
+    char *json = NULL;
+    esp_err_t err = layout_store_load(&json);
+    if (err != ESP_OK || json == NULL) {
+        return err != ESP_OK ? err : ESP_FAIL;
+    }
+
+    cJSON *root = cJSON_Parse(json);
+    free(json);
+    if (root == NULL) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    cJSON *active =
+        cJSON_GetObjectItemCaseSensitive(root, "active_profile");
+
+    const char *profile =
+        (cJSON_IsString(active) &&
+         active->valuestring != NULL &&
+         active->valuestring[0] != '\0')
+            ? active->valuestring
+            : "all";
+
+    snprintf(
+        profile_out,
+        profile_out_size,
+        "%s",
+        profile);
+
+    cJSON_Delete(root);
+    return ESP_OK;
 }
 
 const char *layout_store_default_json(void)
