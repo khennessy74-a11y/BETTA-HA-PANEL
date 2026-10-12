@@ -155,7 +155,10 @@ static bool widget_supports_tap_action(const char *type)
          strcmp(type, "status_banner") == 0 ||
          strcmp(type, "empty_tile") == 0 ||
          strcmp(type, "weather_tile") == 0 ||
-         strcmp(type, "weather_3day") == 0);
+         strcmp(type, "weather_3day") == 0 ||
+         strcmp(type, "light_tile") == 0 ||
+         strcmp(type, "heating_tile") == 0 ||
+         strcmp(type, "media_player") == 0);
 }
 
 static void ui_widget_tap_action_cb(lv_event_t *event)
@@ -166,7 +169,13 @@ static void ui_widget_tap_action_cb(lv_event_t *event)
     if (instance == NULL) return;
 
     if (strcmp(instance->tap_action, "detail") == 0) {
-        ui_widget_detail_popup_show(instance->title, instance->entity_id);
+        const bool native_detail =
+            strcmp(instance->type, "light_tile") == 0 ||
+            strcmp(instance->type, "heating_tile") == 0 ||
+            strcmp(instance->type, "media_player") == 0;
+        if (!native_detail) {
+            ui_widget_detail_popup_show(instance->title, instance->entity_id);
+        }
     } else if (strcmp(instance->tap_action, "navigate") == 0 &&
                instance->tap_target_page[0] != '\0') {
         (void)ui_pages_show(instance->tap_target_page);
