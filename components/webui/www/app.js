@@ -63,7 +63,7 @@ const WIDGET_CLIPBOARD_STORAGE_KEY = "betta.widgetClipboard.v1";
 const WIDGET_PRESETS_STORAGE_KEY = "betta.widgetPresets.v1";
 const SYNC_ENTITY_MAP_STORAGE_KEY = "betta.syncEntityMap.v1";
 const SYNC_BUNDLE_SCHEMA = "betta-panel-sync";
-const SYNC_BUNDLE_VERSION = 2;
+const SYNC_BUNDLE_VERSION = 3;
 const SYNC_BUNDLE_MIN_SUPPORTED_VERSION = 1;
 const DASHBOARD_PROFILES = new Set(["all", "day", "night", "guest", "away"]);
 const TAP_ACTION_WIDGET_TYPES = new Set([
@@ -7192,19 +7192,62 @@ function cloneWidgetForPage(sourceWidget, page, options = {}) {
   return clone;
 }
 
+function normalizeWidgetPresets(raw) {
+  if (!Array.isArray(raw)) return [];
+  const seen = new Set();
+  const normalized = [];
+
+  for (const item of raw) {
+    const name = typeof item?.name === "string" ? item.name.trim() : "";
+    const widget = item?.widget;
+    if (!name || !widget || typeof widget !== "object" || typeof widget.type !== "string") {
+      continue;
+    }
+
+    const key = name.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+
+    const cleanWidget = JSON.parse(JSON.stringify(widget));
+    delete cleanWidget.id;
+    normalized.push({ name, widget: cleanWidget });
+  }
+
+  return normalized;
+}
+
 function loadWidgetPresets() {
   try {
     const parsed = JSON.parse(localStorage.getItem(WIDGET_PRESETS_STORAGE_KEY) || "[]");
-    return Array.isArray(parsed)
-      ? parsed.filter((item) => item && typeof item.name === "string" && item.widget && typeof item.widget.type === "string")
-      : [];
+    return normalizeWidgetPresets(parsed);
   } catch (_) {
     return [];
   }
 }
 
 function storeWidgetPresets(presets) {
-  localStorage.setItem(WIDGET_PRESETS_STORAGE_KEY, JSON.stringify(presets));
+  localStorage.setItem(WIDGET_PRESETS_STORAGE_KEY, JSON.stringify(normalizeWidgetPresets(presets)));
+}
+
+function mergeWidgetPresets(incomingPresets) {
+  const incoming = normalizeWidgetPresets(incomingPresets);
+  if (!incoming.length) return 0;
+
+  const merged = loadWidgetPresets();
+  for (const preset of incoming) {
+    const existing = merged.findIndex(
+      (item) => item.name.toLowerCase() === preset.name.toLowerCase()
+    );
+    if (existing >= 0) {
+      merged[existing] = preset;
+    } else {
+      merged.push(preset);
+    }
+  }
+
+  storeWidgetPresets(merged);
+  renderWidgetPresets();
+  return incoming.length;
 }
 
 function renderWidgetPresets() {
@@ -7912,10 +7955,13 @@ function buildSyncBundle(scope = "layout") {
     overrides: {
       entity_map: entityMap,
     },
+    library: {
+      widget_presets: loadWidgetPresets(),
+    },
   };
 }
 
-function applySyncEntityMap(layout, entityMap) {
+function applySyncEntityMap(layout, entityMap, widgetPresets = []) {
   if (!layout || !Array.isArray(layout.pages)) {
     return;
   }
@@ -7928,13 +7974,17 @@ function applySyncEntityMap(layout, entityMap) {
     return typeof mapped === "string" && mapped.trim() ? mapped.trim() : value;
   };
 
+  const remapWidget = (widget) => {
+    if (!widget || typeof widget !== "object") return;
+    if ("entity_id" in widget) widget.entity_id = remap(widget.entity_id);
+    if ("secondary_entity_id" in widget) widget.secondary_entity_id = remap(widget.secondary_entity_id);
+    if ("visibility_entity_id" in widget) widget.visibility_entity_id = remap(widget.visibility_entity_id);
+  };
+
   for (const page of layout.pages) {
     if (Array.isArray(page?.widgets)) {
       for (const widget of page.widgets) {
-        if (!widget || typeof widget !== "object") continue;
-        if ("entity_id" in widget) widget.entity_id = remap(widget.entity_id);
-        if ("secondary_entity_id" in widget) widget.secondary_entity_id = remap(widget.secondary_entity_id);
-        if ("visibility_entity_id" in widget) widget.visibility_entity_id = remap(widget.visibility_entity_id);
+        remapWidget(widget);
       }
     }
 
@@ -7943,6 +7993,10 @@ function applySyncEntityMap(layout, entityMap) {
         if (key in page.energy) page.energy[key] = remap(page.energy[key]);
       }
     }
+  }
+
+  for (const preset of normalizeWidgetPresets(widgetPresets)) {
+    remapWidget(preset.widget);
   }
 }
 
@@ -8105,7 +8159,11 @@ function importLayoutFromText(text) {
 
   if (isSyncBundle) {
     const bundleMap = normalizeSyncEntityMapObject(parsed?.overrides?.entity_map);
-    applySyncEntityMap(layout, bundleMap);
+    const bundlePresets = normalizeWidgetPresets(parsed?.library?.widget_presets);
+    applySyncEntityMap(layout, bundleMap, bundlePresets);
+    if (bundlePresets.length > 0) {
+      mergeWidgetPresets(bundlePresets);
+    }
     if (el.syncEntityMapText && Object.keys(bundleMap).length > 0) {
       el.syncEntityMapText.value = formatSyncEntityMap(bundleMap);
       try {
