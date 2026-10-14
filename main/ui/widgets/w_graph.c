@@ -46,11 +46,11 @@
 #define GRAPH_DISPLAY_MODE_BARS         "bars"
 
 #define GRAPH_TIME_WINDOW_MIN_MIN 1
-#define GRAPH_TIME_WINDOW_MIN_MAX 1440
+#define GRAPH_TIME_WINDOW_MIN_MAX 10080
 #define GRAPH_DEFAULT_TIME_WINDOW_MIN 120
 
 #define GRAPH_HISTORY_MIN_INTERVAL_SEC 2U
-#define GRAPH_HISTORY_RETENTION_MIN 1440U
+#define GRAPH_HISTORY_RETENTION_MIN 10080U
 #define GRAPH_HISTORY_RETENTION_SEC (GRAPH_HISTORY_RETENTION_MIN * 60U)
 /* Cap samples by count as well as by age. Each sample is 8 bytes, so the
    default cap uses ~32 KB RAM per widget. When the buffer fills before the
@@ -111,6 +111,7 @@ typedef struct {
     int point_count;
     int time_window_min;
     int history_offset_min;
+    char tap_action[APP_MAX_UI_OPTION_LEN];
 
     /* Display mode state: one of GRAPH_DISPLAY_MODE_*. */
     char display_mode[24];
@@ -1366,6 +1367,33 @@ static void graph_pan_history(w_graph_ctx_t *ctx, bool older)
     }
 }
 
+static void graph_cycle_time_window(w_graph_ctx_t *ctx)
+{
+    if (ctx == NULL) {
+        return;
+    }
+
+    static const int ranges_min[] = {60, 360, 1440, 10080};
+    const size_t range_count = sizeof(ranges_min) / sizeof(ranges_min[0]);
+    size_t next_index = 0;
+
+    for (size_t i = 0; i < range_count; i++) {
+        if (ctx->time_window_min == ranges_min[i]) {
+            next_index = (i + 1U) % range_count;
+            break;
+        }
+        if (ctx->time_window_min < ranges_min[i]) {
+            next_index = i;
+            break;
+        }
+        next_index = 0;
+    }
+
+    ctx->time_window_min = ranges_min[next_index];
+    ctx->history_offset_min = 0;
+    graph_apply_layout(ctx);
+}
+
 static void w_graph_event_cb(lv_event_t *event)
 {
     if (event == NULL) {
@@ -1383,6 +1411,10 @@ static void w_graph_event_cb(lv_event_t *event)
         free(ctx);
     } else if (code == LV_EVENT_SIZE_CHANGED) {
         graph_apply_layout(ctx);
+    } else if (code == LV_EVENT_CLICKED) {
+        if (ctx->tap_action[0] == '\0' || strcmp(ctx->tap_action, "default") == 0) {
+            graph_cycle_time_window(ctx);
+        }
     } else if (code == LV_EVENT_GESTURE) {
         lv_indev_t *indev = lv_indev_active();
         if (indev == NULL) {
@@ -1465,6 +1497,7 @@ esp_err_t w_graph_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widget
     ctx->point_count = (ctx->configured_point_count > 0) ? ctx->configured_point_count : GRAPH_DEFAULT_POINT_COUNT;
     ctx->time_window_min = graph_clamp_time_window_min(def->graph_time_window_min);
     ctx->history_offset_min = 0;
+    snprintf(ctx->tap_action, sizeof(ctx->tap_action), "%s", def->tap_action);
     snprintf(ctx->display_mode, sizeof(ctx->display_mode), "%s", graph_normalize_display_mode(def->graph_display_mode));
     ctx->bar_bucket_min = graph_clamp_bar_bucket_min(def->graph_bar_bucket_min);
     ctx->real_points_count = 0;
@@ -1495,6 +1528,7 @@ esp_err_t w_graph_create(const ui_widget_def_t *def, lv_obj_t *parent, ui_widget
 
     lv_obj_add_event_cb(card, w_graph_event_cb, LV_EVENT_DELETE, ctx);
     lv_obj_add_event_cb(card, w_graph_event_cb, LV_EVENT_SIZE_CHANGED, ctx);
+    lv_obj_add_event_cb(card, w_graph_event_cb, LV_EVENT_CLICKED, ctx);
     lv_obj_add_event_cb(card, w_graph_event_cb, LV_EVENT_GESTURE, ctx);
     lv_obj_add_event_cb(chart, graph_draw_dots_cb, LV_EVENT_DRAW_POST_END, ctx);
 
