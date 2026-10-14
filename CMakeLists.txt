@@ -3,7 +3,7 @@
 # Copyright (c) 2026 khennessy74-a11y
 cmake_minimum_required(VERSION 3.16)
 
-set(BETTAOS_RELEASE_VERSION "v0.9")
+set(BETTAOS_RELEASE_VERSION "v0.10-rc1")
 
 # sdkconfig.h is not yet generated here (top-level CMake runs before the
 # application's kconfig). We infer the panel variant from the SDKCONFIG_DEFAULTS
