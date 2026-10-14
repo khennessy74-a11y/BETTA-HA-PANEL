@@ -65,6 +65,16 @@ Future updates install via OTA from the editor — no cable needed.
 
 ---
 
+## v0.10 release candidate
+
+The `v0.10-development` branch is now packaged as **v0.10-rc1** for hardware validation.
+
+Major additions include reusable widget templates, duplicate/copy-paste with keyboard shortcuts, conditional visibility, richer detail popups, page backgrounds including Home Assistant image/camera entities, navigation actions, status banners, dashboard profiles, 1h/6h/24h/7d live graph ranges, and Fleet Sync backup/restore with entity remapping.
+
+The published stable download links above remain on **v0.9** until v0.10 hardware validation is complete.
+
+---
+
 ## What's new in v0.9
 
 - **Home Assistant actions** — dashboard buttons can run scripts directly, with expanded action/button modes.
