@@ -2,6 +2,29 @@
 
 # Release Notes
 
+## v0.10-rc1
+
+v0.10-rc1 is the first release-candidate build of the completed v0.10 feature roadmap. It is intended for hardware validation before promotion to the final v0.10 release.
+
+### Highlights
+
+- Reusable widget templates, including Fleet Sync export/import support.
+- Duplicate and copy/paste widget workflows with Ctrl/Cmd keyboard shortcuts.
+- Conditional widget visibility driven by Home Assistant entity state.
+- Rich detail popups for Light, Heating, and Media Player tiles.
+- Page-level theme, solid-colour, gradient, image, and camera backgrounds.
+- Dashboard navigation actions between BETTA pages.
+- Home Assistant-driven status/notification banners.
+- Day, Night, Guest, and Away dashboard profiles with profile home pages.
+- Live graph range switching across 1 hour, 6 hours, 24 hours, and 7 days, with seven-day local history retention.
+- Fleet Sync backup/restore and panel-to-panel transfer with entity remapping, including page background entities and reusable widget templates.
+- Three-target CI remains enabled for `panel4`, `panel10`, and `panels3`.
+
+### Release-candidate status
+
+This build is not yet the published stable release. Final promotion to v0.10 should follow hardware flashing and regression checks on the target panel(s).
+
+
 ## v0.9
 
 BETTA HA Panel v0.9 is the largest development update since v0.8.2, expanding dashboard controls, editor capabilities, display behaviour, diagnostics, and three-panel release validation.
