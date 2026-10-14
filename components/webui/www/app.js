@@ -8013,6 +8013,10 @@ function applySyncEntityMap(layout, entityMap, widgetPresets = []) {
   };
 
   for (const page of layout.pages) {
+    if (page && typeof page === "object" && "background_entity_id" in page) {
+      page.background_entity_id = remap(page.background_entity_id);
+    }
+
     if (Array.isArray(page?.widgets)) {
       for (const widget of page.widgets) {
         remapWidget(widget);
