@@ -1466,3 +1466,122 @@ aside.actions-panel section {
 .ha-connection-log-wrap { margin-top: 4px; }
 .ha-connection-log-title { display: block; margin-bottom: 4px; color: var(--muted); font-size: 12px; }
 .ha-connection-log { max-height: 132px; overflow-y: auto; white-space: pre-wrap; font-family: monospace; font-size: 11px; line-height: 1.45; padding: 8px; border: 1px solid #30506b; border-radius: 8px; background: #0e1c28; color: #b9c9d7; }
+
+
+/* v0.10 editor polish: touch-friendly controls and iOS viewport behaviour. */
+@media (max-width: 560px) {
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  body {
+    overflow-x: hidden;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .shell {
+    min-height: 100vh;
+    min-height: 100dvh;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sidebar {
+    min-width: 0;
+    padding: 12px;
+    overflow: visible;
+    border-right: 0;
+    border-bottom: 1px solid #21384f;
+  }
+
+  .sidebar-header h1 {
+    font-size: 20px;
+    line-height: 1.25;
+  }
+
+  .mode-tabs {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    margin: 12px -12px 0;
+    padding: 8px 12px;
+    background: rgba(13, 26, 40, 0.97);
+    border-bottom: 1px solid #29445b;
+    backdrop-filter: blur(10px);
+  }
+
+  .workspace {
+    min-width: 0;
+    padding: 10px;
+    gap: 10px;
+  }
+
+  .workspace-top {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .workspace-body {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .canvas-wrap {
+    max-width: 100%;
+    padding: 8px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .section-head {
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .section-head > .row {
+    flex-wrap: wrap;
+  }
+
+  .btn,
+  .dropdown-item,
+  .row-icon-btn,
+  .row-delete-btn,
+  .list button {
+    touch-action: manipulation;
+  }
+
+  .btn {
+    min-height: 40px;
+  }
+
+  .btn.small {
+    min-height: 36px;
+  }
+
+  input:not([type="checkbox"]):not([type="radio"]):not([type="color"]),
+  select,
+  textarea {
+    font-size: 16px;
+    max-width: 100%;
+  }
+
+  .dropdown-menu {
+    max-width: calc(100vw - 28px);
+    max-height: min(60vh, 420px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .list li .row-actions {
+    opacity: 1;
+  }
+
+  .modal-card {
+    max-height: calc(100dvh - 24px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+    padding: 12px;
+  }
+
+  .setup-wizard-footer {
+    gap: 8px;
+  }
+}
