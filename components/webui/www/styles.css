@@ -1811,6 +1811,25 @@ aside.actions-panel,
     -webkit-user-select: none;
     user-select: none;
   }
+
+  /* Keep the resize target easy to hit with a thumb or stylus without
+     making the visible corner grip larger or obscuring the tile preview. */
+  .widget-box > .resize-handle {
+    width: 44px;
+    height: 44px;
+    background: none;
+  }
+
+  .widget-box > .resize-handle::after {
+    content: "";
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    width: 18px;
+    height: 18px;
+    background: linear-gradient(135deg, transparent 50%, #ffd05e 50%);
+    pointer-events: none;
+  }
 }
 
 /* Short landscape phone viewports need compact dialogs and headers. */
