@@ -26,6 +26,7 @@ body {
 
 .provisioning-shell {
   min-height: 100vh;
+  min-height: 100dvh;
   display: grid;
   place-items: center;
   padding: 20px;
@@ -60,6 +61,7 @@ body {
   display: grid;
   grid-template-columns: minmax(320px, 360px) 1fr;
   min-height: 100vh;
+  min-height: 100dvh;
 }
 
 .sidebar {
@@ -1014,7 +1016,11 @@ aside.actions-panel section {
   z-index: 1000;
   display: grid;
   place-items: center;
-  padding: 18px;
+  padding:
+    max(18px, env(safe-area-inset-top, 0px))
+    max(18px, env(safe-area-inset-right, 0px))
+    max(18px, env(safe-area-inset-bottom, 0px))
+    max(18px, env(safe-area-inset-left, 0px));
   background: rgba(3, 8, 13, 0.72);
 }
 
@@ -1025,6 +1031,7 @@ aside.actions-panel section {
 .modal-card {
   width: min(560px, 100%);
   max-height: min(720px, calc(100vh - 36px));
+  max-height: min(720px, calc(100dvh - 36px));
   overflow: auto;
   background: #102233;
   border: 1px solid #38556f;
@@ -1731,7 +1738,7 @@ aside.actions-panel,
       max(8px, env(safe-area-inset-right, 0px))
       max(8px, env(safe-area-inset-bottom, 0px))
       max(8px, env(safe-area-inset-left, 0px));
-    align-items: safe center;
+    align-items: center;
   }
 }
 
